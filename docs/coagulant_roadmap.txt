@@ -26,27 +26,24 @@ salud por inanición/deshidratación, opcional).
       boot + coagulant_selftest + lastHit + venda vía Cargo + tab de UI.
       Al pasar: flipear CHANGELOG sesión 2026-07-13 a [APLICADO].
 
-  [2] Block 3 de DISEÑO (en este repo, iterando con el autor — flujo §2; la semilla
-      con las decisiones abiertas es docs/Coagulant_Block3_Semilla.md): sustrato v1
-      del dominio médico estilo ACE3:
-        - heridas por zona (tipos, severidad, apilado)
-        - sangrado (curvas, umbrales, muerte por desangrado)
-        - vitales (qué se modela: HP por zona vs. pool, dolor, consciencia)
-        - tratamiento v1: vendaje / torniquete (ítems reales contra Cargo)
-        - contrato de eventos de estado clínico (§4 de la arquitectura de Corpus —
-          lo consumirán Craving y la UI)
-      Entregable: docs/Coagulant_Architecture.md (doc particular autocontenido) +
-      sección resumen en CORPUS_Architecture.md. El scaffold ya congeló: IDs de
-      zona, ApplyBandage(ply) como firma de onUse, degradación sin Caliber/Cargo.
+  [2] Ratificación de docs/Coagulant_Architecture.md (autor). La primera pasada de
+      diseño ya cerró (2026-07-13, resoluciones en Coagulant_Block3_Semilla.md §3);
+      el doc baja esas decisiones a spec con números de balance PROPUESTOS (tunables
+      por convar). Al ratificar: Block 3 de diseño cerrado → sección resumen en
+      CORPUS_Architecture.md §9.
 
 
-2. SIGUIENTE — después del Block 3 de diseño
-----------------------------------------------
+2. SIGUIENTE — después de ratificar la arquitectura
+-----------------------------------------------------
 
-  [3] Bajada a código del sustrato v1 por vertical slice (flujo §3): herida →
-      sangrado → tratamiento de punta a punta, no capa por capa. Persistencia
-      (Corpus.Data namespace "coagulant") y net (Corpus.Net "coagulant") entran
-      RECIÉN acá, cuando el estado y el protocolo diseñados lo justifiquen.
+  [3] Bajada a código del sustrato v1 por vertical slice (arquitectura §15, flujo
+      §3), 4 slices verificables en juego cada uno:
+        1. sangre + heridas + sangrado (timer, HP crítico, NW2, snapshot)
+        2. tratamiento vía Cargo (4 ítems, consumo al completar, torniquete)
+        3. debuffs zonales (cojera composable con Cargo, sway, visión)
+        4. UI (HUD silueta, menú médico, StatusPanel, tab Q)
+      Net entra en el slice 1 (snapshot/intents); persistencia a disco NO entra
+      (spawn = cuerpo nuevo, decisión F).
 
   [4] Wiring real con Caliber cuando su Block 3 (pipeline de armadura de jugador)
       exponga el hit-location enriquecido / eventos de daño-limb: reemplazar la

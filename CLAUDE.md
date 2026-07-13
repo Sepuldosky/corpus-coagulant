@@ -18,7 +18,7 @@ Antes de tocar código o diseño, lee en este orden (los tres primeros son **doc
 2. **Rumbo** → [`docs/coagulant_roadmap.txt`](docs/coagulant_roadmap.txt). Qué sigue y en qué orden.
 3. **Historial de parches** → [`docs/CHANGELOG.md`](docs/CHANGELOG.md). `[PENDIENTE]`/`[APLICADO YYYY-MM-DD]`, nunca se borra ni renumera.
 4. **Metodología de trabajo** → [`../corpus/docs/corpus_flujo_trabajo.txt`](../corpus/docs/corpus_flujo_trabajo.txt). **Doc canónico compartido** por todo el ecosistema — no se duplica acá.
-5. **Arquitectura del módulo** → `docs/Coagulant_Architecture.md` — **no existe todavía**; llega con el Block 3 de diseño. Mientras tanto, la frontera del módulo vive en `../corpus/docs/CORPUS_Architecture.md` §2, §4-§5.
+5. **Arquitectura del módulo** → [`docs/Coagulant_Architecture.md`](docs/Coagulant_Architecture.md) (Block 3: sustrato v1 — **borrador para ratificación del autor**; los números de balance son propuesta tunable). La frontera general sigue en `../corpus/docs/CORPUS_Architecture.md` §2, §4-§5; la semilla con el registro de decisiones en [`docs/Coagulant_Block3_Semilla.md`](docs/Coagulant_Block3_Semilla.md).
 6. **Convenciones de commit** → [`docs/coagulant_convenciones_commits.txt`](docs/coagulant_convenciones_commits.txt). Alcances específicos de **este** repo.
 
 ## Idioma

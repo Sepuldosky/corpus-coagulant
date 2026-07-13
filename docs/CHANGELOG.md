@@ -85,3 +85,17 @@ sintaxis Lua validada offline.
   spawn = cuerpo nuevo sin disco. Resoluciones anotadas en
   `Coagulant_Block3_Semilla.md` §3; quedan PENDIENTE de arquitectura: tabla damage
   type → herida, curvas/números, vía sin Cargo, convars. **[APLICADO 2026-07-13]**
+
+- PARCHE 10 — docs(docs): `Coagulant_Architecture.md` — baja las resoluciones de la
+  semilla a spec autocontenida (16 secciones): tabla damage type → herida ×
+  severidad, curvas de sangrado/regen/HP crítico, debuffs (cojera composable con el
+  movecompat de Cargo vía Move hook + NW2, nunca SetWalkSpeed; sway por ViewPunch
+  agnóstico; visión por overlay), 4 ítems con consumo AL COMPLETAR (onUse devuelve
+  false y Coagulant hace TakeItem al terminar — clave del contrato con Cargo),
+  eventos `Coagulant_*`, net (2 NW2 + 3 mensajes), UI, convars, mapa de archivos
+  objetivo (7 nuevos), degradación, 4 vertical slices. Superficies de Cargo
+  verificadas contra su código real (`OnEncumbrance` ya llamado por
+  corpus_cargo_movement.lua — v1 lo acepta como stub, stamina diferida;
+  `StatusPanel.RegisterBar` con su firma real). **Borrador: los números de balance
+  quedan sujetos a ratificación del autor.** Estado/roadmap/CLAUDE.md apuntados al
+  doc. **[APLICADO 2026-07-13]**

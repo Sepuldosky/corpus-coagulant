@@ -5,7 +5,9 @@
 > secciones ni historial). El historial vive en `git` + [`CHANGELOG.md`](CHANGELOG.md).
 > Si crece de una pantalla, está mal redactado: recortar.
 
-**Última actualización:** 2026-07-13 (scaffold pre-Block 3 escrito — pendiente de verificación en juego)
+**Última actualización:** 2026-07-13 (scaffold escrito + primera pasada de diseño del
+Block 3 cerrada con el autor + `Coagulant_Architecture.md` en borrador — pendientes:
+verificación del scaffold en juego y ratificación del doc)
 
 ---
 
@@ -37,12 +39,11 @@
 
 ## Remanentes / deuda conocida
 
-- **`docs/Coagulant_Architecture.md` no existe** — el Block 3 de diseño (heridas,
-  sangrado, vitales, tratamiento real) se diseña **en este repo, iterando con el
-  autor** (decisión 2026-07-13: para mods el diseño denso en Desktop no hace falta;
-  eso queda para Kontrol). Semilla con las decisiones abiertas →
-  [`Coagulant_Block3_Semilla.md`](Coagulant_Block3_Semilla.md). El scaffold no lo
-  condiciona más allá de los contratos congelados (zonas, `ApplyBandage`).
+- **`Coagulant_Architecture.md` es BORRADOR** — las decisiones estructurales las
+  resolvió el autor (semilla §3), pero los números de balance (curvas §4-§6, tiempos
+  §7) son propuesta inicial sin ratificar ni probar en juego. Quedaron PENDIENTE en
+  la semilla y resueltos como propuesta en el doc: vía sin Cargo (tratamiento gratis
+  con cooldown) y convars — ojo al ratificar.
 - **Rama Caliber vacía a propósito:** el lazy-check en `ScalePlayerDamage` está, pero
   no hay nada que consumir hasta que Caliber cierre su Block 3 (pipeline de jugador).
 - **Sin `addon.json`** — igual que el resto del ecosistema; no bloquea testeo local.
@@ -50,9 +51,10 @@
 ## Próximo paso
 
 1. **Verificación en juego del scaffold** (autor) → flipear el CHANGELOG.
-2. **Block 3 de diseño** (acá, iterando con el autor sobre la semilla): sustrato v1 —
-   heridas por zona, sangrado, vitales, vendaje/torniquete. Al cerrar:
-   `Coagulant_Architecture.md` acá + sección resumen en `CORPUS_Architecture.md`.
+2. **Ratificación de `Coagulant_Architecture.md`** (autor) → Block 3 de diseño cerrado
+   (sección resumen en `CORPUS_Architecture.md` §9).
+3. **Bajada a código por 4 vertical slices** (arquitectura §15): sangre/heridas →
+   tratamiento vía Cargo → debuffs → UI.
 
 ---
 
