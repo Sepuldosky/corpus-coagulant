@@ -1,20 +1,29 @@
 -- corpus_coagulant_items.lua — ítems médicos contra el framework de Cargo (SHARED)
 -- Patrón del contrato de ítems generalizado (CORPUS_Architecture.md §5): Cargo
--- posee el contenedor (grid, peso, persistencia); Coagulant posee la semántica
--- (qué hace la venda al usarse). Cargo es SOFT-DEP: se detecta vía el registro,
--- nunca se asume — sin Cargo, el tratamiento cae a la vía degradada (arquitectura
--- §7) y este archivo solo loguea.
+-- posee el contenedor (grid, peso, persistencia); Coagulant posee la semántica.
+-- Cargo es SOFT-DEP: se detecta vía el registro, nunca se asume.
 --
 -- REALM: SHARED a propósito — Cargo NO sincroniza defs por net: su grid cliente
--- renderiza desde las defs locales (igual que su dev kit, "both realms"). Con el
--- registro solo en server, el ítem existe en el inventario pero es invisible en
--- la UI (pagado en la verificación en juego del 2026-07-13, punto E). onUse corre
--- solo en server igual (lo invoca Cargo server-side).
+-- renderiza desde las defs locales (pagado en juego el 2026-07-13, punto E).
+--
+-- CONSUMO AL COMPLETAR (arquitectura §7): el onUse devuelve SIEMPRE false (Cargo
+-- no consume) y solo inicia el tratamiento; corpus_coagulant_treatment.lua hace
+-- TakeItem al terminar la aplicación. onUse corre solo en server.
 
 local COAGULANT = Corpus.GetModule("coagulant")
 
+-- Fabrica el onUse de un tratamiento: inicia y avisa al jugador si no pudo.
+local function UsarTratamiento(kind)
+    return function(ply)
+        local ok, err = COAGULANT.ApplyTreatment(ply, kind)
+        if not ok and err ~= nil then ply:ChatPrint(err) end
+        return false -- Cargo nunca consume acá: se consume al COMPLETAR
+    end
+end
+
 -- Se registra en la ready barrier: corre una vez POR REALM, con todos los módulos
--- presentes ya registrados (CORPUS_Architecture.md §6.b). Lazy-check + degradación.
+-- presentes ya registrados (CORPUS_Architecture.md §6.b). Strings de cara al
+-- jugador en inglés (idioma del mod). Set v1 completo (arquitectura §7).
 Corpus.OnReady(function()
     local cargo = Corpus.GetModule("cargo")
     if cargo == nil then
@@ -22,28 +31,52 @@ Corpus.OnReady(function()
         return
     end
 
-    -- Strings de cara al jugador en inglés (idioma del mod). El set completo de 4
-    -- ítems (torniquete, kit, bolsa de sangre) llega con el slice 2 (§7).
     cargo.Items.Register({
         id       = "corpus_coagulant_bandage",
         name     = "Bandage",
         weight   = 0.1,
         class    = "stackable",
         category = "medical",
-        onUse    = function(ply)
-            -- lógica de curación: dominio de Coagulant, no de Cargo. Consumo
-            -- instantáneo interim: el slice 2 lo vuelve tiempo de aplicación con
-            -- consumo al completar (onUse -> false + TakeItem, arquitectura §7).
-            return COAGULANT.ApplyBandage(ply)
-        end,
+        trivia   = "Stops light and medium bleeding. Applies over 4 seconds.",
+        onUse    = SERVER and UsarTratamiento("bandage") or nil,
     })
 
-    Corpus.Log("coagulant", "ítems médicos registrados contra Cargo (1 def, "
+    cargo.Items.Register({
+        id       = "corpus_coagulant_tourniquet",
+        name     = "Tourniquet",
+        weight   = 0.2,
+        class    = "unique",
+        category = "medical",
+        trivia   = "Stops all bleeding on one limb while applied. Leaving it on too long damages the limb. Not consumed.",
+        onUse    = SERVER and UsarTratamiento("tourniquet") or nil,
+    })
+
+    cargo.Items.Register({
+        id       = "corpus_coagulant_medkit",
+        name     = "Medkit",
+        weight   = 0.5,
+        class    = "stackable",
+        category = "medical",
+        trivia   = "Restores health over 10 seconds. Does not stop bleeding or restore blood.",
+        onUse    = SERVER and UsarTratamiento("medkit") or nil,
+    })
+
+    cargo.Items.Register({
+        id       = "corpus_coagulant_bloodbag",
+        name     = "Blood Bag",
+        weight   = 0.3,
+        class    = "stackable",
+        category = "medical",
+        trivia   = "Restores blood volume over 8 seconds. Stop the bleeding first.",
+        onUse    = SERVER and UsarTratamiento("bloodbag") or nil,
+    })
+
+    Corpus.Log("coagulant", "ítems médicos registrados contra Cargo (4 defs, "
         .. (SERVER and "server" or "client") .. ")")
 end)
 
--- Vía mínima de debug sin inventario: aplica el tratamiento directo. Sirve para
--- verificar el slice aunque Cargo no esté montado. Solo admin, solo server.
+-- Vía mínima de debug sin inventario: efecto venda INSTANTÁNEO (no el flujo real
+-- con tiempo — para eso está ApplyTreatment/el ítem). Solo admin, solo server.
 if SERVER then
     concommand.Add("coagulant_bandage", function(ply)
         if IsValid(ply) and not ply:IsAdmin() then return end
@@ -52,6 +85,13 @@ if SERVER then
             Corpus.Log("coagulant", "coagulant_bandage: no hay jugador objetivo")
             return
         end
-        COAGULANT.ApplyBandage(objetivo)
+        local zona = COAGULANT.WorstBleedingZone(objetivo)
+        if zona == nil then
+            Corpus.Log("coagulant", "coagulant_bandage: sin heridas sangrantes")
+            return
+        end
+        COAGULANT.BandageEffect(objetivo, zona)
+        Corpus.Log("coagulant", "venda (debug, instantánea) sobre " .. objetivo:Nick()
+            .. " en " .. zona)
     end)
 end
