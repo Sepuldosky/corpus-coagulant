@@ -35,13 +35,13 @@ sintaxis Lua validada offline.
   registro (`Corpus.RegisterModule("coagulant", {})`), bloque CONTRATO (`ApplyBandage`
   + `Zones.*` como única superficie pública), `include()` determinista, boot diferido a
   `Initialize` con sonda `CorpusListo()` (patrón template de Caliber), falla ruidoso
-  sin framework. **[PENDIENTE]**
+  sin framework. **[APLICADO 2026-07-13]** (verificado en juego por el autor)
 
 - PARCHE 3 — feat(zones): `shared/corpus_coagulant_zones.lua` — 6 zonas clínicas
   estilo ACE3 (IDs ya contrato: `head/torso/left_arm/right_arm/left_leg/right_leg`) +
   mapa hitgroup nativo → zona con fallback a torso. Puro, sin hooks. Es la vía de
   degradación sin Caliber (§2 de la arquitectura de Corpus); nunca se borra.
-  **[PENDIENTE]**
+  **[APLICADO 2026-07-13]** (verificado en juego por el autor)
 
 - PARCHE 4 — feat(core): `server/corpus_coagulant_core.lua` — estado clínico por
   SteamID64 en memoria (forma sustrato `zones[zona]={wounds,bleeding}`), reset en
@@ -49,24 +49,28 @@ sintaxis Lua validada offline.
   observa (registra `lastHit`, no toca daño) con rama mock-first para el hit-location
   de Caliber, y stub `ApplyBandage(ply)` (firma congelada del `onUse` de §5; loguea,
   limpia placeholder, devuelve `true`). Sin persistencia ni net a propósito.
-  **[PENDIENTE]**
+  **[APLICADO 2026-07-13]** (verificado en juego por el autor; superado el mismo día
+  por el slice 1, que lo reescribe)
 
 - PARCHE 5 — feat(items): `server/corpus_coagulant_items.lua` — ítem semilla
   `corpus_coagulant_bandage` (Bandage, 0.1, stackable, categoría `medical`) registrado
   contra Cargo en `Corpus.OnReady` con lazy-check y apagado honesto si Cargo no está;
   `onUse` delega en `COAGULANT.ApplyBandage`. Concommand de debug `coagulant_bandage`
-  (admin) como vía mínima sin inventario. **[PENDIENTE]**
+  (admin) como vía mínima sin inventario. **[PENDIENTE]** — la verificación en juego
+  del 2026-07-13 **falló en este punto** (punto E de la checklist): la def se
+  registraba solo en server y el grid cliente de Cargo renderiza desde defs
+  locales → ítem invisible en la UI. Fix en la sesión de abajo; re-test pendiente.
 
 - PARCHE 6 — feat(options): `client/corpus_coagulant_options.lua` — tab único
   `Corpus.UI.RegisterTab("coagulant", "Coagulant", …)` (Q → Utilities → Corpus →
   Coagulant): estado del scaffold + detección de soft-deps en vivo. Strings de cara
-  al jugador en inglés. **[PENDIENTE]**
+  al jugador en inglés. **[APLICADO 2026-07-13]** (verificado en juego por el autor)
 
 - PARCHE 7 — test(dev): `shared/corpus_coagulant_dev.lua` — `coagulant_selftest`
   (admin-gated): invariante by-ref del registro, consistencia de zonas y mapa total
   de hitgroups, contrato público en server, round-trip de estado si hay jugador,
   check de la venda registrada si Cargo está presente, reporte de soft-deps.
-  **[PENDIENTE]**
+  **[APLICADO 2026-07-13]** (verificado en juego por el autor)
 
 - PARCHE 8 — docs(docs): `Coagulant_Block3_Semilla.md` — semilla del Block 3 de
   diseño: marco fijo (contratos ya congelados), referente ACE3 adaptado a sandbox,
@@ -116,7 +120,8 @@ juego del autor (checklist entregada como artefacto).
   (`coagulant_enabled/bleed_scale/regen_scale/hpdrain_scale/debug`), tablas de
   balance (§2-§5: BLOOD_MAX 100, crítico 40, regen 0.10/s, bleed base por severidad,
   tipos con mult) y funciones puras (`WoundTypeFromDMG` con prioridad de bits,
-  `SeverityFromDamage` 15/40, `BleedRate`, `HPDrainRate`). **[PENDIENTE]**
+  `SeverityFromDamage` 15/40, `BleedRate`, `HPDrainRate`). **[APLICADO 2026-07-13]**
+  (verificado en juego por el autor — checklist A-D/F OK)
 
 - PARCHE 2 — feat(core): reescritura de `server/corpus_coagulant_core.lua` — estado
   v1 (blood/zones con wounds+tourniquet/treatment/encumbrance), heridas creadas en
@@ -126,22 +131,43 @@ juego del autor (checklist entregada como artefacto).
   eventos `Coagulant_WoundAdded/WoundClosed`, contrato de lectura
   (`GetBlood`/`IsBleeding`/`GetZoneScore`), `OnEncumbrance` (stub del contrato de
   Cargo) y el efecto venda real (`BandageEffect`: cierra leve/media, grave 3→2;
-  `ApplyBandage` con zona automática — instantáneo hasta el slice 2). **[PENDIENTE]**
+  `ApplyBandage` con zona automática — instantáneo hasta el slice 2).
+  **[APLICADO 2026-07-13]** (verificado en juego por el autor)
 
 - PARCHE 3 — feat(bleeding): `server/corpus_coagulant_bleeding.lua` — timer único de
   1 s: drenaje total (zonas sin torniquete, × convar), regen natural, cruce del
   umbral crítico (`Coagulant_BloodCritical`), drenaje de HP en crítico vía
   `DMG_GENERIC` del mundo (muerte por HP 0 + "You bled out." en chat), NW2Float
   `coagulant_blood`, y snapshot comprimido on-change al dueño
-  (`corpus_coagulant_state`). **[PENDIENTE]**
+  (`corpus_coagulant_state`). **[APLICADO 2026-07-13]** (verificado en juego por el autor)
 
 - PARCHE 4 — test(dev): selftest crece a la matemática pura del slice (mapa DMG con
   prioridad, severidades, curvas, venda ×2 sobre grave, score con tratadas a la
   mitad) + comandos de verificación en juego `coagulant_status` (sangre/HP/heridas
   por zona) y `coagulant_setblood <n>` (probar el crítico sin desangrarse), ambos
-  admin. **[PENDIENTE]**
+  admin. **[APLICADO 2026-07-13]** (verificado en juego por el autor)
 
 - PARCHE 5 — chore(init): manifest suma `config` y `bleeding` en orden (config antes
   que core: core usa las tablas en file-scope), sonda `CorpusListo` suma
   `Corpus.Net`, bloque CONTRATO actualizado a §8 (lectura + eventos + encumbrance).
-  **[PENDIENTE]**
+  **[APLICADO 2026-07-13]** (verificado en juego por el autor)
+
+---
+
+## PARCHES DE sesión Fix punto E — defs de ítems en ambos realms — 2026-07-13
+
+Resultado de la verificación en juego (checklist como artefacto): **todo OK salvo el
+punto E** — la venda dada por `GiveItem` no aparecía/funcionaba en la UI de Cargo.
+Causa raíz: `corpus_coagulant_items.lua` era un archivo SERVER-only, y **Cargo no
+sincroniza defs por net** — su grid cliente renderiza desde `Items.Get` local (por
+eso su propio dev kit registra en shared, "both realms"). La def existía en server
+(GiveItem funcionaba) pero el cliente no la conocía. El fix es de Coagulant; Cargo
+queda intacto.
+
+- PARCHE 1 — fix(items): mueve `corpus_coagulant_items.lua` de `server/` a
+  `shared/` (git mv + manifest): el registro contra Cargo corre ahora en ambos
+  realms vía `Corpus.OnReady` (una vez por realm); el concommand de debug
+  `coagulant_bandage` queda gated `if SERVER`. Header del archivo documenta la
+  trampa. Harness offline gana una **pasada de realm CLIENT con Cargo fake** que
+  asserta la def registrada en cliente — regresión directa del punto E (server 49
+  OK + client 34 OK). **[PENDIENTE]** (re-test del punto E en juego)

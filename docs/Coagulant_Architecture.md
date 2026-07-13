@@ -278,7 +278,7 @@ El manifest del init crece a (orden de carga determinista; regla de siempre: nun
 | `server/corpus_coagulant_bleeding.lua` | server | timer 1 s: drenaje, regen, HP crítico | **nuevo** |
 | `server/corpus_coagulant_treatment.lua` | server | ApplyTreatment, progreso, consumo Cargo, torniquetes, net intents | **nuevo** |
 | `server/corpus_coagulant_debuffs.lua` | server | scores, speed mult (NW2), sway punch | **nuevo** |
-| `server/corpus_coagulant_items.lua` | server | 4 defs contra Cargo | existe, crece |
+| `shared/corpus_coagulant_items.lua` | shared | 4 defs contra Cargo — **shared obligatorio**: Cargo no sincroniza defs por net, su grid cliente lee `Items.Get` local (lección del punto E, 2026-07-13) | existe, crece |
 | `client/corpus_coagulant_hud.lua` | client | silueta + vignettes + barra progreso + StatusPanel | **nuevo** |
 | `client/corpus_coagulant_medmenu.lua` | client | panel médico (`coagulant_menu`) | **nuevo** |
 | `client/corpus_coagulant_options.lua` | client | tab Q (crece: convars + bind hint) | existe |

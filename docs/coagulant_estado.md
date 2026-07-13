@@ -5,9 +5,9 @@
 > secciones ni historial). El historial vive en `git` + [`CHANGELOG.md`](CHANGELOG.md).
 > Si crece de una pantalla, está mal redactado: recortar.
 
-**Última actualización:** 2026-07-13 (arquitectura ratificada por el autor al ordenar
-la bajada; **slice 1 de 4 en código**, verificado offline — pendiente de verificación
-en juego, checklist entregada como artefacto)
+**Última actualización:** 2026-07-13 (slice 1 **verificado en juego por el autor**
+salvo el punto E — venda invisible en la UI de Cargo por defs server-only; fix
+aplicado (items → shared), re-test pendiente vía el artefacto)
 
 ---
 
@@ -31,11 +31,15 @@ en juego, checklist entregada como artefacto)
 
 ## Pendiente de verificar
 
-- **Scaffold + slice 1 en juego** (CHANGELOG sesiones 2026-07-13 en `[PENDIENTE]`).
-  La corre el autor con la **checklist entregada como artefacto**.
+- **Solo el punto E (venda vía UI de Cargo)**, tras el fix items→shared (sesión
+  "Fix punto E" del CHANGELOG). El resto del scaffold + slice 1 quedó `[APLICADO]`
+  el 2026-07-13. Re-test con el artefacto de verificación.
 
 ## Remanentes / deuda conocida
 
+- **Regla aprendida (punto E): las defs contra Cargo van en SHARED** — Cargo no
+  sincroniza defs por net; el grid cliente lee su tabla local. Anotado en
+  arquitectura §13 y CLAUDE.md.
 - **Consumo de la venda es interim:** hasta el slice 2, el `onUse` consume al
   instante (efecto inmediato); la arquitectura §7 pide tiempo de aplicación +
   consumo al completar (`onUse` → `false` + `TakeItem`).
@@ -47,8 +51,7 @@ en juego, checklist entregada como artefacto)
 
 ## Próximo paso
 
-1. **Verificación en juego** del scaffold + slice 1 (autor, artefacto) → flipear
-   CHANGELOG.
+1. **Re-test del punto E en juego** (autor, artefacto: sección E) → flipear el fix.
 2. **Slice 2:** tratamiento con tiempo (ApplyTreatment, barra, cancelación, consumo
    al completar, torniquete con isquemia) + los 4 ítems contra Cargo.
 3. Luego slice 3 (debuffs) y slice 4 (UI) — arquitectura §15.
