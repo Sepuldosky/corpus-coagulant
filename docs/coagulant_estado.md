@@ -5,13 +5,20 @@
 > secciones ni historial). El historial vive en `git` + [`CHANGELOG.md`](CHANGELOG.md).
 > Si crece de una pantalla, está mal redactado: recortar.
 
-**Última actualización:** 2026-07-13 (slice 1 **verificado en juego por el autor**
-salvo el punto E — venda invisible en la UI de Cargo por defs server-only; fix
-aplicado (items → shared), re-test pendiente vía el artefacto)
+**Última actualización:** 2026-07-13 (slice 1 + fix del punto E **verificados en
+juego, 14/14**; **slice 2 en código** — tratamiento con tiempo + 4 ítems, verificado
+offline, pendiente de juego vía el artefacto ronda 3)
 
 ---
 
 ## Qué existe hoy
+
+- **Slice 2 en código (tratamiento con tiempo + set v1 de ítems):** `ApplyTreatment`
+  server-authoritative con zona automática, cancelación por daño/salto/velocidad,
+  **consumo al completar** (`onUse` → `false` + `TakeItem`; el torniquete no se
+  consume), torniquete toggle con isquemia (90 s → score 6, persiste 60 s),
+  modo degradado sin Cargo (gratis, cooldown 30 s), intents net `treat`/`cancel`,
+  eventos `Coagulant_Treatment*`. 4 defs: Bandage/Tourniquet/Medkit/Blood Bag.
 
 - **Diseño del Block 3 cerrado:** [`Coagulant_Architecture.md`](Coagulant_Architecture.md)
   (ratificado 2026-07-13; números de balance tunables en juego). Registro de
@@ -31,30 +38,27 @@ aplicado (items → shared), re-test pendiente vía el artefacto)
 
 ## Pendiente de verificar
 
-- **Solo el punto E (venda vía UI de Cargo)**, tras el fix items→shared (sesión
-  "Fix punto E" del CHANGELOG). El resto del scaffold + slice 1 quedó `[APLICADO]`
-  el 2026-07-13. Re-test con el artefacto de verificación.
+- **El slice 2 en juego** (CHANGELOG sesión "slice 2" en `[PENDIENTE]`): artefacto
+  ronda 3, sección G. Scaffold + slice 1 + fix punto E ya `[APLICADO]` (14/14).
 
 ## Remanentes / deuda conocida
 
 - **Regla aprendida (punto E): las defs contra Cargo van en SHARED** — Cargo no
   sincroniza defs por net; el grid cliente lee su tabla local. Anotado en
   arquitectura §13 y CLAUDE.md.
-- **Consumo de la venda es interim:** hasta el slice 2, el `onUse` consume al
-  instante (efecto inmediato); la arquitectura §7 pide tiempo de aplicación +
-  consumo al completar (`onUse` → `false` + `TakeItem`).
-- **Snapshot sin consumidor:** `corpus_coagulant_state` se envía pero el cliente
-  recién lo lee en el slice 4 (HUD/menú). Inofensivo.
+- **Sin barra de progreso visible aún:** el tratamiento con tiempo corre y el
+  snapshot lleva `{kind, endsAt, duration}`, pero la barra se dibuja recién en el
+  slice 4 (HUD) — mientras tanto, `coagulant_status` muestra el tratamiento en curso.
 - **Rama Caliber vacía a propósito** hasta su Block 3 (las heridas ya nacerían
   post-armadura sin tocar código acá, arquitectura §12).
 - **Sin `addon.json`** — igual que el resto del ecosistema; no bloquea testeo local.
 
 ## Próximo paso
 
-1. **Re-test del punto E en juego** (autor, artefacto: sección E) → flipear el fix.
-2. **Slice 2:** tratamiento con tiempo (ApplyTreatment, barra, cancelación, consumo
-   al completar, torniquete con isquemia) + los 4 ítems contra Cargo.
-3. Luego slice 3 (debuffs) y slice 4 (UI) — arquitectura §15.
+1. **Verificación en juego del slice 2** (autor, artefacto ronda 3 sección G).
+2. **Slice 3:** debuffs zonales (cojera composable con Cargo vía Move+NW2, sway,
+   visión) — arquitectura §6/§15.
+3. Luego slice 4 (UI: HUD silueta, menú médico, StatusPanel, tab con convars).
 
 ---
 

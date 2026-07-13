@@ -81,10 +81,17 @@ Para corpus-coagulant/ (el módulo), los alcances definidos son:
     (corpus_coagulant_zones.lua).
 
   core:
-    Estado clínico por jugador, hooks del pipeline (impacto/spawn/disconnect) y el
-    contrato público de tratamiento (corpus_coagulant_core.lua). Cuando el Block 3
-    baje a código, los subsistemas nuevos (sangrado, vitales) desprenden alcance
-    propio y se registra acá.
+    Estado clínico por jugador, creación de heridas y contrato de lectura
+    (corpus_coagulant_core.lua). El sangrado (corpus_coagulant_bleeding.lua)
+    también reporta acá mientras no amerite alcance propio.
+
+  config:
+    Convars y tablas de balance del dominio médico
+    (corpus_coagulant_config.lua).
+
+  treatment:
+    Motor de tratamiento con tiempo: ApplyTreatment, cancelaciones, consumo al
+    completar, torniquetes (corpus_coagulant_treatment.lua).
 
   items:
     Ítems médicos contra el framework de Cargo y las vías mínimas sin inventario

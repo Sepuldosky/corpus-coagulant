@@ -56,10 +56,10 @@ sintaxis Lua validada offline.
   `corpus_coagulant_bandage` (Bandage, 0.1, stackable, categoría `medical`) registrado
   contra Cargo en `Corpus.OnReady` con lazy-check y apagado honesto si Cargo no está;
   `onUse` delega en `COAGULANT.ApplyBandage`. Concommand de debug `coagulant_bandage`
-  (admin) como vía mínima sin inventario. **[PENDIENTE]** — la verificación en juego
-  del 2026-07-13 **falló en este punto** (punto E de la checklist): la def se
-  registraba solo en server y el grid cliente de Cargo renderiza desde defs
-  locales → ítem invisible en la UI. Fix en la sesión de abajo; re-test pendiente.
+  (admin) como vía mínima sin inventario. **[APLICADO 2026-07-13]** — la primera
+  ronda de verificación **falló en este punto** (punto E: def registrada solo en
+  server, y el grid cliente de Cargo renderiza desde defs locales → ítem invisible).
+  Tras el fix de la sesión "Fix punto E", el re-test del autor pasó (ronda 2, 14/14).
 
 - PARCHE 6 — feat(options): `client/corpus_coagulant_options.lua` — tab único
   `Corpus.UI.RegisterTab("coagulant", "Coagulant", …)` (Q → Utilities → Corpus →
@@ -170,4 +170,54 @@ queda intacto.
   `coagulant_bandage` queda gated `if SERVER`. Header del archivo documenta la
   trampa. Harness offline gana una **pasada de realm CLIENT con Cargo fake** que
   asserta la def registrada en cliente — regresión directa del punto E (server 49
-  OK + client 34 OK). **[PENDIENTE]** (re-test del punto E en juego)
+  OK + client 34 OK). **[APLICADO 2026-07-13]** (re-test en juego del autor: ronda 2
+  de la checklist, 14/14 ✓ — la def registra en ambos realms y la venda funciona
+  desde la UI de Cargo)
+
+---
+
+## PARCHES DE sesión Block 3 — slice 2: tratamiento con tiempo + 4 ítems — 2026-07-13
+
+Segundo slice de `Coagulant_Architecture.md` §15, tras el 14/14 de la ronda 2.
+Verificación previa: sintaxis + harness offline en tres pasadas (server degradado:
+tiempo/cooldown/cancelaciones por daño-movimiento-salto/torniquete+isquemia; server
+con Cargo fake: onUse→false y TakeItem al completar, torniquete nunca consumido;
+client: 4 defs en realm cliente) — selftest 63/67/43 OK. Los parches nacen
+`[PENDIENTE]` hasta la verificación en juego (artefacto, ronda 3, sección G).
+
+- PARCHE 1 — feat(config): tabla `TREATMENTS` (venda 4s, torniquete 2s, medkit 10s
+  +50 HP, bolsa 8s +40 sangre), `ARM_TIME_MULT` 1.25, isquemia (90 s puesto / 60 s
+  de resaca / score 6), cooldown degradado 30 s, `EXTREMITIES`, umbral de velocidad
+  de cancelación. **[PENDIENTE]**
+
+- PARCHE 2 — feat(treatment): `server/corpus_coagulant_treatment.lua` — motor
+  server-authoritative (§7/§9): `ApplyTreatment(ply, kind, zone)` con zona
+  automática por tipo y validaciones (ocupado, zona/extremidad, HP/sangre llenos,
+  ítem presente con Cargo, cooldown sin Cargo), tick fino de 0.25 s (completar a
+  término + cancelar por velocidad), cancelación por daño real (el drenaje propio
+  NO cancela) y por salto, **consumo AL COMPLETAR** (`TakeItem` re-validado; el
+  torniquete nunca se consume), torniquete toggle poner/quitar con isquemia
+  persistente, eventos `Coagulant_TreatmentStart/Complete/Cancel`, intents de net
+  `treat`/`cancel` (server re-valida todo), y `ApplyBandage` = azúcar del contrato.
+  **[PENDIENTE]**
+
+- PARCHE 3 — feat(items): set v1 completo contra Cargo — Bandage (stackable 0.1),
+  Tourniquet (unique 0.2, no consumible), Medkit (stackable 0.5), Blood Bag
+  (stackable 0.3), categoría `medical`, trivia de cara al jugador en inglés;
+  `onUse` fabricado que devuelve **false** e inicia el tratamiento (aviso por chat
+  si no puede). El debug `coagulant_bandage` queda como efecto instantáneo
+  explícitamente rotulado. **[PENDIENTE]**
+
+- PARCHE 4 — feat(core): `WorstBleedingZone` (zona automática), isquemia impone
+  piso de score en `GetZoneScore` (§7), `freeCooldownAt` en el estado; el efecto
+  puro `BandageEffect` queda como primitiva del motor. **[PENDIENTE]**
+
+- PARCHE 5 — test(dev): selftest cubre `TREATMENTS`/`EXTREMITIES`, arranque con
+  +25% por brazo herido, doble-tratamiento rechazado, cancelación, torniquete
+  rechazando zonas no-extremidad, y las 4 defs si Cargo está (ambos realms);
+  `coagulant_status` muestra el tratamiento en curso. **[PENDIENTE]**
+
+- PARCHE 6 — chore(init): manifest suma `treatment` (después de bleeding), bloque
+  CONTRATO gana `ApplyTreatment`; log de boot → "Block 3 slice 2". Convenciones de
+  commits ganan los alcances `config` y `treatment` (el mapa de archivos creció).
+  **[PENDIENTE]**
