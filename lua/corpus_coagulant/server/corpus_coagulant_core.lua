@@ -13,13 +13,14 @@ COAGULANT.State = COAGULANT.State or {}
 
 local function NuevoEstado()
     local st = {
-        blood       = Config.BLOOD_MAX,
-        zones       = {},
-        treatment   = nil,   -- { kind, zone, endsAt } — llega con el slice 2
-        encumbrance = 0,     -- último fraction reportado por Cargo (§12), sin efecto v1
-        critical    = false, -- para detectar el cruce del umbral (§5)
-        dirty       = true,  -- snapshot pendiente de enviar (§9)
-        lastHit     = nil,   -- debug
+        blood          = Config.BLOOD_MAX,
+        zones          = {},
+        treatment      = nil, -- { kind, zone, endsAt, duration, removing } (§7)
+        freeCooldownAt = 0,   -- modo degradado sin Cargo: próximo tratamiento gratis
+        encumbrance    = 0,   -- último fraction reportado por Cargo (§12), sin efecto v1
+        critical       = false, -- para detectar el cruce del umbral (§5)
+        dirty          = true,  -- snapshot pendiente de enviar (§9)
+        lastHit        = nil,   -- debug
     }
     for _, zona in ipairs(COAGULANT.Zones.LIST) do
         st.zones[zona] = { wounds = {}, tourniquet = false }
@@ -66,12 +67,22 @@ function COAGULANT.IsBleeding(ply)
 end
 
 -- Score de debuff de la zona (§6): Σ severidades; las tratadas cuentan la mitad.
+-- La isquemia por torniquete (§7: puesto > 90 s, y hasta 60 s tras quitarlo)
+-- impone un piso de score alto — el costo de dejarlo puesto.
 function COAGULANT.GetZoneScore(ply, zone)
     local st = COAGULANT.GetState(ply)
     if st == nil or st.zones[zone] == nil then return 0 end
+    local zdata = st.zones[zone]
     local score = 0
-    for _, w in ipairs(st.zones[zone].wounds) do
+    for _, w in ipairs(zdata.wounds) do
         score = score + (w.treated and w.severity * 0.5 or w.severity)
+    end
+
+    local isquemica = (zdata.tourniquet and zdata.tourniquetAt ~= nil
+            and CurTime() - zdata.tourniquetAt > Config.TOURNIQUET_ISCHEMIA_S)
+        or (zdata.ischemiaUntil ~= nil and CurTime() < zdata.ischemiaUntil)
+    if isquemica then
+        score = math.max(score, Config.ISCHEMIA_SCORE)
     end
     return score
 end
@@ -124,9 +135,9 @@ function COAGULANT.AddWound(ply, zone, wtype, severity)
 end
 
 -- ============================================================
--- Tratamiento — efecto de la venda (§7). La mecánica de tiempo/consumo/intents
--- llega con el slice 2 (ApplyTreatment); este es el efecto puro, y ApplyBandage
--- (contrato congelado desde el scaffold) lo aplica instantáneo mientras tanto.
+-- Efecto puro de la venda (§7). La mecánica de tiempo/consumo/intents vive en
+-- corpus_coagulant_treatment.lua (que también define ApplyBandage/ApplyTreatment);
+-- este efecto lo usan el motor de tratamiento y el debug coagulant_bandage.
 -- ============================================================
 
 -- Efecto venda sobre una zona: cierra la peor herida sangrante leve/media; una
@@ -153,13 +164,11 @@ function COAGULANT.BandageEffect(ply, zone)
     return true
 end
 
--- Azúcar congelada (§8): venda con zona automática — la zona con la herida
--- sangrante más grave. true si tuvo efecto (el onUse de Cargo consume con true;
--- el consumo al completar llega con el slice 2).
-function COAGULANT.ApplyBandage(ply)
+-- Zona con la herida sangrante más grave (para zona automática de tratamiento).
+-- nil si no hay sangrado. La usan treatment y el debug.
+function COAGULANT.WorstBleedingZone(ply)
     local st = COAGULANT.GetState(ply)
-    if st == nil then return false end
-
+    if st == nil then return nil end
     local mejorZona, mejorSev = nil, 0
     for zona, zdata in pairs(st.zones) do
         for _, w in ipairs(zdata.wounds) do
@@ -168,8 +177,7 @@ function COAGULANT.ApplyBandage(ply)
             end
         end
     end
-    if mejorZona == nil then return false end
-    return COAGULANT.BandageEffect(ply, mejorZona)
+    return mejorZona
 end
 
 -- ============================================================
