@@ -61,9 +61,21 @@ function COAGULANT._SelfTest()
     check(Config.HPDrainRate(0) == Config.HP_DRAIN_BASE + Config.HP_DRAIN_EXTRA,
         "HP drain con sangre 0 no es el máximo")
 
+    -- Tratamiento (slice 2, §7): tabla completa y consistente
+    for _, kind in ipairs({ "bandage", "tourniquet", "medkit", "bloodbag" }) do
+        local t = Config.TREATMENTS[kind]
+        check(istable(t) and isnumber(t.time) and t.time > 0 and isstring(t.item),
+            "TREATMENTS." .. kind .. " incompleto")
+    end
+    local nExt = 0
+    for _ in pairs(Config.EXTREMITIES) do nExt = nExt + 1 end
+    check(nExt == 4, "EXTREMITIES no tiene 4 zonas")
+
     -- Contrato público congelado (server): existe con la firma esperada
     if SERVER then
         check(isfunction(COAGULANT.ApplyBandage), "ApplyBandage no es función")
+        check(isfunction(COAGULANT.ApplyTreatment), "ApplyTreatment no es función")
+        check(isfunction(COAGULANT.CancelTreatment), "CancelTreatment no es función")
         check(isfunction(COAGULANT.GetBlood), "GetBlood no es función")
         check(isfunction(COAGULANT.IsBleeding), "IsBleeding no es función")
         check(isfunction(COAGULANT.GetZoneScore), "GetZoneScore no es función")
@@ -81,16 +93,32 @@ function COAGULANT._SelfTest()
             COAGULANT.AddWound(ply, "left_arm", "bala", 2)
             check(COAGULANT.IsBleeding(ply) == true, "herida de bala no sangra")
             check(COAGULANT.GetZoneScore(ply, "left_arm") == 2, "score de zona incorrecto")
-            check(COAGULANT.ApplyBandage(ply) == true, "ApplyBandage no tuvo efecto")
+            check(COAGULANT.WorstBleedingZone(ply) == "left_arm", "WorstBleedingZone incorrecta")
+
+            -- efecto venda puro: cierra leve/media; una grave cuesta 2 (§7)
+            check(COAGULANT.BandageEffect(ply, "left_arm") == true, "BandageEffect sin efecto")
             check(COAGULANT.IsBleeding(ply) == false, "la venda no cortó el sangrado")
             check(COAGULANT.GetZoneScore(ply, "left_arm") == 1, "herida tratada no cuenta la mitad")
-
-            -- una grave cuesta 2 vendas (§7)
             COAGULANT.AddWound(ply, "torso", "bala", 3)
-            COAGULANT.ApplyBandage(ply)
+            COAGULANT.BandageEffect(ply, "torso")
             check(COAGULANT.IsBleeding(ply) == true, "una sola venda cerró una grave")
-            COAGULANT.ApplyBandage(ply)
+            COAGULANT.BandageEffect(ply, "torso")
             check(COAGULANT.IsBleeding(ply) == false, "dos vendas no cerraron la grave")
+
+            -- motor de tratamiento (slice 2): arranca (brazo herido → +25%) y cancela
+            COAGULANT.AddWound(ply, "right_leg", "bala", 2)
+            local ok = COAGULANT.ApplyTreatment(ply, "bandage")
+            check(ok == true, "ApplyTreatment bandage no arrancó")
+            check(istable(st.treatment) and st.treatment.kind == "bandage",
+                "st.treatment no quedó seteado")
+            check(st.treatment.duration > Config.TREATMENTS.bandage.time,
+                "brazo herido no encarece el tiempo (+25%)")
+            local ok2, err2 = COAGULANT.ApplyTreatment(ply, "bandage")
+            check(ok2 == false and isstring(err2), "permitió dos tratamientos a la vez")
+            COAGULANT.CancelTreatment(ply, "selftest")
+            check(st.treatment == nil, "CancelTreatment no limpió")
+            check(COAGULANT.ApplyTreatment(ply, "tourniquet", "torso") == false,
+                "torniquete aceptó una zona no-extremidad")
 
             COAGULANT.ResetState(ply) -- dejar limpio
         else
@@ -102,10 +130,12 @@ function COAGULANT._SelfTest()
     Corpus.Log("coagulant", string.format("soft-deps — caliber: %s | cargo: %s",
         Corpus.HasModule("caliber") and "presente" or "ausente",
         Corpus.HasModule("cargo") and "presente" or "ausente"))
-    if SERVER and Corpus.HasModule("cargo") then
+    if Corpus.HasModule("cargo") then
         local cargo = Corpus.GetModule("cargo")
-        local def = cargo.Items.Get and cargo.Items.Get("corpus_coagulant_bandage") or nil
-        check(def ~= nil, "Cargo presente pero la venda no está registrada (¿corrió OnReady?)")
+        for _, t in pairs(COAGULANT.Config.TREATMENTS) do
+            local def = cargo.Items.Get and cargo.Items.Get(t.item) or nil
+            check(def ~= nil, "Cargo presente pero falta la def " .. t.item .. " (¿corrió OnReady?)")
+        end
     end
 
     Corpus.Log("coagulant", string.format("selftest (%s): %d OK, %d fallos",
@@ -146,6 +176,11 @@ if SERVER then
         end
         if not COAGULANT.IsBleeding(objetivo) then
             Corpus.Log("coagulant", "  sin sangrado activo")
+        end
+        if st.treatment ~= nil then
+            Corpus.Log("coagulant", string.format("  tratamiento en curso: %s en %s (%.1fs restantes)",
+                st.treatment.kind, tostring(st.treatment.zone),
+                math.max(0, st.treatment.endsAt - CurTime())))
         end
     end)
 
