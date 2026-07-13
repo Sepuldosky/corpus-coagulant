@@ -99,3 +99,49 @@ sintaxis Lua validada offline.
   `StatusPanel.RegisterBar` con su firma real). **Borrador: los números de balance
   quedan sujetos a ratificación del autor.** Estado/roadmap/CLAUDE.md apuntados al
   doc. **[APLICADO 2026-07-13]**
+
+---
+
+## PARCHES DE sesión Block 3 — slice 1: sangre + heridas + sangrado — 2026-07-13
+
+El autor ratificó la arquitectura ordenando la bajada a código (los números de
+balance siguen tunables en juego). Primer slice de los 4 de
+`Coagulant_Architecture.md` §15. Verificación previa: sintaxis (luaparser) +
+harness offline (lupa + framework real: herida por daño final → drenaje por tick →
+crítico → drenaje de HP → muerte "You bled out." → venda ×2 sobre grave → regen;
+selftest 49 OK). Los parches de código nacen `[PENDIENTE]` hasta la verificación en
+juego del autor (checklist entregada como artefacto).
+
+- PARCHE 1 — feat(config): `shared/corpus_coagulant_config.lua` — convars replicadas
+  (`coagulant_enabled/bleed_scale/regen_scale/hpdrain_scale/debug`), tablas de
+  balance (§2-§5: BLOOD_MAX 100, crítico 40, regen 0.10/s, bleed base por severidad,
+  tipos con mult) y funciones puras (`WoundTypeFromDMG` con prioridad de bits,
+  `SeverityFromDamage` 15/40, `BleedRate`, `HPDrainRate`). **[PENDIENTE]**
+
+- PARCHE 2 — feat(core): reescritura de `server/corpus_coagulant_core.lua` — estado
+  v1 (blood/zones con wounds+tourniquet/treatment/encumbrance), heridas creadas en
+  `PostEntityTakeDamage` con el daño FINAL (hitgroup capturado en
+  `ScalePlayerDamage`; caída → pierna al azar; guard `_selfDrain` contra el bucle
+  del drenaje propio), tope de 5 heridas por zona (la 6.ª agrava la más leve),
+  eventos `Coagulant_WoundAdded/WoundClosed`, contrato de lectura
+  (`GetBlood`/`IsBleeding`/`GetZoneScore`), `OnEncumbrance` (stub del contrato de
+  Cargo) y el efecto venda real (`BandageEffect`: cierra leve/media, grave 3→2;
+  `ApplyBandage` con zona automática — instantáneo hasta el slice 2). **[PENDIENTE]**
+
+- PARCHE 3 — feat(bleeding): `server/corpus_coagulant_bleeding.lua` — timer único de
+  1 s: drenaje total (zonas sin torniquete, × convar), regen natural, cruce del
+  umbral crítico (`Coagulant_BloodCritical`), drenaje de HP en crítico vía
+  `DMG_GENERIC` del mundo (muerte por HP 0 + "You bled out." en chat), NW2Float
+  `coagulant_blood`, y snapshot comprimido on-change al dueño
+  (`corpus_coagulant_state`). **[PENDIENTE]**
+
+- PARCHE 4 — test(dev): selftest crece a la matemática pura del slice (mapa DMG con
+  prioridad, severidades, curvas, venda ×2 sobre grave, score con tratadas a la
+  mitad) + comandos de verificación en juego `coagulant_status` (sangre/HP/heridas
+  por zona) y `coagulant_setblood <n>` (probar el crítico sin desangrarse), ambos
+  admin. **[PENDIENTE]**
+
+- PARCHE 5 — chore(init): manifest suma `config` y `bleeding` en orden (config antes
+  que core: core usa las tablas en file-scope), sonda `CorpusListo` suma
+  `Corpus.Net`, bloque CONTRATO actualizado a §8 (lectura + eventos + encumbrance).
+  **[PENDIENTE]**

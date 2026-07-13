@@ -5,56 +5,53 @@
 > secciones ni historial). El historial vive en `git` + [`CHANGELOG.md`](CHANGELOG.md).
 > Si crece de una pantalla, está mal redactado: recortar.
 
-**Última actualización:** 2026-07-13 (scaffold escrito + primera pasada de diseño del
-Block 3 cerrada con el autor + `Coagulant_Architecture.md` en borrador — pendientes:
-verificación del scaffold en juego y ratificación del doc)
+**Última actualización:** 2026-07-13 (arquitectura ratificada por el autor al ordenar
+la bajada; **slice 1 de 4 en código**, verificado offline — pendiente de verificación
+en juego, checklist entregada como artefacto)
 
 ---
 
 ## Qué existe hoy
 
-- **Scaffold pre-Block 3, SIN diseño de dominio cerrado.** Estructura del módulo
-  sobre las 6 primitivas de Corpus: init con boot diferido (patrón template de
-  Caliber), namespace `coagulant` (tabla única by-ref), manifest explícito. Mapa
-  archivo → rol en [`../CLAUDE.md`](../CLAUDE.md). **Nada de esto tiene efecto de
-  gameplay todavía** — el sustrato observa, no modifica.
-- **Vía de degradación standalone:** `Zones` (6 zonas clínicas estilo ACE3 + mapa
-  hitgroup nativo → zona, puro). Es lo que corre sin Caliber; nunca se borra.
-- **Contrato público mínimo congelado (mock-first):** `ApplyBandage(ply)` (stub que
-  loguea y devuelve `true`) + IDs de zona. Es la firma que consume el `onUse` del
-  ítem de Cargo (§5 de la arquitectura de Corpus).
-- **Ítem semilla contra Cargo:** `corpus_coagulant_bandage` registrado en
-  `Corpus.OnReady` con lazy-check (sin Cargo: log y apagado honesto). Vía de debug
-  sin inventario: `coagulant_bandage` (admin).
-- **Sustrato de estado:** estado clínico por jugador en memoria (forma placeholder
-  `zones[zona] = {wounds, bleeding}` + `lastHit` vía `ScalePlayerDamage`, solo
-  observación). Sin persistencia ni net — llegan con diseño que las justifique.
-- **Verificación previa:** `coagulant_selftest` (superficie pura + soft-deps) y tab
-  Q → Utilities → Corpus → Coagulant (estado + detección de deps).
+- **Diseño del Block 3 cerrado:** [`Coagulant_Architecture.md`](Coagulant_Architecture.md)
+  (ratificado 2026-07-13; números de balance tunables en juego). Registro de
+  decisiones en la semilla §3.
+- **Slice 1 de 4 en código (sangre + heridas + sangrado):** sangre 0-100 con NW2,
+  heridas por damage type creadas en `PostEntityTakeDamage` con el daño final
+  (hitgroup vía `ScalePlayerDamage`, caída → pierna), timer único 1 s (drenaje,
+  regen natural, HP crítico bajo 40 con muerte "You bled out."), eventos
+  `Coagulant_WoundAdded/WoundClosed/BloodCritical`, snapshot on-change, efecto
+  venda real (grave cuesta 2), `OnEncumbrance` stub (contrato que Cargo ya llama).
+  Mapa archivo → rol en [`../CLAUDE.md`](../CLAUDE.md).
+- **Verificación offline pasada:** sintaxis (luaparser) + harness (lupa + framework
+  real): flujo completo del slice y selftest 49 OK. Comandos en juego:
+  `coagulant_selftest`, `coagulant_status`, `coagulant_setblood`, `coagulant_bandage`.
+- **Vía de degradación standalone:** `Zones` (hitgroup crudo sin Caliber) + ítem
+  `corpus_coagulant_bandage` contra Cargo con lazy-check (sin Cargo: log y apagado).
 
 ## Pendiente de verificar
 
-- **Todo el scaffold en juego** (CHANGELOG sesión 2026-07-13 en `[PENDIENTE]`):
-  boot, selftest, lastHit, venda vía Cargo, tab de UI. La corre el autor.
+- **Scaffold + slice 1 en juego** (CHANGELOG sesiones 2026-07-13 en `[PENDIENTE]`).
+  La corre el autor con la **checklist entregada como artefacto**.
 
 ## Remanentes / deuda conocida
 
-- **`Coagulant_Architecture.md` es BORRADOR** — las decisiones estructurales las
-  resolvió el autor (semilla §3), pero los números de balance (curvas §4-§6, tiempos
-  §7) son propuesta inicial sin ratificar ni probar en juego. Quedaron PENDIENTE en
-  la semilla y resueltos como propuesta en el doc: vía sin Cargo (tratamiento gratis
-  con cooldown) y convars — ojo al ratificar.
-- **Rama Caliber vacía a propósito:** el lazy-check en `ScalePlayerDamage` está, pero
-  no hay nada que consumir hasta que Caliber cierre su Block 3 (pipeline de jugador).
+- **Consumo de la venda es interim:** hasta el slice 2, el `onUse` consume al
+  instante (efecto inmediato); la arquitectura §7 pide tiempo de aplicación +
+  consumo al completar (`onUse` → `false` + `TakeItem`).
+- **Snapshot sin consumidor:** `corpus_coagulant_state` se envía pero el cliente
+  recién lo lee en el slice 4 (HUD/menú). Inofensivo.
+- **Rama Caliber vacía a propósito** hasta su Block 3 (las heridas ya nacerían
+  post-armadura sin tocar código acá, arquitectura §12).
 - **Sin `addon.json`** — igual que el resto del ecosistema; no bloquea testeo local.
 
 ## Próximo paso
 
-1. **Verificación en juego del scaffold** (autor) → flipear el CHANGELOG.
-2. **Ratificación de `Coagulant_Architecture.md`** (autor) → Block 3 de diseño cerrado
-   (sección resumen en `CORPUS_Architecture.md` §9).
-3. **Bajada a código por 4 vertical slices** (arquitectura §15): sangre/heridas →
-   tratamiento vía Cargo → debuffs → UI.
+1. **Verificación en juego** del scaffold + slice 1 (autor, artefacto) → flipear
+   CHANGELOG.
+2. **Slice 2:** tratamiento con tiempo (ApplyTreatment, barra, cancelación, consumo
+   al completar, torniquete con isquemia) + los 4 ítems contra Cargo.
+3. Luego slice 3 (debuffs) y slice 4 (UI) — arquitectura §15.
 
 ---
 
