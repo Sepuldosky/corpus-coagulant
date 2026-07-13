@@ -5,25 +5,29 @@
 -- "Initialize" porque gmod fusiona lua/autorun/ alfabéticamente entre addons y
 -- "corpus_coagulant_init.lua" ordena ANTES que "corpus_registry.lua".
 --
--- SCAFFOLD PRE-BLOCK 3: el diseño de dominio de Coagulant (heridas por zona,
--- sangrado, vitales, tratamiento — estilo ACE3) todavía no cerró su bloque
--- (CORPUS_Architecture.md §9, Block 3). Este árbol solo fija la estructura, el
--- boot, la degradación de soft-deps y el contrato público mínimo congelado
--- (patrón mock-first, corpus_flujo_trabajo.txt §3). Sin efecto de gameplay.
+-- BLOCK 3 EN BAJADA (slice 1 de 4 — Coagulant_Architecture.md §15): sangre +
+-- heridas + sangrado. Tratamiento con tiempo/ítems (slice 2), debuffs (slice 3)
+-- y UI (slice 4) todavía no aterrizan.
 
 -- ============================================================
--- CONTRATO PÚBLICO DE COAGULANT (congelado pre-diseño; ver CORPUS_Architecture.md
--- §4-§5). Consumido por otros módulos vía Corpus.GetModule("coagulant"). Todo lo
--- demás colgado de la tabla es interno — off-contract por convención.
+-- CONTRATO PÚBLICO DE COAGULANT (Coagulant_Architecture.md §8). Consumido por
+-- otros módulos vía Corpus.GetModule("coagulant"). Todo lo demás colgado de la
+-- tabla es interno — off-contract por convención.
 --
---   COAGULANT.ApplyBandage(ply) -> bool     -- tratamiento mínimo; es el callback
---                                              onUse del ítem registrado en Cargo
---                                              (§5 de la arquitectura). Stub hoy:
---                                              la semántica real llega con Block 3.
+--   COAGULANT.ApplyBandage(ply) -> bool     -- azúcar congelada del scaffold; hoy
+--                                              aplica el efecto venda instantáneo
+--                                              (slice 2 lo vuelve ApplyTreatment
+--                                              con tiempo + consumo al completar)
+--   COAGULANT.GetBlood(ply) -> 0..100        -- sangre actual
+--   COAGULANT.IsBleeding(ply) -> bool        -- hay drenaje activo
+--   COAGULANT.GetZoneScore(ply, zone) -> n   -- score de debuff de la zona
+--   COAGULANT.OnEncumbrance(ply, fraction)   -- contrato congelado por Cargo
+--                                              (movement); v1 almacena, sin efecto
 --   COAGULANT.Zones.*                        -- mapa hitgroup nativo -> zona clínica
 --                                              (la vía de degradación sin Caliber)
 --
---   Futuro (Block 3, no existe aún): eventos de estado clínico (§4).
+--   Eventos (hook.Run, server): Coagulant_WoundAdded / Coagulant_WoundClosed /
+--   Coagulant_BloodCritical (+ Treatment* con el slice 2) — §8 de la arquitectura.
 -- ============================================================
 
 -- ============================================================
@@ -34,11 +38,13 @@
 -- ============================================================
 local SHARED = {
     "shared/corpus_coagulant_zones.lua",  -- zonas clínicas + mapa hitgroup->zona (puro)
-    "shared/corpus_coagulant_dev.lua",    -- coagulant_selftest (verificación)
+    "shared/corpus_coagulant_config.lua", -- convars + tablas de balance + funcs puras
+    "shared/corpus_coagulant_dev.lua",    -- coagulant_selftest + comandos de verificación
 }
 local SERVER_FILES = {
-    "server/corpus_coagulant_core.lua",   -- estado clínico por jugador + hooks sustrato
-    "server/corpus_coagulant_items.lua",  -- ítems médicos contra Cargo (soft-dep)
+    "server/corpus_coagulant_core.lua",     -- estado clínico + creación de heridas + eventos
+    "server/corpus_coagulant_bleeding.lua", -- timer 1s: drenaje, regen, HP crítico, snapshot
+    "server/corpus_coagulant_items.lua",    -- ítems médicos contra Cargo (soft-dep)
 }
 local CLIENT_FILES = {
     "client/corpus_coagulant_options.lua", -- tab único Corpus.UI.RegisterTab
@@ -59,7 +65,7 @@ end
 -- cubre las primitivas que los sub-archivos usan en file-scope.
 local function CorpusListo()
     return Corpus ~= nil and Corpus.RegisterModule ~= nil and Corpus.Log ~= nil
-        and Corpus.OnReady ~= nil and (SERVER or Corpus.UI ~= nil)
+        and Corpus.OnReady ~= nil and Corpus.Net ~= nil and (SERVER or Corpus.UI ~= nil)
 end
 
 -- Namespace: tabla única registrada. Todos los archivos del módulo cachean esta
@@ -76,7 +82,7 @@ local function Boot()
         for _, f in ipairs(CLIENT_FILES) do inc(f) end
     end
 
-    Corpus.Log("coagulant", "cargado (" .. (SERVER and "server" or "client") .. ") — scaffold pre-Block 3")
+    Corpus.Log("coagulant", "cargado (" .. (SERVER and "server" or "client") .. ") — Block 3 slice 1")
 end
 
 if CorpusListo() then
