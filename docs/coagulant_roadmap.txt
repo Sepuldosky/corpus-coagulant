@@ -1,0 +1,65 @@
+COAGULANT — ROADMAP (BRÚJULA)
+Hacia dónde va el módulo médico y en qué orden. Qué construir next.
+=====================================================
+Documento vivo. Fija el RUMBO (secuencia estable de lo que sigue).
+"Dónde estamos dentro de esto" lo dice docs/coagulant_estado.md (foto de HOY).
+Leer JUNTO con coagulant_estado.md al decidir el próximo tramo.
+Metodología para ejecutar cada tramo: ../corpus/docs/corpus_flujo_trabajo.txt
+(doc canónico compartido — no se duplica acá).
+=====================================================
+
+
+0. CONTEXTO EN EL ECOSISTEMA
+------------------------------
+
+Coagulant es el Block 3 del rollout de Corpus (CORPUS_Architecture.md §9). Soft-deps
+(§2): Caliber (hit-location enriquecido — su pipeline de jugador aún no existe, va
+mock-first) y Cargo (ítems médicos — su framework de ítems YA está en código y
+verificado, los ítems registran desde ya). Craving lo consumirá a él (efectos de
+salud por inanición/deshidratación, opcional).
+
+
+1. INMEDIATO
+--------------
+
+  [1] Verificación en juego del scaffold pre-Block 3 (la corre el autor):
+      boot + coagulant_selftest + lastHit + venda vía Cargo + tab de UI.
+      Al pasar: flipear CHANGELOG sesión 2026-07-13 a [APLICADO].
+
+  [2] Block 3 de DISEÑO (en este repo, iterando con el autor — flujo §2; la semilla
+      con las decisiones abiertas es docs/Coagulant_Block3_Semilla.md): sustrato v1
+      del dominio médico estilo ACE3:
+        - heridas por zona (tipos, severidad, apilado)
+        - sangrado (curvas, umbrales, muerte por desangrado)
+        - vitales (qué se modela: HP por zona vs. pool, dolor, consciencia)
+        - tratamiento v1: vendaje / torniquete (ítems reales contra Cargo)
+        - contrato de eventos de estado clínico (§4 de la arquitectura de Corpus —
+          lo consumirán Craving y la UI)
+      Entregable: docs/Coagulant_Architecture.md (doc particular autocontenido) +
+      sección resumen en CORPUS_Architecture.md. El scaffold ya congeló: IDs de
+      zona, ApplyBandage(ply) como firma de onUse, degradación sin Caliber/Cargo.
+
+
+2. SIGUIENTE — después del Block 3 de diseño
+----------------------------------------------
+
+  [3] Bajada a código del sustrato v1 por vertical slice (flujo §3): herida →
+      sangrado → tratamiento de punta a punta, no capa por capa. Persistencia
+      (Corpus.Data namespace "coagulant") y net (Corpus.Net "coagulant") entran
+      RECIÉN acá, cuando el estado y el protocolo diseñados lo justifiquen.
+
+  [4] Wiring real con Caliber cuando su Block 3 (pipeline de armadura de jugador)
+      exponga el hit-location enriquecido / eventos de daño-limb: reemplazar la
+      rama mock-first de ScalePlayerDamage sin tocar la vía de degradación.
+
+  [5] Superficie para Craving: eventos de estado clínico consumibles (soft-dep
+      inversa — Craving detecta a Coagulant, nunca al revés).
+
+
+=====================================================
+Documentos complementarios:
+  docs/coagulant_estado.md                  → foto de HOY (dónde estamos)
+  docs/CHANGELOG.md                         → historial de parches de este repo
+  ../corpus/docs/CORPUS_Architecture.md     → frontera del módulo (§2, §4-§5) y rollout (§9)
+  ../corpus/docs/corpus_flujo_trabajo.txt   → cómo ejecutar cada tramo
+=====================================================

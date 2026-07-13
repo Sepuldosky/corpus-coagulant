@@ -5,11 +5,13 @@ para **Garry's Mod**, estilo ACE3: heridas por zona, sangrado, vitales y tratami
 independiente que **hard-depende** de Corpus (la única dependencia dura del ecosistema) y
 detecta a los demás módulos en runtime, nunca los asume.
 
-> **Estado: sin empezar.** Este repo aún no tiene código. Coagulant espera su bloque de
-> diseño; sus ítems médicos ya tienen dónde registrarse (el framework de ítems de
-> [Cargo](https://github.com/Sepuldosky/corpus-cargo) está en código y verificado), y la
-> integración con Caliber irá mock-first hasta que exista su pipeline de jugador. El rumbo
-> del ecosistema vive en el
+> **Estado: scaffold pre-diseño.** El repo tiene la estructura del módulo (boot sobre las
+> primitivas de Corpus, zonas clínicas, estado por jugador sin gameplay, ítem semilla
+> contra el framework de ítems de [Cargo](https://github.com/Sepuldosky/corpus-cargo) —
+> ya en código y verificado), pero su bloque de diseño de dominio (heridas, sangrado,
+> vitales, tratamiento) sigue pendiente. La integración con Caliber va mock-first hasta
+> que exista su pipeline de jugador. Foto de HOY → [`docs/coagulant_estado.md`](docs/coagulant_estado.md);
+> el rumbo del ecosistema vive en el
 > [roadmap de Corpus](https://github.com/Sepuldosky/corpus/blob/main/docs/corpus_roadmap.txt).
 
 ## Dependencias previstas
