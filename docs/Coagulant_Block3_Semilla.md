@@ -43,57 +43,71 @@ sustrato v1: se diseña el esqueleto que permita crecer hacia allá.
 ## 3. Decisiones abiertas
 
 Cada decisión se cierra en conversación con el autor y se anota acá con
-`→ RESUELTO:` antes de bajar nada a código. Orden sugerido de discusión: A → F
-(las de arriba condicionan a las de abajo).
+`→ RESUELTO:` antes de bajar nada a código. **Primera pasada cerrada el 2026-07-13**
+(tres rondas de preguntas al autor); lo que sigue abierto está marcado.
 
 ### A. Modelo de vitales — la decisión estructural
-¿Cuál es la fuente de verdad de "qué tan muerto estás"?
-- **A1. HP nativo como única verdad:** el sangrado drena `Health()`; heridas y
-  zonas son modificadores. Simple, compatible con todo (HUD, otros mods, respawn).
-- **A2. Vitales propios (sangre) en paralelo:** volumen de sangre estilo ACE3;
-  HP queda para trauma directo. Más fiel, pero dos barras de vida que reconciliar
-  (¿qué pasa con un medkit HL2? ¿con `SetHealth` de otro mod?).
-- Sub-decisión: ¿regeneración? (HL2 sandbox no regenera; ¿Coagulant introduce
-  recuperación solo por tratamiento?)
+- **→ RESUELTO (2026-07-13): A2 — sangre propia en paralelo.** Volumen de sangre
+  estilo ACE3 como stat propio de Coagulant; el HP nativo queda para trauma
+  directo del engine (y sigue siendo lo que leen/escriben los demás mods).
+- **→ RESUELTO: regeneración lenta natural.** Con el sangrado cortado, la sangre
+  se recupera sola muy lento (escala de minutos); la bolsa de sangre es el atajo.
+  Evita quedar tullido permanente en sandbox sin médico.
 
 ### B. Incapacitación y muerte
-- ¿Existe estado "caído pero no muerto" (unconscious/revive de ACE3) en v1, o
-  muerte directa al llegar al umbral? Revive implica: ragdoll controlado, timer,
-  interacción de segundo jugador — costo alto en Gmod.
-- ¿La muerte por desangrado es distinta de la muerte por daño (feedback, killfeed)?
+- **→ RESUELTO (2026-07-13): muerte directa en v1** — sin estado caído/revive
+  (se difiere a bloque futuro, ver §4).
+- **→ RESUELTO: la sangre no mata por umbral propio — sangre baja drena HP.**
+  Por debajo de un % crítico, la sangre drena HP progresivamente; la muerte es
+  SIEMPRE por HP 0 (compatible con killfeed, respawn y mods que setean HP). Los
+  medkits HL2 curan HP pero no sangre: con sangre crítica, el HP curado se vuelve
+  a drenar — el tratamiento real pasa por Coagulant.
 
 ### C. Heridas y sangrado — la mecánica núcleo
-- Tipos de herida v1: ¿solo "herida sangrante" genérica con severidad (1-3), o
-  tipos por damage type (bala/corte/quemadura/fractura)?
-- Apilado: ¿N heridas por zona (lista) o un nivel agregado por zona?
-- Curva de sangrado: ¿drenaje = f(severidad total) lineal por tick? ¿umbral mínimo?
-- Fracturas/efectos estructurales: ¿en v1 o se difieren?
+- **→ RESUELTO (2026-07-13): tipos de herida por damage type** (estilo ACE3:
+  bala / corte / quemadura / contusión-caída…), cada tipo con sangrado y
+  tratamiento compatible propios. La tabla exacta damage type → tipo de herida ×
+  severidad es trabajo de la arquitectura (abajo).
+- Apilado: **lista de heridas por zona** (implícito en la UI resuelta en F: se
+  elige zona → se ven heridas → se trata herida por herida).
+- PENDIENTE (arquitectura): curva de drenaje (f(severidad) por tick), números de
+  balance, y si la contusión/fractura tiene efecto estructural propio en v1.
 
 ### D. Efectos por zona (el "para qué" de las zonas)
-- Pierna herida → ¿cojera (velocidad)? Brazo → ¿precisión/sway? Cabeza → ¿blur/
-  desmayo? Torso → ¿solo sangrado mayor?
-- Ojo con la frontera: Caliber Block 3 traerá su propio pipeline de daño de
-  jugador; hay que definir quién aplica el debuff (propuesta: Coagulant es dueño
-  de los debuffs CLÍNICOS del jugador; Caliber, de la mitigación).
-- ¿Dolor como stat (afecta efectos, se trata con analgésico) o se difiere?
+- **→ RESUELTO (2026-07-13): los tres debuffs entran en v1** — pierna → cojera
+  (walk/run), brazo → precisión (sway/cono; con ARC9 puede requerir su API —
+  verificar contra `dev/other/`, nunca de memoria), cabeza → visión (blur/
+  oscurecimiento o desmayo breve).
+- Frontera con Caliber Block 3: **Coagulant es dueño de los debuffs CLÍNICOS del
+  jugador; Caliber, de la mitigación** (propuesta en pie, a ratificar cuando
+  Caliber abra su bloque).
+- Dolor como stat: **diferido** (no hay analgésico en el set v1; entra con el
+  bloque que lo necesite).
 
 ### E. Tratamiento v1
-- Set de ítems inicial (contra Cargo): venda (corta sangrado leve), torniquete
-  (corta sangrado fuerte en extremidad, con penalidad si se deja puesto),
-  ¿kit médico (recupera HP)? ¿analgésico (si hay dolor)?
-- ¿Uso instantáneo o con tiempo de aplicación (progress bar, interrumpible)?
-- ¿Tratar a OTRO jugador en v1 (core de ACE3) o solo auto-tratamiento?
-- Vía sin Cargo: ¿world-entity (botiquín de pared HL2) o solo el concommand?
+- **→ RESUELTO (2026-07-13): set de 4 ítems contra Cargo** — venda (corta
+  sangrado leve/medio), torniquete (sangrado grave, solo extremidades, penalidad
+  si queda puesto; ítem único no-stackable), kit médico (restaura HP/trauma),
+  bolsa de sangre/salina (restaura volumen de sangre).
+- **→ RESUELTO: uso con tiempo de aplicación + barra de progreso**, interrumpible
+  (movimiento brusco / recibir daño).
+- **→ RESUELTO: solo auto-tratamiento en v1** — tratar a otros se difiere (§4).
+- PENDIENTE (arquitectura): la vía sin Cargo. Propuesta a validar: sin Cargo el
+  panel médico trata sin consumir ítems (con cooldown, claramente marcado como
+  modo degradado); el concommand `coagulant_bandage` queda solo debug.
 
 ### F. Presentación y configuración
-- HUD: ¿silueta con zonas coloreadas (estilo ACE3/EFT), barras en el StatusPanel
-  de Cargo (`CARGO.StatusPanel.RegisterBar` ya existe), o ambos con fallback?
-- ¿Menú de tratamiento propio (tecla/radial) o el uso pasa solo por el inventario
-  de Cargo + quick slots?
-- Config del server (convars vía el tab Q): dificultad del sangrado, on/off de
-  subsistemas.
-- Persistencia: ¿el estado clínico sobrevive desconexión/cambio de mapa, o
-  spawn = cuerpo nuevo siempre (como el scaffold hoy)?
+- **→ RESUELTO (2026-07-13): HUD silueta zonal + StatusPanel de Cargo.** Silueta
+  propia de 6 zonas coloreadas (ACE3/EFT) para el detalle + barra de sangre vía
+  `CARGO.StatusPanel.RegisterBar` si Cargo está (fallback a HUD propio si no).
+- **→ RESUELTO: menú médico propio por zona** (tecla propia → silueta clickeable:
+  zona → heridas → aplicar ítem del inventario). El uso rápido desde Cargo/quick
+  slot aplica automáticamente a la zona más grave compatible.
+- **→ RESUELTO: spawn = cuerpo nuevo.** Morir/respawnear resetea el estado;
+  desconectarse en vida lo conserva en memoria del server. **Sin persistencia a
+  disco en v1** (sin `Corpus.Data` hasta que algo lo justifique).
+- PENDIENTE (arquitectura): set de convars de server (dificultad de sangrado,
+  on/off por subsistema) y qué expone el tab Q.
 
 ## 4. No-scope explícito del Block 3 (candidatos a bloques futuros)
 

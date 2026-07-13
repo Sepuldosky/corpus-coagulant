@@ -75,3 +75,13 @@ sintaxis Lua validada offline.
   del autor (2026-07-13): **el diseño de mods se hace en el repo con Claude Code**,
   no en Desktop (eso queda para Kontrol) — estado/roadmap/CLAUDE.md ajustados.
   **[APLICADO 2026-07-13]**
+
+- PARCHE 9 — docs(docs): primera pasada de diseño del Block 3 cerrada con el autor
+  (tres rondas de preguntas, mismo día): sangre propia en paralelo con drenaje de HP
+  bajo umbral crítico (muerte siempre por HP 0, sin revive en v1), heridas por damage
+  type en lista por zona, tres debuffs zonales (cojera/precisión/visión), set de 4
+  ítems contra Cargo con tiempo de aplicación + barra, solo auto-tratamiento, HUD
+  silueta + StatusPanel de Cargo, menú médico propio por zona, regen lenta natural,
+  spawn = cuerpo nuevo sin disco. Resoluciones anotadas en
+  `Coagulant_Block3_Semilla.md` §3; quedan PENDIENTE de arquitectura: tabla damage
+  type → herida, curvas/números, vía sin Cargo, convars. **[APLICADO 2026-07-13]**
