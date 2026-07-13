@@ -221,3 +221,14 @@ client: 4 defs en realm cliente) — selftest 63/67/43 OK. Los parches nacen
   CONTRATO gana `ApplyTreatment`; log de boot → "Block 3 slice 2". Convenciones de
   commits ganan los alcances `config` y `treatment` (el mapa de archivos creció).
   **[PENDIENTE]**
+
+- PARCHE 7 — test(dev): `coagulant_dev_give` (admin, requiere Cargo) — entrega el
+  kit médico de prueba (3 vendas, 1 torniquete, 2 medkits, 2 bolsas). Nace del
+  primer intento de la ronda 3 (2026-07-13): el `lua_run` con los cuatro `GiveItem`
+  **se trunca en la consola de GMod** (límite de largo del comando) y tira
+  `')' expected near '<eof>'` — lección: los comandos de checklist deben ser
+  concommands cortos, nunca lua_run largos. **[PENDIENTE]**
+
+Nota — ronda 3 interrumpida en G1 por lo anterior (el resto de la sección G quedó
+sin correr); A-F re-confirmadas ✓ por el autor en la misma ronda. La ronda 3 se
+repite con el comando nuevo.

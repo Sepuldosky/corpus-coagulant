@@ -5,9 +5,10 @@
 > secciones ni historial). El historial vive en `git` + [`CHANGELOG.md`](CHANGELOG.md).
 > Si crece de una pantalla, está mal redactado: recortar.
 
-**Última actualización:** 2026-07-13 (slice 1 + fix del punto E **verificados en
-juego, 14/14**; **slice 2 en código** — tratamiento con tiempo + 4 ítems, verificado
-offline, pendiente de juego vía el artefacto ronda 3)
+**Última actualización:** 2026-07-13 (slice 1 + punto E verificados 14/14; **slice 2
+en código**, verificado offline. La ronda 3 en juego se interrumpió en G1: el
+`lua_run` largo del kit se trunca en consola — reemplazado por `coagulant_dev_give`;
+la sección G queda por correr entera)
 
 ---
 
@@ -39,7 +40,8 @@ offline, pendiente de juego vía el artefacto ronda 3)
 ## Pendiente de verificar
 
 - **El slice 2 en juego** (CHANGELOG sesión "slice 2" en `[PENDIENTE]`): artefacto
-  ronda 3, sección G. Scaffold + slice 1 + fix punto E ya `[APLICADO]` (14/14).
+  ronda 3, sección G completa — el kit se da con `coagulant_dev_give` (el lua_run
+  largo se truncaba en consola). Scaffold + slice 1 + punto E ya `[APLICADO]`.
 
 ## Remanentes / deuda conocida
 
