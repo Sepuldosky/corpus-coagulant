@@ -184,6 +184,26 @@ if SERVER then
         end
     end)
 
+    -- Kit médico de prueba vía Cargo (mismo rol que cargo_dev_give). Existe porque
+    -- un lua_run largo se TRUNCA en la consola de GMod (pagado en la ronda 3 de
+    -- verificación): los comandos de checklist deben ser cortos.
+    concommand.Add("coagulant_dev_give", function(ply)
+        if IsValid(ply) and not ply:IsAdmin() then return end
+        local objetivo = IsValid(ply) and ply or player.GetAll()[1]
+        if not IsValid(objetivo) then return end
+        local cargo = Corpus.GetModule("cargo")
+        if cargo == nil then
+            Corpus.Log("coagulant", "coagulant_dev_give: Cargo no está montado")
+            return
+        end
+        cargo.Inventory.GiveItem(objetivo, "corpus_coagulant_bandage", 3)
+        cargo.Inventory.GiveItem(objetivo, "corpus_coagulant_tourniquet")
+        cargo.Inventory.GiveItem(objetivo, "corpus_coagulant_medkit", 2)
+        cargo.Inventory.GiveItem(objetivo, "corpus_coagulant_bloodbag", 2)
+        Corpus.Log("coagulant", "kit médico de prueba entregado a " .. objetivo:Nick()
+            .. " (3 vendas, 1 torniquete, 2 medkits, 2 bolsas)")
+    end)
+
     -- Fuerza el nivel de sangre (para probar el crítico sin desangrarse de verdad)
     concommand.Add("coagulant_setblood", function(ply, _, args)
         if IsValid(ply) and not ply:IsAdmin() then return end
