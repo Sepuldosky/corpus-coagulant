@@ -49,6 +49,26 @@ Config.WOUND_TYPES = {
 }
 
 -- ============================================================
+-- Tratamiento (§7) — tiempos en segundos, efectos por tipo
+-- ============================================================
+Config.TREATMENTS = {
+    bandage    = { time = 4,  item = "corpus_coagulant_bandage" },
+    tourniquet = { time = 2,  item = "corpus_coagulant_tourniquet" }, -- aplicar Y quitar
+    medkit     = { time = 10, item = "corpus_coagulant_medkit", heal = 50 },
+    bloodbag   = { time = 8,  item = "corpus_coagulant_bloodbag", blood = 40 },
+}
+Config.ARM_TIME_MULT       = 1.25 -- brazo herido: tratamientos más lentos (§6)
+Config.TOURNIQUET_ISCHEMIA_S = 90 -- puesto más de esto: isquemia (§7)
+Config.ISCHEMIA_LINGER_S   = 60   -- la isquemia persiste tras quitarlo
+Config.ISCHEMIA_SCORE      = 6    -- score de debuff que impone la isquemia
+Config.DEGRADED_COOLDOWN_S = 30   -- sin Cargo: tratamiento gratis con cooldown (§7)
+Config.CANCEL_SPEED_MULT   = 1.15 -- cancelar si velocidad > walk × esto
+
+Config.EXTREMITIES = {
+    left_arm = true, right_arm = true, left_leg = true, right_leg = true,
+}
+
+-- ============================================================
 -- Funciones puras
 -- ============================================================
 
