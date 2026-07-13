@@ -5,19 +5,23 @@
 -- "Initialize" porque gmod fusiona lua/autorun/ alfabéticamente entre addons y
 -- "corpus_coagulant_init.lua" ordena ANTES que "corpus_registry.lua".
 --
--- BLOCK 3 EN BAJADA (slice 1 de 4 — Coagulant_Architecture.md §15): sangre +
--- heridas + sangrado. Tratamiento con tiempo/ítems (slice 2), debuffs (slice 3)
--- y UI (slice 4) todavía no aterrizan.
+-- BLOCK 3 EN BAJADA (slice 2 de 4 — Coagulant_Architecture.md §15): sangre +
+-- heridas + sangrado (slice 1, verificado en juego) y tratamiento con tiempo +
+-- 4 ítems (slice 2). Debuffs (slice 3) y UI (slice 4) todavía no aterrizan.
 
 -- ============================================================
 -- CONTRATO PÚBLICO DE COAGULANT (Coagulant_Architecture.md §8). Consumido por
 -- otros módulos vía Corpus.GetModule("coagulant"). Todo lo demás colgado de la
 -- tabla es interno — off-contract por convención.
 --
---   COAGULANT.ApplyBandage(ply) -> bool     -- azúcar congelada del scaffold; hoy
---                                              aplica el efecto venda instantáneo
---                                              (slice 2 lo vuelve ApplyTreatment
---                                              con tiempo + consumo al completar)
+--   COAGULANT.ApplyTreatment(ply, kind, zone) -> ok, err
+--                                            -- inicia un tratamiento con tiempo
+--                                               (§7): "bandage"|"tourniquet"|
+--                                               "medkit"|"bloodbag"; zone nil =
+--                                               automática; consumo AL COMPLETAR
+--   COAGULANT.ApplyBandage(ply) -> bool      -- azúcar congelada del scaffold
+--                                               (= ApplyTreatment "bandage";
+--                                               true = el tratamiento ARRANCÓ)
 --   COAGULANT.GetBlood(ply) -> 0..100        -- sangre actual
 --   COAGULANT.IsBleeding(ply) -> bool        -- hay drenaje activo
 --   COAGULANT.GetZoneScore(ply, zone) -> n   -- score de debuff de la zona
@@ -44,8 +48,9 @@ local SHARED = {
     "shared/corpus_coagulant_dev.lua",    -- coagulant_selftest + comandos de verificación
 }
 local SERVER_FILES = {
-    "server/corpus_coagulant_core.lua",     -- estado clínico + creación de heridas + eventos
-    "server/corpus_coagulant_bleeding.lua", -- timer 1s: drenaje, regen, HP crítico, snapshot
+    "server/corpus_coagulant_core.lua",      -- estado clínico + creación de heridas + eventos
+    "server/corpus_coagulant_bleeding.lua",  -- timer 1s: drenaje, regen, HP crítico, snapshot
+    "server/corpus_coagulant_treatment.lua", -- tratamiento con tiempo + consumo al completar
 }
 local CLIENT_FILES = {
     "client/corpus_coagulant_options.lua", -- tab único Corpus.UI.RegisterTab
@@ -83,7 +88,7 @@ local function Boot()
         for _, f in ipairs(CLIENT_FILES) do inc(f) end
     end
 
-    Corpus.Log("coagulant", "cargado (" .. (SERVER and "server" or "client") .. ") — Block 3 slice 1")
+    Corpus.Log("coagulant", "cargado (" .. (SERVER and "server" or "client") .. ") — Block 3 slice 2")
 end
 
 if CorpusListo() then
