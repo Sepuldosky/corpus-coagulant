@@ -39,12 +39,13 @@
 local SHARED = {
     "shared/corpus_coagulant_zones.lua",  -- zonas clínicas + mapa hitgroup->zona (puro)
     "shared/corpus_coagulant_config.lua", -- convars + tablas de balance + funcs puras
+    "shared/corpus_coagulant_items.lua",  -- ítems contra Cargo — AMBOS realms: el grid
+                                          -- cliente de Cargo renderiza desde defs locales
     "shared/corpus_coagulant_dev.lua",    -- coagulant_selftest + comandos de verificación
 }
 local SERVER_FILES = {
     "server/corpus_coagulant_core.lua",     -- estado clínico + creación de heridas + eventos
     "server/corpus_coagulant_bleeding.lua", -- timer 1s: drenaje, regen, HP crítico, snapshot
-    "server/corpus_coagulant_items.lua",    -- ítems médicos contra Cargo (soft-dep)
 }
 local CLIENT_FILES = {
     "client/corpus_coagulant_options.lua", -- tab único Corpus.UI.RegisterTab
