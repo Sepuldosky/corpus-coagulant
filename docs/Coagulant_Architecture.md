@@ -118,6 +118,8 @@ Referencias de letalidad con los números propuestos: una herida de bala grave s
 
 Score de zona = Σ severidades de sus heridas; las `treated` cuentan **la mitad**. Los tres debuffs entran en v1, cada uno con su convar de apagado (§11).
 
+> **Enmienda 2026-07-14 (ronda 5 en juego).** La media severidad de una herida tratada pesaba **para siempre**: vendarse las piernas dejaba al jugador cojo (×0.76) hasta morir, porque nada borraba la herida. El autor resolvió que la cura de esa secuela es el **Medkit** (§7): cierra las heridas ya tratadas de una zona. Vendar corta el sangrado; el Medkit borra la marca. Una herida sin vendar no se toca (primero hay que cerrarla).
+
 ### Piernas → cojera
 
 - `speedMult = max(0.45, 1 − 0.12 × (score_left_leg + score_right_leg))`.
@@ -125,13 +127,18 @@ Score de zona = Σ severidades de sus heridas; las `treated` cuentan **la mitad*
 
 ### Brazos → precisión
 
-- Sway agnóstico al arma: `ViewPunch` periódico en server (intervalo aleatorio 1.5–3 s, amplitud `0.35° × (score_left_arm + score_right_arm)`, dirección aleatoria). Funciona con cualquier SWEP sin tocar su API.
+- **Deriva continua de la mira, en dos capas** (reescrito el 2026-07-14 tras la ronda 5; el `ViewPunch` periódico original se sentía débil y llegaba estando idle):
+  - **Capa 1 — arma en mano:** temblor apenas perceptible (`amp × 0.35`).
+  - **Capa 2 — apuntando:** deriva incapacitante (`amp × 4.0`), estilo ARMA 3. "Apuntando" se detecta por el **clic derecho** (`IN_ATTACK2`): es el ADS de ARC9/TFA/MW y no depende de la API de ningún arma.
+  - `amp = 0.35° × (score_left_arm + score_right_arm)`. La deriva es **sobre todo horizontal** (el cabeceo es una fracción, `SWAY_VERTICAL`), y se compone de dos senos de períodos inconmensurables: nunca repite un patrón que se pueda aprender a compensar.
+- **Se aplica en el CLIENTE** (hook `CreateMove`), sumando el **delta** del offset al usercmd — no el offset absoluto, o la vista derivaría sin control en vez de oscilar. Es la única forma de mover la puntería de forma continua sin pelear contra el mouse del jugador. El score de brazos llega en el snapshot **con la isquemia incluida**, así que el cliente calcula el mismo número que el server.
 - Penalidad cruzada: brazo con score > 0 suma **+25 % al tiempo de aplicación** de tratamientos (§7).
 - Integración fina con ARC9 (spread/recoil por su API): **diferida**; cuando se haga, los nombres se verifican contra `dev/other/`, nunca de memoria (lección pagada por Cargo).
 
 ### Cabeza → visión
 
 - Overlay cliente (vignette/oscurecimiento de bordes) con intensidad `f(score_head)`, renderizado en `RenderScreenspaceEffects` a partir del snapshot propio.
+- **El vignette es elíptico** (anillos concéntricos triangulados con `surface.DrawPoly`), no un marco de bandas rectangulares — la primera versión daba esquinas duras y el autor la rechazó en la ronda 5. Geometría propia, **sin materiales externos**: no depende de ningún asset ni de la licencia de nadie. Los mods de referencia del género (Screen Blood Remaster, CoD) son **COMPAT-RUNTIME, no reciclables** — licencia silenciosa = all-rights-reserved (`dev/mods_workshop_mapa.md`).
 - Al recibir una herida de cabeza media/grave: fade a negro breve (~2 s) sin pérdida de control ("desmayo" v1 es solo visual).
 - La sangre crítica (§5) suma su propia capa de desaturación/vignette progresiva — el jugador *siente* que se desangra antes de mirar el HUD.
 
@@ -147,7 +154,7 @@ Torso no tiene debuff propio en v1: su castigo es que concentra los impactos (do
 |---|---|---|---|---|---|
 | `corpus_coagulant_bandage` | Bandage | stackable | 0.1 | 4 s | Cierra (`treated = true`) **una** herida sangrante leve/media de la zona. Sobre una grave: la baja a media sin cerrarla (una grave cuesta 2 vendas). |
 | `corpus_coagulant_tourniquet` | Tourniquet | unique | 0.2 | 2 s | Detiene todo el sangrado de **una extremidad** mientras esté puesto. A los 90 s puesto: isquemia — la zona pasa a score máximo de debuff hasta 60 s después de quitarlo. Quitar (2 s) reanuda el sangrado de lo no cerrado. **No se consume.** |
-| `corpus_coagulant_medkit` | Medkit | stackable | 0.5 | 10 s | +50 HP (cap MaxHealth). No toca sangre ni heridas. |
+| `corpus_coagulant_medkit` | Medkit | stackable | 0.5 | 10 s | +50 HP (cap MaxHealth) **y cierra las heridas ya TRATADAS de una zona** — la única cura de la secuela (§6, enmienda 2026-07-14). No toca sangre ni heridas sin vendar. |
 | `corpus_coagulant_bloodbag` | Blood Bag | stackable | 0.3 | 8 s | +40 sangre (cap 100). |
 
 ### Mecánica de aplicación
@@ -155,7 +162,11 @@ Torso no tiene debuff propio en v1: su castigo es que concentra los impactos (do
 - **Server-authoritative**: `st.treatment = { kind, zone, endsAt }`. Un solo tratamiento a la vez.
 - **Cancelación**: recibir daño, saltar, o superar velocidad de caminata → cancela sin efecto y **sin consumir**.
 - **El consumo ocurre al completar, no al iniciar.** Consecuencia de contrato con Cargo: el `onUse` de un ítem médico **devuelve `false`** (Cargo no consume) e inicia el tratamiento; al completarse, Coagulant consume explícitamente vía `CARGO.Inventory.TakeItem(ply, id, 1)` (re-validando que la unidad siga ahí). El tooltip del ítem lo dice ("applies over N seconds").
-- **Selección de zona**: desde el menú médico (§10), la zona la elige el jugador; desde el uso rápido (quick slot / onUse de Cargo), automática — la zona con la herida más grave **compatible con el ítem** (venda→sangrante; torniquete→extremidad sangrante; medkit/bloodbag no requieren zona).
+- **Selección de zona**: desde el menú médico (§10), la zona la elige el jugador; desde el uso rápido (quick slot / onUse de Cargo), automática — la zona con la herida más grave **compatible con el ítem**:
+  - venda → la zona sangrante más grave.
+  - torniquete → **(1)** la extremidad sangrante más grave **sin** torniquete (ponerlo); **(2)** si no hay ninguna, la extremidad que **ya lo tiene puesto** (quitarlo). *Sin la rama (2) el torniquete es imposible de sacar en cuanto vendás la zona: la herida deja de sangrar y la búsqueda no encuentra nada — bug reportado en juego, ronda 5.*
+  - medkit → la zona con más secuela **tratada** (la que va a curar); torso si no hay ninguna (sigue sirviendo como cura de HP pura).
+  - bloodbag → no usa zona.
 - Brazos heridos: +25 % de tiempo (§6).
 
 ### Vía sin Cargo (degradación honesta)

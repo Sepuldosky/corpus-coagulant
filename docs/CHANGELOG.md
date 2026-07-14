@@ -392,4 +392,87 @@ verificación en juego (artefacto, ronda 5, sección H).
   (server, tras treatment) y `hud` (client, antes de options); el bloque CONTRATO
   documenta los dos NW2 de §9 y por qué la cojera se aplica en un hook `Move`; log
   de boot → "Block 3 slice 3". Las convenciones de commits ganan los alcances
-  `debuffs` y `hud`. **[PENDIENTE]**
+  `debuffs` y `hud`. **[APLICADO 2026-07-14]** (ronda 5 ✓ — A1/A2 y los tres debuffs
+  se vieron en juego)
+
+Resultado de la **ronda 5** (2026-07-14): **H1, H2, H5, H6, H7, H8 ✓** — la cojera
+muerde (score 6 → ×0.45), **compone con el peso de Cargo sin rubber-band** (el punto
+crítico del slice), el sway y la visión funcionan y las tres convars apagan. **H3 y H4
+✗** (ver la sesión de abajo) y el sway/vignette quedaron con pedidos de diseño del
+autor. Los parches 1-4 quedan `[PENDIENTE]` hasta el re-test de la ronda 6, porque el
+fix los reescribe en parte.
+
+---
+
+## PARCHES DE sesión Fix ronda 5 — secuela permanente, torniquete clavado, sway y vignette — 2026-07-14
+
+La ronda 5 dejó **dos bugs** y **tres decisiones de diseño** (resueltas con el autor
+antes de tocar código, como manda el CLAUDE.md — nada de esto se implementó por
+iniciativa propia):
+
+**Bugs.**
+1. **La cojera no se curaba nunca.** Con las dos piernas vendadas el autor quedaba en
+   score 2.0 → ×0.76 **para siempre** ("he esperado varios minutos y aún está el
+   debuff"). No era un bug del código: §6 dice que las tratadas cuentan la mitad, y
+   **nada en el diseño borraba una herida**. El propio checklist prometía "se recupera
+   del todo al cerrarla" — eso estaba mal redactado.
+2. **El torniquete era imposible de quitar.** La zona automática solo miraba
+   extremidades **sangrantes**; en cuanto vendabas la zona, la búsqueda no encontraba
+   nada y el toggle devolvía "Tourniquets only work on limbs". El autor lo reportó como
+   "falta manera de sacarse el torniquete". Además `coagulant_status` no imprimía la
+   isquemia, así que el ciclo de 90 s era **inobservable** — por eso el H4 no se pudo
+   evaluar.
+
+**Decisiones del autor.**
+- **Curación de la secuela → el Medkit.** No hay cura pasiva por tiempo.
+- **Sway → dos capas** (leve siempre, fuerte al apuntar), continuo y horizontal.
+- **Vignette → propio, bien hecho.** Se descartó copiar *Screen Blood Remaster* / el mod
+  de CoD: `dev/mods_workshop_mapa.md` los clasifica como **licencia silenciosa =
+  all-rights-reserved → COMPAT-RUNTIME, sin permiso de copia**. Reciclarlos habría ido
+  contra la política que el propio autor fijó.
+
+Verificación previa: sintaxis (12 archivos) + harness offline en tres pasadas (server
+con Cargo real, server degradado, client) — **selftest 102 OK con Cargo / 97 sin Cargo
+/ 56 client**, más 94 checks de harness (incluidos: el medkit borrando la secuela por
+el motor real, el torniquete quitándose sobre una zona ya vendada, la isquemia viajando
+en el snapshot, y que el sway **oscila y no deriva** — se mide el recorrido de la mira
+en 200 frames).
+
+- PARCHE 1 — fix(treatment): la zona automática del torniquete gana su segunda rama —
+  si no hay extremidad sangrante que atar, elige **la que ya lo tiene puesto**, o sea
+  lo QUITA. Sin esto quedaba clavado de por vida. Quitarlo no exige ni consume ítem.
+  **[PENDIENTE]**
+
+- PARCHE 2 — feat(core): `HealTreatedWounds(ply, zone)` y `WorstTreatedZone(ply)` —
+  el Medkit cierra las heridas ya **tratadas** de una zona (única cura de la secuela) y
+  su zona automática es la que más secuela tiene. Las heridas sin vendar no se tocan.
+  `IsIschemic(ply, zone)` sale de `GetZoneScore` a función propia: la consultan el
+  score, el snapshot y el status — vive en un solo lugar para que los tres digan lo
+  mismo. **[PENDIENTE]**
+
+- PARCHE 3 — feat(hud): **el sway se reescribe como deriva continua en dos capas**
+  (temblor con el arma en mano; deriva incapacitante al apuntar, ×4). Pasa de server
+  (`ViewPunch` periódico) a **cliente** (`CreateMove`): es la única forma de mover la
+  puntería de forma continua sin pelear contra el mouse. Se aplica el **delta** del
+  offset, no el absoluto — si no, la mira derivaría sin control en vez de oscilar (el
+  harness lo verifica midiendo el recorrido en 200 frames). El score de brazos llega en
+  el snapshot **con la isquemia incluida**, así que cliente y server calculan igual.
+  **[PENDIENTE]**
+
+- PARCHE 4 — feat(hud): **el vignette pasa de bandas rectangulares a elipse** — anillos
+  concéntricos triangulados (`surface.DrawPoly`), geometría propia cacheada por
+  resolución. El marco cuadrado con esquinas duras era lo que se veía raro. El de sangre
+  crítica además **late** (`PULSE_HZ`). Cero assets externos: sin dependencia de la
+  licencia de nadie. **[PENDIENTE]**
+
+- PARCHE 5 — feat(config): `SWAY_IDLE_MULT`/`SWAY_ADS_MULT`/`SWAY_VERTICAL`,
+  `SwayFor` y `SwayOffset` (puras, compartidas por cliente y selftest), `PULSE_HZ`, y
+  `healsWounds` en la def del medkit. Se van `SWAY_MIN_S`/`SWAY_MAX_S` (ya no hay
+  intervalo: la deriva es continua). **[PENDIENTE]**
+
+- PARCHE 6 — test(dev): `coagulant_status` imprime **el score de cada zona, el reloj
+  del torniquete (`Xs/90s`) y la ISQUEMIA con sus segundos restantes** — sin esto el
+  ciclo de isquemia es invisible en juego, que es exactamente por qué el H4 no se pudo
+  evaluar. También dice dónde iría el próximo Medkit y muestra el sway en sus dos capas.
+  El selftest cubre las curvas nuevas, el medkit borrando la secuela, el torniquete
+  quitable y que la deriva sea acotada y horizontal. **[PENDIENTE]**
