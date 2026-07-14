@@ -93,13 +93,23 @@ Para corpus-coagulant/ (el módulo), los alcances definidos son:
     Motor de tratamiento con tiempo: ApplyTreatment, cancelaciones, consumo al
     completar, torniquetes (corpus_coagulant_treatment.lua).
 
+  debuffs:
+    Debuffs zonales: scores de zona, cojera (publicada por NW2) y sway de brazos
+    (corpus_coagulant_debuffs.lua). La APLICACIÓN de la cojera en el pipeline de
+    movimiento (corpus_coagulant_move.lua, hook Move compartido) reporta acá:
+    son las dos mitades del mismo debuff.
+
   items:
     Ítems médicos contra el framework de Cargo y las vías mínimas sin inventario
     (corpus_coagulant_items.lua).
 
+  hud:
+    HUD y capas de pantalla: estado replicado en cliente, visión (vignette,
+    blackout, capa de sangre crítica), silueta y barra de tratamiento
+    (corpus_coagulant_hud.lua).
+
   options:
-    El tab del menú Q y toda UI cliente del módulo
-    (corpus_coagulant_options.lua).
+    El tab del menú Q (corpus_coagulant_options.lua).
 
   dev:
     Auto-test y comandos de validación en consola (corpus_coagulant_dev.lua).
@@ -120,6 +130,7 @@ Para corpus-coagulant/ (el módulo), los alcances definidos son:
     - feat(core): añade curva de sangrado por severidad de herida
     - fix(zones): corrige fallback de HITGROUP_GEAR a torso
     - feat(items): registra el torniquete contra el framework de Cargo
+    - feat(debuffs): compone la cojera con el movecompat de Cargo vía hook Move
 
   4.2 Estructura y docs:
     - chore(init): añade el manifest de carga corpus_coagulant_init.lua

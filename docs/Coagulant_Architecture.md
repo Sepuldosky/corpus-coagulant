@@ -250,7 +250,7 @@ Los números internos de balance (tabla §3, curvas §4-§6, tiempos §7) viven 
 
 ### Cargo (presente hoy — nombres verificados contra el código real)
 
-- **Consume:** `Items.Register(def)` (4 defs §7), `Inventory.TakeItem(ply, id, 1)` (consumo al completar), `Inventory.CountItem(ply, id)` (habilitar botones del menú), `StatusPanel.RegisterBar` (client).
+- **Consume:** `Items.Register(def)` (4 defs §7), `Inventory.TakeItem(ply, id, 1)` (consumo al completar), `Inventory.HasItem(ply, id)` (**presencia al validar un tratamiento — la única superficie que ve los `unique`**: `CountItem` cuenta solo stacks, así que el torniquete siempre daba 0 — pagado en juego el 2026-07-13, fallo G4; Cargo la agregó como su entry 18), `Inventory.CountItem(ply, id)` (conteos de consumibles stackable, p. ej. botones del menú médico), `StatusPanel.RegisterBar` (client).
 - **Expone hacia Cargo:** `OnEncumbrance(ply, fraction)` — Cargo ya lo llama con pcall en cada cambio de peso (`corpus_cargo_movement.lua`). v1: almacenar en `st.encumbrance`, cero efecto. `Inventory.GetWeightFraction(ply)` queda disponible para cuando la stamina exista.
 
 ### Caliber (mock-first — su pipeline de jugador no existe)
