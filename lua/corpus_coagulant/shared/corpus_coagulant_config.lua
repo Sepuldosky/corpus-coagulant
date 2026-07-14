@@ -26,6 +26,13 @@ Config.cv_debuff_legs = CreateConVar("coagulant_debuff_legs", "1", FLAGS, "Leg w
 Config.cv_debuff_arms = CreateConVar("coagulant_debuff_arms", "1", FLAGS, "Arm wounds sway your aim")
 Config.cv_debuff_head = CreateConVar("coagulant_debuff_head", "1", FLAGS, "Head wounds blur and darken your vision")
 
+-- Convar de CLIENTE (§11): apaga la silueta del HUD. El vignette de sangre crítica
+-- NO cuelga de acá a propósito — es información vital, no decoración (§11).
+if CLIENT then
+    Config.cv_hud = CreateClientConVar("coagulant_hud", "1", true, false,
+        "Show the wound silhouette HUD (the critical-blood overlay is never hidden)")
+end
+
 function Config.Enabled()
     return Config.cv_enabled:GetBool()
 end
@@ -91,9 +98,15 @@ Config.LIMP_SPEED_FLOOR = 30   -- piso ABSOLUTO en el Move hook (mismo que el mo
 -- sentía débil y llegaba estando idle. Ahora es una DERIVA CONTINUA en dos capas
 -- (temblor sutil con el arma en mano; deriva fuerte al apuntar), sobre todo
 -- horizontal, estilo ARMA 3 — pedido del autor.
-Config.SWAY_PER_SCORE  = 0.35  -- grados de amplitud base por punto de score de brazo
-Config.SWAY_IDLE_MULT  = 0.35  -- capa 1: arma en mano, sin apuntar (apenas perceptible)
-Config.SWAY_ADS_MULT   = 4.0   -- capa 2: apuntando (incapacitante — el número a tunear)
+--
+-- Tuning de la ronda 6 (pedido del autor: "un poco más de sway en ambos casos, y es
+-- medio tosco: pasa muy fuerte al apuntar, hacé una curva para pasar de un estado al
+-- otro"). Dos cambios: sube la amplitud de las dos capas, y el salto entre ellas deja
+-- de ser instantáneo — las capas ya no son un if, son los extremos de una rampa.
+Config.SWAY_PER_SCORE  = 0.45  -- grados de amplitud base por punto de score de brazo
+Config.SWAY_IDLE_MULT  = 0.60  -- capa 1: arma en mano, sin apuntar (perceptible, no ciego)
+Config.SWAY_ADS_MULT   = 4.5   -- capa 2: apuntando (incapacitante — el número a tunear)
+Config.SWAY_ADS_RAMP_S = 0.45  -- segundos de la transición idle↔ADS (el "tosco" de la ronda 6)
 Config.SWAY_VERTICAL   = 0.30  -- el cabeceo es una fracción del bamboleo: deriva HORIZONTAL
 
 Config.VISION_FULL_AT  = 6     -- score de cabeza donde el oscurecimiento satura
@@ -159,10 +172,24 @@ function Config.SwayAmplitude(scoreBrazos)
     return Config.SWAY_PER_SCORE * scoreBrazos
 end
 
--- Amplitud EFECTIVA según la capa (§6): sutil con el arma en mano, fuerte al apuntar
-function Config.SwayFor(scoreBrazos, apuntando)
-    return Config.SwayAmplitude(scoreBrazos)
-        * (apuntando and Config.SWAY_ADS_MULT or Config.SWAY_IDLE_MULT)
+-- Suavizado de la transición entre capas (smoothstep): sale y entra despacio, así el
+-- cambio no se siente como un tirón. Es la "curva" que pidió el autor en la ronda 6 —
+-- antes las dos capas eran un if, y pasar de no-apuntar a apuntar era un escalón.
+function Config.SwayEase(t)
+    t = math.Clamp(t, 0, 1)
+    return t * t * (3 - 2 * t)
+end
+
+-- Amplitud EFECTIVA según cuánto se esté apuntando (§6). `ads` es un factor CONTINUO
+-- 0..1 (0 = arma en mano, 1 = apuntando del todo): el cliente lo rampa en el tiempo,
+-- las capas son sus extremos. Acepta un booleano por comodidad del selftest/status.
+function Config.SwayFor(scoreBrazos, ads)
+    if ads == true then ads = 1 end
+    if type(ads) ~= "number" then ads = 0 end
+
+    local t = Config.SwayEase(ads)
+    local mult = Config.SWAY_IDLE_MULT + (Config.SWAY_ADS_MULT - Config.SWAY_IDLE_MULT) * t
+    return Config.SwayAmplitude(scoreBrazos) * mult
 end
 
 -- Offset de la deriva en el instante t (grados: bamboleo, cabeceo). Dos senos de
@@ -185,4 +212,54 @@ end
 function Config.CriticalIntensity(blood)
     if blood >= Config.BLOOD_CRITICAL then return 0 end
     return math.Clamp((Config.BLOOD_CRITICAL - blood) / Config.BLOOD_CRITICAL, 0, 1)
+end
+
+-- --- UI (§10): puras, para que el HUD y el menú médico pinten LO MISMO. La silueta
+-- --- se dibuja dos veces (chica en el HUD, grande y clickeable en el menú) y las dos
+-- --- veces sale de esta tabla: una sola verdad sobre dónde está cada zona.
+
+-- El snapshot viaja comprimido, así que sus claves son de una letra ({t,s,tr}) — las
+-- funciones de balance esperan la herida entera ({type,severity,treated}). Traducir
+-- acá y no en cada llamador: si el snapshot cambia de forma, cambia un solo lugar.
+function Config.WoundFromSnap(w)
+    return { type = w.t, severity = w.s, treated = w.tr }
+end
+
+-- Score de zona → 0..1 para colorear (sano → amarillo → rojo). Satura en ZONE_FULL_AT:
+-- de ahí para arriba la zona ya está tan roja como puede.
+Config.ZONE_FULL_AT = 6
+function Config.ZoneDamageFrac(score)
+    return math.Clamp(score / Config.ZONE_FULL_AT, 0, 1)
+end
+
+-- Progreso 0..1 del tratamiento en curso, desde el {endsAt, duration} del snapshot
+-- (§9: la barra se calcula client-side, sin tick de red). `now` se pasa para que sea
+-- pura y el selftest la pueda ejercitar.
+function Config.TreatmentProgress(tr, now)
+    if tr == nil or not tr.duration or tr.duration <= 0 then return 0 end
+    return math.Clamp(1 - (tr.endsAt - now) / tr.duration, 0, 1)
+end
+
+-- Silueta de 6 zonas en coordenadas normalizadas 0..1 dentro de su caja (§10). Se ve
+-- desde la perspectiva del jugador (su brazo izquierdo, a la izquierda del dibujo):
+-- la alternativa —espejarla como un espejo— confunde al vendar bajo presión.
+Config.SILHOUETTE = {
+    { zone = "head",      x = 0.37, y = 0.00, w = 0.26, h = 0.16 },
+    { zone = "torso",     x = 0.32, y = 0.18, w = 0.36, h = 0.37 },
+    { zone = "left_arm",  x = 0.10, y = 0.19, w = 0.19, h = 0.36 },
+    { zone = "right_arm", x = 0.71, y = 0.19, w = 0.19, h = 0.36 },
+    { zone = "left_leg",  x = 0.33, y = 0.57, w = 0.16, h = 0.43 },
+    { zone = "right_leg", x = 0.51, y = 0.57, w = 0.16, h = 0.43 },
+}
+
+-- Zona bajo un punto (x,y ya normalizados a la caja de la silueta), o nil. La usa el
+-- menú médico para el clic; vive acá porque el rectángulo que se pinta y el que se
+-- clickea tienen que ser el MISMO.
+function Config.ZoneAt(nx, ny)
+    for _, p in ipairs(Config.SILHOUETTE) do
+        if nx >= p.x and nx <= p.x + p.w and ny >= p.y and ny <= p.y + p.h then
+            return p.zone
+        end
+    end
+    return nil
 end

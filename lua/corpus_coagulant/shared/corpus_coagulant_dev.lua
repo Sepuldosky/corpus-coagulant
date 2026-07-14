@@ -77,14 +77,37 @@ function COAGULANT._SelfTest()
     check(math.abs(Config.LimpMult(2) - 0.76) < 0.001, "cojera con score 2 incorrecta")
     check(Config.LimpMult(100) == Config.LIMP_MIN_MULT, "la cojera no respeta su piso")
     check(Config.SwayAmplitude(0) == 0, "sway sin heridas de brazo")
-    check(math.abs(Config.SwayAmplitude(2) - 0.70) < 0.001, "amplitud de sway incorrecta")
+    check(math.abs(Config.SwayAmplitude(2) - Config.SWAY_PER_SCORE * 2) < 0.001,
+        "amplitud de sway incorrecta")
 
     -- Sway en dos capas (§6): apuntar tiene que doler mucho más que estar idle
+    local ampBase = Config.SwayAmplitude(2)
     check(Config.SwayFor(2, true) > Config.SwayFor(2, false),
         "apuntar no agrava el sway (la capa ADS no muerde)")
-    check(math.abs(Config.SwayFor(2, true) - 0.70 * Config.SWAY_ADS_MULT) < 0.001,
+    check(math.abs(Config.SwayFor(2, true) - ampBase * Config.SWAY_ADS_MULT) < 0.001,
         "la capa ADS del sway no aplica su multiplicador")
+    check(math.abs(Config.SwayFor(2, false) - ampBase * Config.SWAY_IDLE_MULT) < 0.001,
+        "la capa idle del sway no aplica su multiplicador")
     check(Config.SwayFor(0, true) == 0, "sway con los brazos sanos")
+
+    -- La transición entre capas es una CURVA, no un escalón (ronda 6): smoothstep con
+    -- extremos exactos y monótona en el medio — si no, la mira daría el tirón que el
+    -- autor reportó como "tosco".
+    check(Config.SwayEase(0) == 0 and Config.SwayEase(1) == 1,
+        "la curva del sway no respeta sus extremos")
+    check(math.abs(Config.SwayEase(0.5) - 0.5) < 0.001, "la curva del sway no es simétrica")
+    check(Config.SwayEase(-5) == 0 and Config.SwayEase(5) == 1, "la curva del sway no clampea")
+
+    local prevAmp, monotona = -1, true
+    for i = 0, 10 do
+        local a = Config.SwayFor(2, i / 10)
+        if a < prevAmp - 0.0001 then monotona = false end
+        prevAmp = a
+    end
+    check(monotona, "la rampa del sway no crece de idle a ADS")
+    check(Config.SwayFor(2, 0.5) > Config.SwayFor(2, 0)
+        and Config.SwayFor(2, 0.5) < Config.SwayFor(2, 1),
+        "la mitad de la rampa del sway no cae entre las dos capas")
 
     -- La deriva es acotada y sobre todo HORIZONTAL (pedido del autor, ronda 5)
     local maxYaw, maxPitch = 0, 0
@@ -101,6 +124,52 @@ function COAGULANT._SelfTest()
     check(Config.CriticalIntensity(Config.BLOOD_MAX) == 0, "capa crítica con sangre llena")
     check(Config.CriticalIntensity(Config.BLOOD_CRITICAL) == 0, "capa crítica justo en el umbral")
     check(Config.CriticalIntensity(0) == 1, "la capa crítica no satura con sangre 0")
+
+    -- UI (slice 4, §10): las puras que comparten el HUD y el menú médico. El dibujo y
+    -- el área clickeable salen de la MISMA tabla — un desvío acá y el jugador le erra
+    -- a la zona que quería vendar.
+    check(#Config.SILHOUETTE == #COAGULANT.Zones.LIST, "la silueta no cubre las 6 zonas")
+    local vistas = {}
+    for _, p in ipairs(Config.SILHOUETTE) do
+        check(COAGULANT.Zones.IsValid(p.zone), "la silueta nombra una zona inexistente: " .. tostring(p.zone))
+        check(not vistas[p.zone], "la silueta repite una zona: " .. tostring(p.zone))
+        vistas[p.zone] = true
+        check(p.x >= 0 and p.y >= 0 and p.x + p.w <= 1 and p.y + p.h <= 1,
+            "la zona " .. p.zone .. " se sale de la caja de la silueta")
+        -- el centro de cada rect tiene que resolver a SU zona: es el contrato entre
+        -- lo que se pinta y lo que se clickea
+        check(Config.ZoneAt(p.x + p.w * 0.5, p.y + p.h * 0.5) == p.zone,
+            "ZoneAt no resuelve el centro de " .. p.zone)
+    end
+    check(Config.ZoneAt(-0.5, -0.5) == nil, "ZoneAt inventa una zona fuera de la caja")
+
+    check(Config.ZoneDamageFrac(0) == 0, "zona sana con color de herida")
+    check(Config.ZoneDamageFrac(Config.ZONE_FULL_AT) == 1, "el color de zona no satura")
+    check(Config.ZoneDamageFrac(999) == 1, "el color de zona pasa de 1 (falta clamp)")
+
+    -- Barra de tratamiento: se calcula client-side desde {endsAt, duration} (§9)
+    check(Config.TreatmentProgress(nil, 0) == 0, "progreso sin tratamiento")
+    local trFake = { endsAt = 100, duration = 4 }
+    check(Config.TreatmentProgress(trFake, 96) == 0, "la barra no arranca en 0")
+    check(math.abs(Config.TreatmentProgress(trFake, 98) - 0.5) < 0.001, "la barra no va por la mitad")
+    check(Config.TreatmentProgress(trFake, 100) == 1, "la barra no llega a 1 al terminar")
+    check(Config.TreatmentProgress(trFake, 200) == 1, "la barra pasa de 1 (falta clamp)")
+
+    -- El snapshot viaja con claves de una letra; las curvas esperan la herida entera
+    local wSnap = Config.WoundFromSnap({ t = "bala", s = 3, tr = nil })
+    check(wSnap.type == "bala" and wSnap.severity == 3 and wSnap.treated == nil,
+        "WoundFromSnap no traduce la herida del snapshot")
+    check(Config.BleedRate(wSnap) > 0, "una herida grave del snapshot no sangra")
+    check(Config.BleedRate(Config.WoundFromSnap({ t = "bala", s = 3, tr = true })) == 0,
+        "una herida tratada del snapshot sigue sangrando")
+
+    if CLIENT then
+        check(istable(COAGULANT.HUD), "el cliente no expone la superficie HUD")
+        check(isfunction(COAGULANT.HUD.DrawSilhouette), "falta DrawSilhouette (la usan HUD y menú)")
+        check(isfunction(COAGULANT.HUD.ZoneScore), "falta ZoneScore en la superficie HUD")
+        check(isfunction(COAGULANT.HUD.ZoneBleeding), "falta ZoneBleeding en la superficie HUD")
+        check(Config.cv_hud ~= nil, "falta la convar de cliente coagulant_hud")
+    end
 
     -- Contrato público congelado (server): existe con la firma esperada
     if SERVER then

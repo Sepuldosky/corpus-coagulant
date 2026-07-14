@@ -5,10 +5,11 @@
 -- "Initialize" porque gmod fusiona lua/autorun/ alfabéticamente entre addons y
 -- "corpus_coagulant_init.lua" ordena ANTES que "corpus_registry.lua".
 --
--- BLOCK 3 EN BAJADA (slice 3 de 4 — Coagulant_Architecture.md §15): sangre +
--- heridas + sangrado (slice 1), tratamiento con tiempo + 4 ítems (slice 2, ambos
--- verificados en juego) y debuffs zonales (slice 3: cojera, sway, visión). La UI
--- (slice 4: silueta, menú médico, StatusPanel) todavía no aterriza.
+-- BLOCK 3 COMPLETO (los 4 slices de Coagulant_Architecture.md §15): sangre +
+-- heridas + sangrado (slice 1), tratamiento con tiempo + 4 ítems (slice 2), debuffs
+-- zonales (slice 3: cojera, sway, visión — verificados en juego) y la UI (slice 4:
+-- silueta en el HUD, menú médico por zona, barra de tratamiento, barra de sangre en
+-- el StatusPanel de Cargo y el tab Q con sus convars).
 
 -- ============================================================
 -- CONTRATO PÚBLICO DE COAGULANT (Coagulant_Architecture.md §8). Consumido por
@@ -63,7 +64,8 @@ local SERVER_FILES = {
     "server/corpus_coagulant_debuffs.lua",   -- tick 0.5s: cojera (NW2) + sway de brazos
 }
 local CLIENT_FILES = {
-    "client/corpus_coagulant_hud.lua",     -- snapshot replicado + capa de visión (§6)
+    "client/corpus_coagulant_hud.lua",     -- snapshot replicado + visión + silueta + StatusPanel
+    "client/corpus_coagulant_medmenu.lua", -- menú médico (lee la silueta del HUD: va DESPUÉS)
     "client/corpus_coagulant_options.lua", -- tab único Corpus.UI.RegisterTab
 }
 
@@ -99,7 +101,7 @@ local function Boot()
         for _, f in ipairs(CLIENT_FILES) do inc(f) end
     end
 
-    Corpus.Log("coagulant", "cargado (" .. (SERVER and "server" or "client") .. ") — Block 3 slice 3")
+    Corpus.Log("coagulant", "cargado (" .. (SERVER and "server" or "client") .. ") — Block 3 slice 4")
 end
 
 if CorpusListo() then

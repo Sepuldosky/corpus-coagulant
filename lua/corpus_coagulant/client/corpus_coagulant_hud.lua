@@ -24,6 +24,12 @@ COAGULANT.ClientState = COAGULANT.ClientState or { blood = Config.BLOOD_MAX, zon
 local blackoutHasta = 0
 local sevCabezaPrev = {}  -- severidades de la cabeza en el snapshot anterior
 
+-- Superficie que el menú médico (slice 4) consume: lee el MISMO snapshot que pinta el
+-- HUD, nunca un estado propio. Client-side y off-contract — el contrato público de §8
+-- es del server.
+COAGULANT.HUD = COAGULANT.HUD or {}
+local HUD = COAGULANT.HUD
+
 -- Score de una zona desde el snapshot — misma fórmula que GetZoneScore en server
 -- (§6: tratadas cuentan la mitad; la isquemia impone su piso).
 local function ScoreZona(zona)
@@ -36,9 +42,35 @@ local function ScoreZona(zona)
     if z.isq then score = math.max(score, Config.ISCHEMIA_SCORE) end
     return score
 end
+HUD.ZoneScore = ScoreZona
 
 local function ScoreBrazos()
     return ScoreZona("left_arm") + ScoreZona("right_arm")
+end
+
+-- Datos crudos de una zona en el snapshot ({w = heridas, tq, isq}), o una tabla vacía.
+function HUD.ZoneData(zona)
+    local z = COAGULANT.ClientState.zones and COAGULANT.ClientState.zones[zona]
+    return z or {}
+end
+
+-- ¿Sangra la zona? Misma pregunta que se hace el server, con la misma curva: una
+-- herida sin tratar cuyo BleedRate es > 0.
+function HUD.ZoneBleeding(zona)
+    for _, w in ipairs(HUD.ZoneData(zona).w or {}) do
+        if Config.BleedRate(Config.WoundFromSnap(w)) > 0 then return true end
+    end
+    return false
+end
+
+function HUD.Blood()
+    local ply = LocalPlayer()
+    if not IsValid(ply) then return Config.BLOOD_MAX end
+    return ply:GetNW2Float("coagulant_blood", Config.BLOOD_MAX)
+end
+
+function HUD.Treatment()
+    return COAGULANT.ClientState.treatment
 end
 
 -- Fade a negro al recibir una herida de cabeza media/grave (§6). Se detecta
@@ -80,8 +112,15 @@ end)
 -- de derivar (sumar el offset absoluto cada tick lo acumularía sin control).
 local swayYawPrev, swayPitchPrev = 0, 0
 
+-- Cuánto se está apuntando, 0..1. NO es el booleano del clic derecho: es una rampa en
+-- el tiempo hacia él (ronda 6 — el salto instantáneo entre capas se sentía tosco). La
+-- amplitud viaja por esta curva, la fase del bamboleo nunca se corta: la mira nunca da
+-- un tirón, solo se abre y se cierra el bamboleo.
+local swayADS = 0
+
 local function CortarSway()
     swayYawPrev, swayPitchPrev = 0, 0
+    swayADS = 0
 end
 
 hook.Add("CreateMove", "corpus_coagulant_sway", function(cmd)
@@ -97,10 +136,15 @@ hook.Add("CreateMove", "corpus_coagulant_sway", function(cmd)
     local score = ScoreBrazos()
     if score <= 0 then CortarSway() return end
 
-    -- Dos capas (§6): con el arma en mano el temblor es apenas perceptible; apuntando
-    -- (clic derecho — el ADS de ARC9/TFA/MW, y agnóstico al arma) la deriva se vuelve
-    -- incapacitante. Ahí es donde una herida de brazo tiene que doler.
-    local amp = Config.SwayFor(score, cmd:KeyDown(IN_ATTACK2))
+    -- Dos capas (§6), ahora como los extremos de una rampa: con el arma en mano el
+    -- temblor es leve; apuntando (clic derecho — el ADS de ARC9/TFA/MW, y agnóstico al
+    -- arma) la deriva se vuelve incapacitante. Ahí es donde una herida de brazo tiene
+    -- que doler. El tránsito entre las dos tarda SWAY_ADS_RAMP_S y va por smoothstep.
+    local objetivo = cmd:KeyDown(IN_ATTACK2) and 1 or 0
+    local paso = math.min(FrameTime(), 0.1) / Config.SWAY_ADS_RAMP_S -- clamp: un frame largo no teletransporta la rampa
+    swayADS = math.Approach(swayADS, objetivo, paso)
+
+    local amp = Config.SwayFor(score, swayADS)
     local yaw, pitch = Config.SwayOffset(CurTime(), amp)
 
     local ang = cmd:GetViewAngles()
@@ -241,4 +285,184 @@ hook.Add("HUDPaint", "corpus_coagulant_vision_hud", function()
         avisado = true
         Corpus.Log("coagulant", "error pintando la capa de visión: " .. tostring(err))
     end
+end)
+
+-- ============================================================
+-- Silueta de 6 zonas + barra de tratamiento (§10) — slice 4
+-- ============================================================
+
+local COL_SANO   = Color(70, 90, 70)
+local COL_MEDIO  = Color(200, 170, 60)
+local COL_GRAVE  = Color(190, 45, 40)
+local COL_BORDE  = Color(20, 20, 20)
+local COL_TEXTO  = Color(215, 215, 215)
+local COL_TQ     = Color(60, 140, 220)   -- torniquete: azul, no compite con el rojo de la herida
+local COL_ISQ    = Color(150, 60, 200)   -- isquemia: morado — la zona se está muriendo, no sangrando
+
+-- Color de una zona por su score: sano → amarillo → rojo. Dos tramos, no un lerp
+-- único: el amarillo se pierde si se interpola directo de verde a rojo.
+function HUD.ZoneColor(score)
+    local f = Config.ZoneDamageFrac(score)
+    if f <= 0 then return COL_SANO end
+    if f < 0.5 then
+        local t = f / 0.5
+        return Color(Lerp(t, COL_SANO.r, COL_MEDIO.r), Lerp(t, COL_SANO.g, COL_MEDIO.g),
+                     Lerp(t, COL_SANO.b, COL_MEDIO.b))
+    end
+    local t = (f - 0.5) / 0.5
+    return Color(Lerp(t, COL_MEDIO.r, COL_GRAVE.r), Lerp(t, COL_MEDIO.g, COL_GRAVE.g),
+                 Lerp(t, COL_MEDIO.b, COL_GRAVE.b))
+end
+
+-- Pinta la silueta en la caja dada. La geometría sale de Config.SILHOUETTE — la misma
+-- tabla que usa el menú médico para saber DÓNDE hizo clic el jugador: si el dibujo y
+-- el área clickeable salieran de tablas distintas, se desincronizarían en el primer
+-- retoque. `sel` resalta una zona (el menú marca la elegida).
+function HUD.DrawSilhouette(x, y, w, h, alpha, sel)
+    for _, p in ipairs(Config.SILHOUETTE) do
+        local zx, zy = x + p.x * w, y + p.y * h
+        local zw, zh = p.w * w, p.h * h
+        local score = ScoreZona(p.zone)
+        local col = HUD.ZoneColor(score)
+
+        -- Sangrando: la zona LATE. Es la única señal que hay que ver sin leer nada.
+        local a = alpha
+        if HUD.ZoneBleeding(p.zone) then
+            a = alpha * (0.55 + 0.45 * math.abs(math.sin(CurTime() * math.pi * 1.6)))
+        end
+
+        surface.SetDrawColor(col.r, col.g, col.b, a)
+        surface.DrawRect(zx, zy, zw, zh)
+
+        surface.SetDrawColor(COL_BORDE.r, COL_BORDE.g, COL_BORDE.b, alpha)
+        surface.DrawOutlinedRect(zx, zy, zw, zh, 1)
+
+        if sel == p.zone then
+            surface.SetDrawColor(255, 255, 255, alpha)
+            surface.DrawOutlinedRect(zx - 1, zy - 1, zw + 2, zh + 2, 2)
+        end
+
+        -- Torniquete: banda azul cruzando la zona. Isquemia: la banda se pone morada
+        -- (el torniquete lleva demasiado puesto — la extremidad se muere).
+        local zd = HUD.ZoneData(p.zone)
+        if zd.tq or zd.isq then
+            local c = zd.isq and COL_ISQ or COL_TQ
+            surface.SetDrawColor(c.r, c.g, c.b, alpha)
+            surface.DrawRect(zx, zy + zh * 0.42, zw, math.max(2, zh * 0.12))
+        end
+    end
+end
+
+-- Barra de progreso del tratamiento (§9/§10): se calcula acá con el {endsAt, duration}
+-- del snapshot — el server no manda un tick de progreso.
+local KIND_LABEL = {
+    bandage = "Bandaging", tourniquet = "Applying tourniquet",
+    medkit = "Using medkit", bloodbag = "Transfusing",
+}
+
+local function PintarBarraTratamiento()
+    local tr = HUD.Treatment()
+    if tr == nil then return end
+
+    local w, h = 320, 16
+    local x, y = (ScrW() - w) * 0.5, ScrH() - 140
+    local f = Config.TreatmentProgress(tr, CurTime())
+
+    surface.SetDrawColor(15, 15, 15, 200)
+    surface.DrawRect(x - 2, y - 2, w + 4, h + 4)
+    surface.SetDrawColor(50, 130, 60, 230)
+    surface.DrawRect(x, y, w * f, h)
+    surface.SetDrawColor(200, 200, 200, 90)
+    surface.DrawOutlinedRect(x, y, w, h, 1)
+
+    local etiqueta = KIND_LABEL[tr.kind] or tr.kind
+    if tr.kind == "tourniquet" and tr.removing then etiqueta = "Removing tourniquet" end
+    if tr.zone ~= nil and tr.kind ~= "bloodbag" then
+        etiqueta = etiqueta .. " — " .. (COAGULANT.Zones.LABELS[tr.zone] or tr.zone)
+    end
+
+    draw.SimpleText(etiqueta, "DermaDefaultBold", ScrW() * 0.5, y - 6, COL_TEXTO,
+        TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM)
+    draw.SimpleText("Hold still", "DermaDefault", ScrW() * 0.5, y + h + 3, COL_TEXTO,
+        TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP)
+end
+
+-- La silueta se DESVANECE cuando no hay nada que mirar (§10): cuerpo sano y sangre
+-- llena. No se apaga de golpe — un corte seco se lee como un bug del HUD.
+local alphaHUD = 0
+
+local function HayQueMostrar()
+    if HUD.Treatment() ~= nil then return true end
+    if HUD.Blood() < Config.BLOOD_MAX - 0.5 then return true end
+    for _, z in ipairs(COAGULANT.Zones.LIST) do
+        if ScoreZona(z) > 0 then return true end
+        local zd = HUD.ZoneData(z)
+        if zd.tq or zd.isq then return true end
+    end
+    return false
+end
+
+local function PintarSilueta()
+    if not Config.cv_hud:GetBool() then alphaHUD = 0 return end
+    local ply = LocalPlayer()
+    if not IsValid(ply) or not ply:Alive() then alphaHUD = 0 return end
+
+    local objetivo = HayQueMostrar() and 255 or 0
+    alphaHUD = math.Approach(alphaHUD, objetivo, FrameTime() * 400)
+    if alphaHUD < 1 then return end
+
+    local w, h = 78, 132
+    local x, y = 24, ScrH() * 0.5 - h * 0.5
+    HUD.DrawSilhouette(x, y, w, h, alphaHUD)
+
+    -- Sin Cargo no hay StatusPanel donde poner la sangre: mini-barra propia bajo la
+    -- silueta (§14 — degradación honesta: la información no puede depender de un
+    -- soft-dep). Con Cargo montado, la barra vive en SU panel y acá no se duplica.
+    if not Corpus.HasModule("cargo") then
+        local sangre = HUD.Blood() / Config.BLOOD_MAX
+        local by = y + h + 8
+        surface.SetDrawColor(15, 15, 15, alphaHUD * 0.8)
+        surface.DrawRect(x - 1, by - 1, w + 2, 8)
+        surface.SetDrawColor(150, 30, 30, alphaHUD)
+        surface.DrawRect(x, by, w * sangre, 6)
+        draw.SimpleText("Blood", "DermaDefault", x, by + 9, Color(200, 200, 200, alphaHUD))
+    end
+end
+
+local avisadoHUD = false
+hook.Add("HUDPaint", "corpus_coagulant_hud", function()
+    if not Config.Enabled() then return end
+    -- pcall por la misma razón que la capa de visión: un error de pintado deja el HUD
+    -- muerto en silencio el resto de la sesión.
+    local ok, err = pcall(function()
+        PintarSilueta()
+        PintarBarraTratamiento()
+    end)
+    if not ok and not avisadoHUD then
+        avisadoHUD = true
+        Corpus.Log("coagulant", "error pintando el HUD: " .. tostring(err))
+    end
+end)
+
+-- ============================================================
+-- Barra de sangre en el StatusPanel de Cargo (§10, §12)
+-- ============================================================
+
+-- Lazy-check en OnReady, nunca en file-scope: el orden de mount no está garantizado
+-- (§6 del framework). Sin Cargo no se registra nada y la mini-barra de arriba cubre
+-- el hueco — degradación honesta, sin un solo `if` de más en el resto del archivo.
+Corpus.OnReady(function()
+    local cargo = Corpus.GetModule("cargo")
+    if cargo == nil or cargo.StatusPanel == nil then return end
+
+    cargo.StatusPanel.RegisterBar("coagulant", {
+        id = "blood",
+        label = "Blood",
+        color = Color(150, 30, 30),
+        getValue = function(ply)  -- la firma real de Cargo: devuelve 0..100
+            if not IsValid(ply) then return 100 end
+            return ply:GetNW2Float("coagulant_blood", Config.BLOOD_MAX)
+        end,
+    })
+    Corpus.Log("coagulant", "barra de sangre registrada en el StatusPanel de Cargo")
 end)
