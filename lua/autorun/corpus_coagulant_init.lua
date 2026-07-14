@@ -5,9 +5,10 @@
 -- "Initialize" porque gmod fusiona lua/autorun/ alfabéticamente entre addons y
 -- "corpus_coagulant_init.lua" ordena ANTES que "corpus_registry.lua".
 --
--- BLOCK 3 EN BAJADA (slice 2 de 4 — Coagulant_Architecture.md §15): sangre +
--- heridas + sangrado (slice 1, verificado en juego) y tratamiento con tiempo +
--- 4 ítems (slice 2). Debuffs (slice 3) y UI (slice 4) todavía no aterrizan.
+-- BLOCK 3 EN BAJADA (slice 3 de 4 — Coagulant_Architecture.md §15): sangre +
+-- heridas + sangrado (slice 1), tratamiento con tiempo + 4 ítems (slice 2, ambos
+-- verificados en juego) y debuffs zonales (slice 3: cojera, sway, visión). La UI
+-- (slice 4: silueta, menú médico, StatusPanel) todavía no aterriza.
 
 -- ============================================================
 -- CONTRATO PÚBLICO DE COAGULANT (Coagulant_Architecture.md §8). Consumido por
@@ -32,6 +33,13 @@
 --
 --   Eventos (hook.Run, server): Coagulant_WoundAdded / Coagulant_WoundClosed /
 --   Coagulant_BloodCritical (+ Treatment* con el slice 2) — §8 de la arquitectura.
+--
+--   Estado replicado (§9), superficie de red estable:
+--     NW2Float "coagulant_blood"      -- sangre 0..100 (barato, para HUD/StatusPanel)
+--     NW2Float "coagulant_speed_mult" -- cojera; la APLICA el hook Move compartido
+--                                        (shared/corpus_coagulant_move.lua), NUNCA
+--                                        SetWalkSpeed: así compone con el
+--                                        multiplicador de peso de Cargo (§6)
 -- ============================================================
 
 -- ============================================================
@@ -43,6 +51,7 @@
 local SHARED = {
     "shared/corpus_coagulant_zones.lua",  -- zonas clínicas + mapa hitgroup->zona (puro)
     "shared/corpus_coagulant_config.lua", -- convars + tablas de balance + funcs puras
+    "shared/corpus_coagulant_move.lua",   -- hook Move: aplica la cojera (predicho: shared)
     "shared/corpus_coagulant_items.lua",  -- ítems contra Cargo — AMBOS realms: el grid
                                           -- cliente de Cargo renderiza desde defs locales
     "shared/corpus_coagulant_dev.lua",    -- coagulant_selftest + comandos de verificación
@@ -51,8 +60,10 @@ local SERVER_FILES = {
     "server/corpus_coagulant_core.lua",      -- estado clínico + creación de heridas + eventos
     "server/corpus_coagulant_bleeding.lua",  -- timer 1s: drenaje, regen, HP crítico, snapshot
     "server/corpus_coagulant_treatment.lua", -- tratamiento con tiempo + consumo al completar
+    "server/corpus_coagulant_debuffs.lua",   -- tick 0.5s: cojera (NW2) + sway de brazos
 }
 local CLIENT_FILES = {
+    "client/corpus_coagulant_hud.lua",     -- snapshot replicado + capa de visión (§6)
     "client/corpus_coagulant_options.lua", -- tab único Corpus.UI.RegisterTab
 }
 
@@ -88,7 +99,7 @@ local function Boot()
         for _, f in ipairs(CLIENT_FILES) do inc(f) end
     end
 
-    Corpus.Log("coagulant", "cargado (" .. (SERVER and "server" or "client") .. ") — Block 3 slice 2")
+    Corpus.Log("coagulant", "cargado (" .. (SERVER and "server" or "client") .. ") — Block 3 slice 3")
 end
 
 if CorpusListo() then
