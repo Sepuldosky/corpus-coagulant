@@ -64,10 +64,12 @@ function COAGULANT.ApplyTreatment(ply, kind, zone)
 
     -- Ítems: con Cargo presente el tratamiento requiere la unidad (el torniquete
     -- no se consume, pero sí debe estar en el inventario para ponerlo; quitarlo
-    -- no pide nada). Sin Cargo: modo degradado con cooldown.
+    -- no pide nada). Presencia vía HasItem, NUNCA CountItem: los `unique` (el
+    -- torniquete) se guardan como {id, uid} y CountItem solo cuenta stacks —
+    -- pagado en juego en la ronda 3 (G4). Sin Cargo: modo degradado con cooldown.
     local cargo = Corpus.GetModule("cargo")
     if cargo ~= nil then
-        if not removing and cargo.Inventory.CountItem(ply, t.item) < 1 then
+        if not removing and not cargo.Inventory.HasItem(ply, t.item) then
             return false, "No " .. kind .. " in inventory"
         end
     else
