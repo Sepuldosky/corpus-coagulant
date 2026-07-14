@@ -13,12 +13,16 @@ local MSG_STATE = Corpus.Net.Register("coagulant", "state")
 local function EnviarSnapshot(ply, st)
     local zonas = {}
     for zona, zdata in pairs(st.zones) do
-        if #zdata.wounds > 0 or zdata.tourniquet then
+        -- la isquemia entra en el snapshot porque el CLIENTE calcula con ella: el
+        -- sway (§6) lee el score de brazos de acá, y sin este dato daría un número
+        -- distinto al del server justo cuando el torniquete lleva rato puesto
+        local isq = COAGULANT.IsIschemic(ply, zona)
+        if #zdata.wounds > 0 or zdata.tourniquet or isq then
             local ws = {}
             for i, w in ipairs(zdata.wounds) do
                 ws[i] = { t = w.type, s = w.severity, tr = w.treated or nil }
             end
-            zonas[zona] = { w = ws, tq = zdata.tourniquet or nil }
+            zonas[zona] = { w = ws, tq = zdata.tourniquet or nil, isq = isq or nil }
         end
     end
     local blob = util.Compress(util.TableToJSON({

@@ -66,22 +66,29 @@ function COAGULANT.IsBleeding(ply)
     return false
 end
 
+-- ¿La zona está isquémica? (§7: torniquete puesto más de 90 s, o hasta 60 s tras
+-- quitarlo). Off-contract, pero la consultan el score, el snapshot al cliente y
+-- coagulant_status — vive en un solo lugar para que los tres digan lo mismo.
+function COAGULANT.IsIschemic(ply, zone)
+    local st = COAGULANT.GetState(ply)
+    if st == nil or st.zones[zone] == nil then return false end
+    local zdata = st.zones[zone]
+    return (zdata.tourniquet and zdata.tourniquetAt ~= nil
+            and CurTime() - zdata.tourniquetAt > Config.TOURNIQUET_ISCHEMIA_S)
+        or (zdata.ischemiaUntil ~= nil and CurTime() < zdata.ischemiaUntil)
+end
+
 -- Score de debuff de la zona (§6): Σ severidades; las tratadas cuentan la mitad.
--- La isquemia por torniquete (§7: puesto > 90 s, y hasta 60 s tras quitarlo)
--- impone un piso de score alto — el costo de dejarlo puesto.
+-- La isquemia impone un piso de score alto — el costo de dejar el torniquete puesto.
 function COAGULANT.GetZoneScore(ply, zone)
     local st = COAGULANT.GetState(ply)
     if st == nil or st.zones[zone] == nil then return 0 end
-    local zdata = st.zones[zone]
     local score = 0
-    for _, w in ipairs(zdata.wounds) do
+    for _, w in ipairs(st.zones[zone].wounds) do
         score = score + (w.treated and w.severity * 0.5 or w.severity)
     end
 
-    local isquemica = (zdata.tourniquet and zdata.tourniquetAt ~= nil
-            and CurTime() - zdata.tourniquetAt > Config.TOURNIQUET_ISCHEMIA_S)
-        or (zdata.ischemiaUntil ~= nil and CurTime() < zdata.ischemiaUntil)
-    if isquemica then
+    if COAGULANT.IsIschemic(ply, zone) then
         score = math.max(score, Config.ISCHEMIA_SCORE)
     end
     return score
@@ -162,6 +169,42 @@ function COAGULANT.BandageEffect(ply, zone)
     end
     st.dirty = true
     return true
+end
+
+-- Cierra definitivamente las heridas ya TRATADAS de una zona; devuelve cuántas.
+-- Es la ÚNICA cura de la secuela (§7, decisión del autor tras la ronda 5): vendar
+-- corta el sangrado pero deja media severidad pesando en el debuff PARA SIEMPRE —
+-- el Medkit es lo que borra eso. Las heridas sin tratar no se tocan: primero se
+-- vendan. La usa el motor de tratamiento al completar un medkit.
+function COAGULANT.HealTreatedWounds(ply, zone)
+    local st = COAGULANT.GetState(ply)
+    if st == nil or st.zones[zone] == nil then return 0 end
+    local wounds = st.zones[zone].wounds
+    local n = 0
+    for i = #wounds, 1, -1 do
+        if wounds[i].treated then
+            table.remove(wounds, i)
+            n = n + 1
+        end
+    end
+    if n > 0 then st.dirty = true end
+    return n
+end
+
+-- Zona con más secuela tratada (destino automático del medkit, §7). nil si no hay
+-- ninguna herida tratada en el cuerpo.
+function COAGULANT.WorstTreatedZone(ply)
+    local st = COAGULANT.GetState(ply)
+    if st == nil then return nil end
+    local mejorZona, mejorScore = nil, 0
+    for zona, zdata in pairs(st.zones) do
+        local score = 0
+        for _, w in ipairs(zdata.wounds) do
+            if w.treated then score = score + w.severity * 0.5 end
+        end
+        if score > mejorScore then mejorZona, mejorScore = zona, score end
+    end
+    return mejorZona
 end
 
 -- Zona con la herida sangrante más grave (para zona automática de tratamiento).
