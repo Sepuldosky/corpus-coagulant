@@ -8,6 +8,11 @@
 > bloque converge, este doc se **vuelca** a `Coagulant_Architecture.md` (doc
 > particular autocontenido, flujo §2) y la semilla queda como registro histórico.
 >
+> **Ese volcado ya ocurrió** (arquitectura ratificada el 2026-07-13, en bajada a
+> código desde entonces): este doc es **registro histórico**, no una lista de
+> trabajo. La fuente de verdad del diseño es `Coagulant_Architecture.md`; el estado
+> vivo, `coagulant_estado.md`.
+>
 > Metodología: planificación densa por bloques + vertical slice
 > (`../../corpus/docs/corpus_flujo_trabajo.txt` §2-§3).
 
@@ -44,7 +49,10 @@ sustrato v1: se diseña el esqueleto que permita crecer hacia allá.
 
 Cada decisión se cierra en conversación con el autor y se anota acá con
 `→ RESUELTO:` antes de bajar nada a código. **Primera pasada cerrada el 2026-07-13**
-(tres rondas de preguntas al autor); lo que sigue abierto está marcado.
+(tres rondas de preguntas al autor). **No queda ninguna decisión abierta:** las tres
+que quedaron delegadas a la arquitectura (curva de drenaje, vía sin Cargo, set de
+convars) se cerraron ahí y ya están en código — cada una lleva abajo el puntero a
+dónde vive su resolución.
 
 ### A. Modelo de vitales — la decisión estructural
 - **→ RESUELTO (2026-07-13): A2 — sangre propia en paralelo.** Volumen de sangre
@@ -70,8 +78,15 @@ Cada decisión se cierra en conversación con el autor y se anota acá con
   severidad es trabajo de la arquitectura (abajo).
 - Apilado: **lista de heridas por zona** (implícito en la UI resuelta en F: se
   elige zona → se ven heridas → se trata herida por herida).
-- PENDIENTE (arquitectura): curva de drenaje (f(severidad) por tick), números de
-  balance, y si la contusión/fractura tiene efecto estructural propio en v1.
+- **→ RESUELTO (arquitectura §3-§4, en código):** drenaje = `base(severidad) ×
+  mult(tipo)` por tick de 1 s, con `base = { [1]=0.15, [2]=0.40, [3]=1.00 }`
+  (`Config.BLEED_BASE` / `Config.BleedRate`) y `mult` por tipo en
+  `Config.WOUND_TYPES` (bala 1.0, corte 0.8, metralla 0.9, quemadura 0.2,
+  contusión 0.0). Severidad por daño **final**: `<15` leve · `15-40` media · `>40`
+  grave. Tope de 5 heridas por zona (al exceder se agrava la más leve). La
+  **contusión no sangra pero sí cuenta para el debuff zonal** (entra al score de
+  `GetZoneScore` como cualquier herida); fractura como efecto estructural propio
+  **no** entra en v1. Todos los números son tunables por convar/tabla.
 
 ### D. Efectos por zona (el "para qué" de las zonas)
 - **→ RESUELTO (2026-07-13): los tres debuffs entran en v1** — pierna → cojera
@@ -92,9 +107,11 @@ Cada decisión se cierra en conversación con el autor y se anota acá con
 - **→ RESUELTO: uso con tiempo de aplicación + barra de progreso**, interrumpible
   (movimiento brusco / recibir daño).
 - **→ RESUELTO: solo auto-tratamiento en v1** — tratar a otros se difiere (§4).
-- PENDIENTE (arquitectura): la vía sin Cargo. Propuesta a validar: sin Cargo el
-  panel médico trata sin consumir ítems (con cooldown, claramente marcado como
-  modo degradado); el concommand `coagulant_bandage` queda solo debug.
+- **→ RESUELTO (arquitectura §7, en código): la propuesta se validó tal cual.** Sin
+  Cargo, el menú médico ofrece los mismos tratamientos **sin consumir ítems**, con
+  cooldown de 30 s (`Config.DEGRADED_COOLDOWN_S`) y los botones rotulados «field»;
+  el concommand `coagulant_bandage` queda solo como debug/admin. La interacción con
+  world-entities (botiquín de pared) queda **diferida**.
 
 ### F. Presentación y configuración
 - **→ RESUELTO (2026-07-13): HUD silueta zonal + StatusPanel de Cargo.** Silueta
@@ -106,8 +123,13 @@ Cada decisión se cierra en conversación con el autor y se anota acá con
 - **→ RESUELTO: spawn = cuerpo nuevo.** Morir/respawnear resetea el estado;
   desconectarse en vida lo conserva en memoria del server. **Sin persistencia a
   disco en v1** (sin `Corpus.Data` hasta que algo lo justifique).
-- PENDIENTE (arquitectura): set de convars de server (dificultad de sangrado,
-  on/off por subsistema) y qué expone el tab Q.
+- **→ RESUELTO (arquitectura §11, en código): 10 convars** — 8 de server
+  (`coagulant_enabled`, los tres multiplicadores de dificultad `bleed_scale` /
+  `regen_scale` / `hpdrain_scale`, `coagulant_debug`, y el on/off por subsistema
+  `debuff_legs` / `debuff_arms` / `debuff_head`) y 2 de cliente (`coagulant_hud`,
+  `coagulant_key_menu`). El tab Q (`corpus_coagulant_options.lua`) expone las de
+  cliente, las de server (editables por admin), el binder del menú médico, el
+  estado de los soft-deps y los comandos de verificación.
 
 ## 4. No-scope explícito del Block 3 (candidatos a bloques futuros)
 

@@ -278,8 +278,9 @@ end
 concommand.Add("coagulant_menu", Abrir, nil,
     "Open the medical menu (click a body zone, then a treatment)")
 
--- Tecla directa (§10: "bind sugerido en el tab Q"). El binder del tab escribe esta
--- convar; el default es la M porque no la usa ningún bind del juego base.
+-- Tecla directa (§10: convar de cliente propia con su DBinder en el tab Q). El binder
+-- del tab escribe esta convar; el default es la M porque no la usa ningún bind del
+-- juego base.
 COAGULANT.CV_KEY_MENU = CreateClientConVar("coagulant_key_menu", tostring(KEY_M), true, false,
     "Key that opens the medical menu (0 = unbound; bind it from the Q tab)")
 
@@ -291,6 +292,12 @@ hook.Add("PlayerButtonDown", "corpus_coagulant_medmenu_key", function(ply, boton
     -- No robarle la tecla al chat ni a otro menú abierto: PlayerButtonDown dispara
     -- igual mientras se escribe.
     if gui.IsGameUIVisible() or vgui.CursorVisible() then return end
-    if IsValid(frame) then frame:Remove() return end -- misma tecla: abre y cierra
+    -- DEUDA (slice 4, anotada para la ronda 7 — §10): esta rama es INALCANZABLE. El guard
+    -- de arriba corre ANTES, y el frame se abre con MakePopup() → con el menú abierto el
+    -- cursor SIEMPRE está visible, así que nunca se llega al Remove. Hoy la tecla solo ABRE;
+    -- el cierre es la X del DFrame. El patrón que sí funciona ya está pago en Cargo
+    -- (corpus_cargo_ui.lua): poleo de input.IsButtonDown en Think con detector de flanco y
+    -- guard vgui.GetKeyboardFocus() == nil, que NO es lo mismo que CursorVisible.
+    if IsValid(frame) then frame:Remove() return end
     Abrir()
 end)

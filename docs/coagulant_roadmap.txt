@@ -22,35 +22,28 @@ salud por inanición/deshidratación, opcional).
 1. INMEDIATO
 --------------
 
-  [1] Verificación en juego del scaffold pre-Block 3 (la corre el autor):
-      boot + coagulant_selftest + lastHit + venda vía Cargo + tab de UI.
-      Al pasar: flipear CHANGELOG sesión 2026-07-13 a [APLICADO].
+  [1] Ronda 7 en juego (la corre el autor): el slice 4 entero (silueta en el HUD,
+      menú médico por zona, barra de tratamiento, barra de sangre en el StatusPanel
+      de Cargo, tab Q) + el sway retuneado. Criterio de la arquitectura §15: el flujo
+      completo sin consola. Al pasar: flipear a [APLICADO] las sesiones "Tuning del
+      sway — ronda 6" (3 parches) y "Block 3 — slice 4: UI" (7 parches) del CHANGELOG.
 
-  [2] Ratificación de docs/Coagulant_Architecture.md (autor). La primera pasada de
-      diseño ya cerró (2026-07-13, resoluciones en Coagulant_Block3_Semilla.md §3);
-      el doc baja esas decisiones a spec con números de balance PROPUESTOS (tunables
-      por convar). Al ratificar: Block 3 de diseño cerrado → sección resumen en
-      CORPUS_Architecture.md §9.
+  [2] Checklist de cierre del Block 3 (arquitectura §16): sección resumen + link en
+      CORPUS_Architecture.md §9, CLAUDE.md de este repo al día, y anotar en
+      corpus/docs/corpus_estado.md que Coagulant deja de ser scaffold.
 
 
-2. SIGUIENTE — después de ratificar la arquitectura
------------------------------------------------------
+2. SIGUIENTE — después de cerrar el Block 3
+---------------------------------------------
 
-  [3] Bajada a código del sustrato v1 por vertical slice (arquitectura §15, flujo
-      §3), 4 slices verificables en juego cada uno:
-        1. sangre + heridas + sangrado (timer, HP crítico, NW2, snapshot)
-        2. tratamiento vía Cargo (4 ítems, consumo al completar, torniquete)
-        3. debuffs zonales (cojera composable con Cargo, sway, visión)
-        4. UI (HUD silueta, menú médico, StatusPanel, tab Q)
-      Net entra en el slice 1 (snapshot/intents); persistencia a disco NO entra
-      (spawn = cuerpo nuevo, decisión F).
-
-  [4] Wiring real con Caliber cuando su Block 3 (pipeline de armadura de jugador)
+  [3] Wiring real con Caliber cuando su Block 3 (pipeline de armadura de jugador)
       exponga el hit-location enriquecido / eventos de daño-limb: reemplazar la
       rama mock-first de ScalePlayerDamage sin tocar la vía de degradación.
 
-  [5] Superficie para Craving: eventos de estado clínico consumibles (soft-dep
-      inversa — Craving detecta a Coagulant, nunca al revés).
+  [4] Superficie para Craving: eventos de estado clínico consumibles (soft-dep
+      inversa — Craving detecta a Coagulant, nunca al revés). Concretamente, la
+      firma que ya se negocia con su Block 4 (cerrado, hoy en puente mock-first):
+      ApplyExternalCondition(ply, stat, severity).
 
 
 =====================================================

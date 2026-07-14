@@ -614,3 +614,182 @@ verificación en juego (artefacto, ronda 7).
 - PARCHE 7 — chore(init): el manifest suma `medmenu` (client, **después** de `hud`: lee
   su silueta), el header y el log de boot pasan a "Block 3 slice 4". Las convenciones de
   commits ganan el alcance `medmenu`. **[PENDIENTE]**
+
+---
+
+## PARCHES DE sesión Pasada de veracidad de docs — 2026-07-14
+
+Auditoría de VERACIDAD cruzando cada afirmación de los docs contra el árbol real: los
+docs de este repo habían quedado congelados en el momento en que el diseño se ratificó y
+los tres primeros slices bajaron a código. La deriva es de dos clases: **estado viejo**
+(la arquitectura y el CLAUDE.md seguían llamándose «borrador para ratificación», y el
+roadmap tenía como INMEDIATO dos tramos ya cerrados) y **rot de la ronda 5**, cuando el
+sway pasó de un `ViewPunch` de server a una deriva continua de cliente (`CreateMove`) y
+los docs quedaron describiendo el mecanismo muerto en **cinco** sitios (dos en la
+arquitectura, el `CLAUDE.md`, las convenciones de commit y un comentario del manifest).
+La segunda pasada (PARCHES 7-8) sumó el quinto sitio y otras cuatro afirmaciones falsas
+que la primera no había abierto. La **tercera** (PARCHES 9-12) abrió los dos docs que
+ninguna de las dos anteriores había tocado: el `README.md` —el doc **público**, que seguía
+entero en la era scaffold («sin gameplay», «ítem semilla», «diseño pendiente»)— y la
+semilla del Block 3, que dejaba tres decisiones marcadas «PENDIENTE» estando cerradas y en
+juego. La **cuarta** (PARCHES 13-15) cerró el último reducto: los **comentarios del código**,
+donde sobrevivían el sexto sitio del rot de la tecla («abre y cierra»), una cita entre
+comillas a una versión de §10 que ya no existe y un puntero al contrato #6 del `CLAUDE.md`
+que hoy apunta a otra cosa. Sin superficie de runtime: solo docs y comentarios —ni una línea
+ejecutable cambió, y el bug de la tecla queda **anotado, no arreglado**, para la ronda 7 del
+autor— nacen `[APLICADO]`.
+
+- PARCHE 1 — docs(docs): el encabezado de `Coagulant_Architecture.md` deja de decir
+  «borrador para ratificación del autor» — la arquitectura está **ratificada desde el
+  2026-07-13** y en bajada a código desde entonces. **No** se incrusta acá el avance por
+  slice: el estado vivo es de `coagulant_estado.md` (duplicarlo garantiza que quede viejo
+  el día que corra la ronda 7 — el pecado que esta pasada corrige). Mismo fix en el punto
+  5 de la jerarquía de lectura del `CLAUDE.md`, que se contradecía con su propia línea 9.
+  **[APLICADO 2026-07-14]**
+
+- PARCHE 2 — docs(docs): §10 (pieza 2, menú médico) describe el comportamiento **real**
+  de los botones: sin Cargo se rotulan *field* y **no se grisan por cooldown**, porque el
+  cooldown del modo degradado **no viaja en el snapshot** (§9) — el rechazo llega por chat
+  desde el server, que es la autoridad. Sí se grisan por tratamiento en curso y por
+  torniquete en zona que no es extremidad (`ConstruirBoton`). Se documenta la realidad, no
+  se cambia el runtime: honrar el diseño exigiría sumar `freeCooldownAt` al payload, y esa
+  es una decisión de código que el autor deja para después. De paso, el «bind sugerido en
+  el tab Q» pasa a lo implementado: convar de cliente propia (`coagulant_key_menu`, default
+  `KEY_M`) con su DBinder en el tab y un `PlayerButtonDown` que abre el menú.
+  **[APLICADO 2026-07-14]** — corregido en la segunda pasada (PARCHE 8): la tecla **no**
+  cierra, la rama de cierre es inalcanzable.
+
+- PARCHE 3 — docs(docs): la tabla de convars (§11) listaba **8** de las **10** que el
+  código registra. Suman `coagulant_debug` (sv) y `coagulant_key_menu` (cl).
+  **[APLICADO 2026-07-14]**
+
+- PARCHE 4 — docs(docs): §12 (soft-deps, Cargo) atribuía los conteos del menú médico a
+  `Inventory.CountItem` — **imposible**: `CountItem` es server y el menú es cliente. La
+  realidad: `HasItem` valida el arranque (la única superficie que ve los `unique`),
+  `CountItem` + `TakeItem` corren en server **al completar**, y el conteo de los botones
+  sale de **`CARGO.ClientState.items`**, que es superficie **off-contract** de Cargo. Queda
+  anotada como deuda asumida: si Cargo cambia la forma de su snapshot, los botones se
+  rompen en silencio. **[APLICADO 2026-07-14]**
+
+- PARCHE 5 — docs(docs): se mata el rot del `ViewPunch` en los **cinco** sitios donde
+  seguía vivo — §13 (mapa de archivos: el `debuffs` de server ya no «hace sway punch»; el
+  `hud` de cliente sí lleva el sway por `CreateMove`), **§15 (el slice 3 seguía
+  atribuyendo el sway a los debuffs de server; se contó de más tarde, en la pasada de
+  cierre — el «tres» original se quedaba corto)**, la fila de `debuffs` del mapa del
+  `CLAUDE.md`, el comentario del manifest en `corpus_coagulant_init.lua`, y **el alcance
+  `debuffs` de `coagulant_convenciones_commits.txt` §3** (quinto sitio, encontrado en la
+  segunda pasada — PARCHE 7: se contradecía con el alcance `hud` del mismo archivo). La
+  arquitectura ya decía en §6 que el sway se aplica en el cliente: el doc se contradecía a
+  sí mismo. De paso, la fila de `options` de §13 («bind hint») se alinea con el cierre de
+  §10: lo que hay es un **DBinder** de `coagulant_key_menu`. **[APLICADO 2026-07-14]**
+
+- PARCHE 6 — docs(docs): `coagulant_roadmap.txt` se pone al día. §1 INMEDIATO tenía como
+  próximos dos tramos ya cerrados (la verificación del scaffold y la ratificación de la
+  arquitectura); pasa a la **ronda 7** (el slice 4 + el sway retuneado, con el flip de las
+  10 entradas `[PENDIENTE]` del CHANGELOG) y al **checklist de cierre del Block 3**. §2 se
+  retitula «después de **cerrar** el Block 3» —ratificar ya no es condición de nada—,
+  pierde el ítem de la bajada por slices (los 4 están bajados) y concreta la superficie
+  para Craving con la firma que ya se negocia: `ApplyExternalCondition(ply, stat,
+  severity)`. **[APLICADO 2026-07-14]**
+
+- PARCHE 7 — docs(docs): **segunda pasada** de la misma auditoría (ronda 3 del ecosistema),
+  esta vez sobre los docs que la primera no abrió: convenciones de commit, CLAUDE.md y el
+  checklist de cierre. Cuatro mentiras más, todas verificadas contra el código:
+  **(a)** el alcance `debuffs` de `coagulant_convenciones_commits.txt` §3 le atribuía el
+  sway al server (quinto sitio del rot del `ViewPunch`, y se contradecía con el alcance
+  `hud` del mismo archivo) — el sway es de cliente (`CreateMove` en
+  `corpus_coagulant_hud.lua`), `debuffs` es scores + cojera por NW2. **(b)** El flujo de
+  verificación en juego del `CLAUDE.md` seguía siendo el del scaffold: «usarla loguea el
+  stub y consume una unidad» — no existe ningún stub (el `onUse` llama a `ApplyTreatment`
+  y arranca 4 s de venda) y la unidad **no** se consume al usar, sino al COMPLETAR
+  (contrato #5 del propio archivo, que la frase contradecía). **(c)** La lista de alcances
+  del `CLAUDE.md` tenía 6 de los 12 del doc canónico —faltaban `config`, `treatment`,
+  `debuffs`, `hud` y `medmenu`— y listaba `chore`, que es un **tipo**, no un alcance.
+  **(d)** El ítem 4 del checklist de cierre (§16) mandaba reemplazar un contrato #6 que ya
+  no existe («sin gameplay antes del diseño»): el reemplazo ocurrió con la bajada por
+  slices. **[APLICADO 2026-07-14]**
+
+- PARCHE 8 — docs(docs): §10 (pieza 2) deja de afirmar que la tecla del menú médico «abre y
+  cierra». **La rama de cierre es inalcanzable**: en `corpus_coagulant_medmenu.lua` el guard
+  (`gui.IsGameUIVisible() or vgui.CursorVisible()`) corre ANTES del toggle y el frame se abre
+  con `MakePopup()` → con el menú abierto el cursor siempre está visible → el `frame:Remove()`
+  nunca corre. Hoy la tecla abre y el cierre es la **X del `DFrame`**. El doc pasa a decir eso
+  y lo deja anotado como deuda del slice 4 para la **ronda 7**, con el precedente de Cargo
+  (`corpus_cargo_ui.lua`: `PlayerButtonDown` **no dispara client-side en singleplayer** —
+  quirk del engine—, por eso su bind poletea `input.IsButtonDown` en `Think` con detector de
+  flanco y guard `vgui.GetKeyboardFocus() == nil`, que no es `CursorVisible`). **Sin tocar el
+  runtime**: el fix del hook lo decide el autor. De paso, «manda el intent y cierra» pasa a la
+  verdad — el menú queda abierto mostrando el progreso. **[APLICADO 2026-07-14]**
+
+- PARCHE 9 — docs(docs): **el `README.md`** — el único doc del repo que seguía entero en la era
+  scaffold, y el que ve cualquiera que entre por GitHub. Decía «**Estado: scaffold pre-diseño**
+  … estado por jugador **sin gameplay**, **ítem semilla** … su bloque de diseño de dominio
+  (heridas, sangrado, vitales, tratamiento) **sigue pendiente**»: falso en cada cláusula. El
+  Block 3 se ratificó el 2026-07-13 y sus 4 slices están bajados a código (13 archivos `.lua`);
+  hay gameplay (sangre 0-100, heridas por damage type con severidad, sangrado con drenaje de HP
+  bajo el crítico, tres debuffs zonales) y **cuatro** defs reales contra Cargo, no una semilla
+  (venda, torniquete, medkit, bolsa de sangre — categoría `medical`). El bloque de estado pasa a
+  la verdad del árbol (Block 3, slice 4 de 4; slices 1-3 verificados en juego, el 4 esperando la
+  ronda 7) y suma el link a la arquitectura del módulo, que no aparecía. La sección de deps deja
+  de llamarse «previstas» (Corpus está cableado y Cargo consumido de verdad; solo Caliber sigue
+  mock-first). **[APLICADO 2026-07-14]**
+
+- PARCHE 10 — docs(docs): la degradación sin Cargo del `README` decía «tratamiento por
+  **world-entity** o vía mínima propia» — la arquitectura §7 difiere explícitamente la
+  interacción con world-entities (botiquín de pared). Lo que existe es el modo degradado: los
+  mismos tratamientos **sin consumir ítems**, con cooldown de 30 s (`Config.DEGRADED_COOLDOWN_S`)
+  y los botones rotulados «field». **[APLICADO 2026-07-14]**
+
+- PARCHE 11 — docs(docs): `CLAUDE.md` §«El workspace multi-repo» decía «una de **seis** raíces».
+  `corpus.code-workspace` declara **ocho** carpetas = **siete** repos git + `dev/` (que no es
+  repo): faltaba entera la séptima raíz, `corpus-stalker`, el addon de **contenido** de la Zona
+  — que este mismo repo ya citaba dos veces en `coagulant_estado.md` como si existiera. Se
+  corrige la cardinalidad y se anota qué es (consumidor puro; nada de su contenido baja acá:
+  Coagulant es genérico y no sabe nada de la Zona). **[APLICADO 2026-07-14]**
+
+- PARCHE 12 — docs(docs): `Coagulant_Block3_Semilla.md` §3 — el preámbulo prometía que «lo que
+  sigue abierto está marcado» y dejaba **tres** decisiones «PENDIENTE (arquitectura)» que la
+  arquitectura ya resolvió y el código ya implementa. `CLAUDE.md` manda leer la semilla como «el
+  registro de decisiones»: un lector se llevaba tres preguntas abiertas que están cerradas **y en
+  juego**. Las tres pasan a `→ RESUELTO` con el puntero a dónde viven: **(a)** curva de drenaje y
+  números de balance → §3-§4 (`base = {0.15, 0.40, 1.00}` × `mult` de tipo, severidad por daño
+  final, `Config.BLEED_BASE`/`BleedRate`), incluida la cola olvidada de esa misma línea (la
+  contusión no sangra pero **sí** cuenta para el debuff zonal — se verificó contra
+  `GetZoneScore`, que suma toda herida sin mirar el tipo; fractura estructural fuera de v1).
+  **(b)** La vía sin Cargo → §7, y la propuesta se validó tal cual (cooldown de 30 s, rótulo
+  «field», `coagulant_bandage` como debug). **(c)** Set de convars y qué expone el tab Q → §11:
+  las **10** convars (8 sv + 2 cl), todas registradas en el código. El preámbulo del doc suma que
+  el volcado a la arquitectura **ya ocurrió** y que la semilla es registro histórico, no lista de
+  trabajo. **[APLICADO 2026-07-14]**
+
+- PARCHE 13 — docs(medmenu): **cuarta pasada** (ronda 5 del ecosistema), sobre el último reducto
+  que ninguna de las tres anteriores abrió: los **comentarios del código**. El comentario del
+  toggle de la tecla (`corpus_coagulant_medmenu.lua`) todavía decía «misma tecla: abre y cierra»
+  — el **sexto** sitio del mismo rot que los PARCHES 8 y 5 mataron en los otros cinco (§10 de la
+  arquitectura, el flujo de verificación del `CLAUDE.md`, la fila `options` de §13…), y el único
+  que quedaba **dentro del árbol de código**. La rama es INALCANZABLE y el propio repo ya lo
+  documenta: el guard de la línea de arriba (`gui.IsGameUIVisible() or vgui.CursorVisible()`)
+  corre ANTES del toggle y el frame se abre con `MakePopup()` → con el menú abierto el cursor
+  siempre está visible → el `frame:Remove()` nunca corre. El comentario pasa a decir la verdad
+  (la tecla solo ABRE; el cierre es la X del `DFrame`) y deja la **deuda anotada para la ronda 7**
+  con el patrón que sí funciona, ya pago en Cargo (`corpus_cargo_ui.lua`: poleo de
+  `input.IsButtonDown` en `Think` con detector de flanco y guard `vgui.GetKeyboardFocus() == nil`,
+  que **no** es `CursorVisible`). **Sin tocar el runtime**: la línea ejecutable queda byte a byte
+  igual —solo se le saca el comentario de cola— y el fix del hook lo decide el autor.
+  **[APLICADO 2026-07-14]**
+
+- PARCHE 14 — docs(medmenu): el comentario de la convar de la tecla entrecomillaba una versión
+  muerta del doc — «§10: "bind sugerido en el tab Q"». Esa frase ya **no existe** en §10: el
+  PARCHE 2 la reemplazó por lo implementado (convar de cliente `coagulant_key_menu`, default
+  `KEY_M`, con su DBinder en el tab Q y un `PlayerButtonDown` que abre el menú), y el PARCHE 5 ya
+  había alineado la fila `options` de §13 por el mismo motivo. Citar entre comillas un doc que
+  cambió es la peor clase de rot: el lector cree estar leyendo el texto vigente. El comentario
+  pasa a describir el mecanismo real. **[APLICADO 2026-07-14]**
+
+- PARCHE 15 — docs(move): `corpus_coagulant_move.lua` mandaba al lector al **contrato #6** del
+  `CLAUDE.md` para la regla de no pisar `SetWalkSpeed`/`SetRunSpeed`. Puntero podrido: el
+  contrato #6 de hoy es «la silueta se pinta y se clickea desde la MISMA tabla»; la regla que el
+  archivo cita es el **#8** («Coagulant nunca re-escala daño ni pisa `SetWalkSpeed`»). Quien
+  siguiera el puntero caía en la silueta. Se corrige el número y se completa el enunciado con la
+  primera mitad del contrato (el daño es de Caliber), que el comentario recortaba.
+  **[APLICADO 2026-07-14]**

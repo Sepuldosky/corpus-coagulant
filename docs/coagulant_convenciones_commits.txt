@@ -94,10 +94,12 @@ Para corpus-coagulant/ (el módulo), los alcances definidos son:
     completar, torniquetes (corpus_coagulant_treatment.lua).
 
   debuffs:
-    Debuffs zonales: scores de zona, cojera (publicada por NW2) y sway de brazos
+    Debuffs zonales del lado SERVER: scores de zona y cojera publicada por NW2
     (corpus_coagulant_debuffs.lua). La APLICACIÓN de la cojera en el pipeline de
     movimiento (corpus_coagulant_move.lua, hook Move compartido) reporta acá:
-    son las dos mitades del mismo debuff.
+    son las dos mitades del mismo debuff. El sway de brazos y la capa de visión
+    NO son de acá: son de CLIENTE (hook CreateMove y pintado en
+    corpus_coagulant_hud.lua) y reportan bajo `hud`.
 
   items:
     Ítems médicos contra el framework de Cargo y las vías mínimas sin inventario

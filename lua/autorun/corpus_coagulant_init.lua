@@ -61,7 +61,8 @@ local SERVER_FILES = {
     "server/corpus_coagulant_core.lua",      -- estado clínico + creación de heridas + eventos
     "server/corpus_coagulant_bleeding.lua",  -- timer 1s: drenaje, regen, HP crítico, snapshot
     "server/corpus_coagulant_treatment.lua", -- tratamiento con tiempo + consumo al completar
-    "server/corpus_coagulant_debuffs.lua",   -- tick 0.5s: cojera (NW2) + sway de brazos
+    "server/corpus_coagulant_debuffs.lua",   -- tick 0.5s: scores de zona + cojera (NW2);
+                                             -- el sway y la visión son de CLIENTE (hud)
 }
 local CLIENT_FILES = {
     "client/corpus_coagulant_hud.lua",     -- snapshot replicado + visión + silueta + StatusPanel

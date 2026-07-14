@@ -1,6 +1,6 @@
 -- corpus_coagulant_move.lua — aplicación de la cojera en el pipeline de movimiento (SHARED)
--- Coagulant_Architecture.md §6 (piernas → cojera). Contrato #6 del CLAUDE.md:
--- Coagulant NUNCA pisa SetWalkSpeed/SetRunSpeed.
+-- Coagulant_Architecture.md §6 (piernas → cojera). Contrato #8 del CLAUDE.md:
+-- Coagulant nunca re-escala daño ni pisa SetWalkSpeed/SetRunSpeed.
 --
 -- POR QUÉ UN HOOK Move Y NO SetWalkSpeed: Cargo re-aplica su penalización de peso
 -- sobre walk/run en SU propio hook Move cada tick (corpus_cargo_movecompat.lua,

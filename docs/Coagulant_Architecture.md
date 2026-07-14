@@ -2,7 +2,7 @@
 
 > **Uso de este documento:** Referencia autocontenida para la bajada a código del Block 3 (sustrato v1 del médico de jugador). No se requiere el chat de diseño original.
 >
-> **Estado:** Block 3 del ecosistema (`CORPUS_Architecture.md` §9) — **borrador para ratificación del autor**. Las decisiones estructurales están resueltas por el autor (tres rondas, 2026-07-13 — registro en [`Coagulant_Block3_Semilla.md`](Coagulant_Block3_Semilla.md) §3); los **números de balance** de este doc son propuesta inicial, tunables por convar, y se ajustan en la verificación en juego — un número distinto no invalida el diseño.
+> **Estado:** Block 3 del ecosistema (`CORPUS_Architecture.md` §9) — **ratificado por el autor el 2026-07-13**, y en bajada a código desde entonces. Las decisiones estructurales se resolvieron en tres rondas con el autor (registro en [`Coagulant_Block3_Semilla.md`](Coagulant_Block3_Semilla.md) §3); los **números de balance** de este doc son propuesta inicial, tunables por convar, y se ajustan en la verificación en juego — un número distinto no invalida el diseño. **El avance de la bajada (slices verificados / pendientes) vive en [`coagulant_estado.md`](coagulant_estado.md), no acá.**
 >
 > **Estado vigente (foto de HOY)** → [`coagulant_estado.md`](coagulant_estado.md) — léelo antes que este documento. **Metodología** → `corpus_flujo_trabajo.txt` (compartido). Índice operativo → `CLAUDE.md` de este repo.
 
@@ -234,10 +234,10 @@ La barra de progreso se calcula client-side desde `{ kind, endsAt, duration }` d
 Tres piezas cliente, todas leyendo el snapshot + NW2 (nunca estado propio inventado):
 
 1. **HUD silueta** (`HUDPaint`): silueta de 6 zonas coloreadas por score (sano→amarillo→rojo), pulso en zonas sangrando, icono de torniquete. Se desvanece cuando todo está sano y la sangre es 100. Barra de progreso de tratamiento centrada abajo cuando hay uno en curso. Capa de vignette de cabeza/sangre crítica en `RenderScreenspaceEffects` (§6).
-2. **Menú médico**: concommand `coagulant_menu` (bind sugerido en el tab Q). Silueta clickeable → lista de heridas de la zona (tipo, severidad, tratada) → botones de tratamiento habilitados según disponibilidad (conteo de ítems si Cargo está; cooldowns visibles en modo degradado). Manda el intent y cierra o queda mostrando el progreso.
+2. **Menú médico**: concommand `coagulant_menu` + **tecla propia** (convar de cliente `coagulant_key_menu`, default `KEY_M`, con su DBinder en el tab Q; un hook `PlayerButtonDown` la ABRE). **La tecla no cierra**: el guard que evita robarle la tecla al chat o a otro menú (`gui.IsGameUIVisible()` / `vgui.CursorVisible()`) corre ANTES del toggle, y el frame se abre con `MakePopup()` → con el menú abierto el cursor siempre está visible y la rama de cierre queda inalcanzable. El menú se cierra con la **X de su `DFrame`** (`SetDeleteOnClose`, comportamiento default). Es deuda del slice 4, anotada para la ronda 7 —y el patrón ya está pago en Cargo: `PlayerButtonDown` **ni siquiera dispara client-side en singleplayer** (quirk del engine, `corpus_cargo_ui.lua`), que por eso poletea `input.IsButtonDown` en `Think` con detector de flanco y guards de foco (`vgui.GetKeyboardFocus() == nil`, que **no** es lo mismo que `CursorVisible`). Silueta clickeable → lista de heridas de la zona (tipo, severidad, tratada) → botones de tratamiento habilitados según disponibilidad: conteo de ítems si Cargo está; **sin Cargo se rotulan *field* y no se grisan por cooldown** — el cooldown del modo degradado **no viaja en el snapshot (§9)**, así que el rechazo llega por chat desde el server. Se grisan igual mientras hay un tratamiento en curso (uno a la vez, §7), y el torniquete cuando la zona seleccionada no es una extremidad. Al hacer clic manda el intent y **queda abierto** mostrando el progreso: no se cierra solo.
 3. **StatusPanel de Cargo** (lazy-check en el archivo de HUD): `CARGO.StatusPanel.RegisterBar("coagulant", { id = "blood", label = "Blood", getValue = ply → NW2Float × 1, color = rojo })` — firma real verificada contra `corpus_cargo_statuspanel.lua`. Sin Cargo, la sangre se muestra como mini-barra en el HUD propio.
 
-El tab Q existente crece: convars de server (admin) + cliente, y el hint del bind del menú médico.
+El tab Q existente crece: convars de server (admin) + cliente, y el **binder** de la tecla del menú médico (`coagulant_key_menu`).
 
 ---
 
@@ -249,10 +249,12 @@ El tab Q existente crece: convars de server (admin) + cliente, y el hint del bin
 | `coagulant_bleed_scale` | sv | 1.0 | multiplicador global de drenaje de sangre |
 | `coagulant_regen_scale` | sv | 1.0 | multiplicador de la regeneración natural |
 | `coagulant_hpdrain_scale` | sv | 1.0 | multiplicador del drenaje de HP en crítico |
+| `coagulant_debug` | sv | 0 | loguea heridas y cruces del umbral crítico a consola |
 | `coagulant_debuff_legs` | sv | 1 | on/off cojera |
 | `coagulant_debuff_arms` | sv | 1 | on/off sway de brazos |
 | `coagulant_debuff_head` | sv | 1 | on/off efectos de visión |
 | `coagulant_hud` | cl | 1 | on/off HUD silueta (el crítico visual no se apaga: es información vital) |
+| `coagulant_key_menu` | cl | `KEY_M` | tecla que abre el menú médico (0 = sin bind; se ajusta desde el tab Q) |
 
 Los números internos de balance (tabla §3, curvas §4-§6, tiempos §7) viven en `corpus_coagulant_config.lua` como tablas — tunables editando data, sin tocar lógica.
 
@@ -262,7 +264,7 @@ Los números internos de balance (tabla §3, curvas §4-§6, tiempos §7) viven 
 
 ### Cargo (presente hoy — nombres verificados contra el código real)
 
-- **Consume:** `Items.Register(def)` (4 defs §7), `Inventory.TakeItem(ply, id, 1)` (consumo al completar), `Inventory.HasItem(ply, id)` (**presencia al validar un tratamiento — la única superficie que ve los `unique`**: `CountItem` cuenta solo stacks, así que el torniquete siempre daba 0 — pagado en juego el 2026-07-13, fallo G4; Cargo la agregó como su entry 18), `Inventory.CountItem(ply, id)` (conteos de consumibles stackable, p. ej. botones del menú médico), `StatusPanel.RegisterBar` (client).
+- **Consume:** `Items.Register(def)` (4 defs §7); `Inventory.HasItem(ply, id)` (**presencia al validar el arranque de un tratamiento — la única superficie que ve los `unique`**: `CountItem` cuenta solo stacks, así que el torniquete siempre daba 0 — pagado en juego el 2026-07-13, fallo G4; Cargo la agregó como su entry 18); `Inventory.CountItem(ply, id)` + `Inventory.TakeItem(ply, id, 1)` (**server, al completar**: re-validar y consumir la unidad stackable); `StatusPanel.RegisterBar` (client); y **`CARGO.ClientState.items` (client, superficie OFF-CONTRACT de Cargo)** — el menú médico cuenta con ella las DOS clases de ítem (los stacks por `count`, los `unique` por `uid`) porque `CountItem` no existe en el cliente. **Deuda asumida:** si Cargo cambia la forma de su snapshot, el conteo de los botones se rompe **en silencio**; el candidato natural es que Cargo exponga un contador de cliente en su contrato.
 - **Expone hacia Cargo:** `OnEncumbrance(ply, fraction)` — Cargo ya lo llama con pcall en cada cambio de peso (`corpus_cargo_movement.lua`). v1: almacenar en `st.encumbrance`, cero efecto. `Inventory.GetWeightFraction(ply)` queda disponible para cuando la stamina exista.
 
 ### Caliber (mock-first — su pipeline de jugador no existe)
@@ -289,11 +291,11 @@ El manifest del init crece a (orden de carga determinista; regla de siempre: nun
 | `server/corpus_coagulant_core.lua` | server | estado + captura hitgroup + creación de heridas | existe, crece |
 | `server/corpus_coagulant_bleeding.lua` | server | timer 1 s: drenaje, regen, HP crítico | **nuevo** |
 | `server/corpus_coagulant_treatment.lua` | server | ApplyTreatment, progreso, consumo Cargo, torniquetes, net intents | **nuevo** |
-| `server/corpus_coagulant_debuffs.lua` | server | scores, speed mult (NW2), sway punch | **nuevo** |
+| `server/corpus_coagulant_debuffs.lua` | server | scores de zona, tick 0.5 s (la isquemia entra y sale sola), speed mult por NW2 | **nuevo** |
 | `shared/corpus_coagulant_items.lua` | shared | 4 defs contra Cargo — **shared obligatorio**: Cargo no sincroniza defs por net, su grid cliente lee `Items.Get` local (lección del punto E, 2026-07-13) | existe, crece |
-| `client/corpus_coagulant_hud.lua` | client | silueta + vignettes + barra progreso + StatusPanel | **nuevo** |
+| `client/corpus_coagulant_hud.lua` | client | snapshot replicado + **sway de la mira (`CreateMove`)** + vignettes + silueta + barra progreso + StatusPanel | **nuevo** |
 | `client/corpus_coagulant_medmenu.lua` | client | panel médico (`coagulant_menu`) | **nuevo** |
-| `client/corpus_coagulant_options.lua` | client | tab Q (crece: convars + bind hint) | existe |
+| `client/corpus_coagulant_options.lua` | client | tab Q (crece: convars de cliente y server + el **DBinder** de `coagulant_key_menu`, §10) | existe |
 
 Trampas de VGUI heredadas del ecosistema aplican al medmenu (ver CLAUDE.md de Cargo: nada de `DNumSlider` en scroll, overlays por `PaintOver`, `Theme.FitText`-equivalente para nombres largos).
 
@@ -317,7 +319,7 @@ Cada slice cruza de punta a punta y se verifica en juego antes del siguiente (fl
 
 1. **Sangre + heridas + sangrado** — config, crecimiento de core (heridas en `PostEntityTakeDamage`), bleeding (timer, drenaje, regen, HP crítico), NW2 de sangre, snapshot on-change, selftest de la matemática pura. Verificable ya: recibir un tiro, ver drenar sangre y morir desangrado; `coagulant_bandage` (debug) corta el sangrado.
 2. **Tratamiento vía Cargo** — treatment (progreso, cancelación, consumo al completar, torniquete con isquemia), las 4 defs, intents de net. Verificable: vendarse desde el quick slot de Cargo.
-3. **Debuffs** — debuffs server (scores, NW2 speed mult, sway), move hook compartido, vignettes cliente. Verificable: cojera/sway/visión con heridas en cada zona; sin pelearse con el multiplicador de peso de Cargo.
+3. **Debuffs** — debuffs server (scores, NW2 speed mult), move hook compartido, y en cliente el sway de la mira (`CreateMove`, §6) + los vignettes. Verificable: cojera/sway/visión con heridas en cada zona; sin pelearse con el multiplicador de peso de Cargo.
 4. **UI** — HUD silueta, menú médico, StatusPanel, tab Q con convars. Verificable: flujo completo sin consola.
 
 Al cerrar cada slice: CHANGELOG (`[PENDIENTE]` → verificación del autor) y `coagulant_estado.md` en sitio.
@@ -329,5 +331,5 @@ Al cerrar cada slice: CHANGELOG (`[PENDIENTE]` → verificación del autor) y `c
 1. Los 4 slices verificados en juego por el autor (CHANGELOG todo `[APLICADO]`).
 2. Sección resumen + link a este doc en `CORPUS_Architecture.md` (§9: Block 3 → Cerrado).
 3. `coagulant_estado.md` y `coagulant_roadmap.txt` refrescados; la semilla queda como registro histórico.
-4. CLAUDE.md de este repo: mapa de archivos y contratos actualizados al árbol real (el contrato #6 del CLAUDE.md — "sin gameplay antes del diseño" — se reemplaza por los contratos de este doc).
+4. CLAUDE.md de este repo: mapa de archivos y contratos al día con el árbol real. **Hecho durante la bajada por slices**: los contratos del scaffold ya fueron reemplazados por los de este doc (el CLAUDE.md de hoy lleva los 9 contratos del módulo real, ninguno es el viejo "sin gameplay antes del diseño"). Al cerrar solo queda el repaso final de que el mapa siga coincidiendo con el árbol.
 5. Anotar en `corpus/docs/corpus_estado.md` que Coagulant tiene módulo real (deja de ser scaffold).
