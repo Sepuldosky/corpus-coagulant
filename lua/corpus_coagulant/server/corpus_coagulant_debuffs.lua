@@ -1,16 +1,20 @@
--- corpus_coagulant_debuffs.lua — debuffs zonales: cojera y sway (SERVER)
--- Coagulant_Architecture.md §6. El server es la autoridad de los scores; publica el
+-- corpus_coagulant_debuffs.lua — debuffs zonales: scores y cojera (SERVER)
+-- Coagulant_Architecture.md §6. El server es la autoridad de los scores y publica el
 -- multiplicador de cojera por NW2 (lo APLICA el hook Move compartido, shared/
--- corpus_coagulant_move.lua) y produce el sway de brazos con ViewPunch.
+-- corpus_coagulant_move.lua).
 --
--- El tercer debuff (cabeza → visión) es puramente CLIENTE: se pinta desde el
--- snapshot + el NW2 de sangre (client/corpus_coagulant_hud.lua). No hay nada que
--- calcular acá para él.
+-- Los otros dos debuffs son de CLIENTE (client/corpus_coagulant_hud.lua), y no por
+-- comodidad:
+--   · Sway de brazos (§6, reescrito tras la ronda 5): es una deriva CONTINUA de la
+--     mira. Mover la puntería sin jitter obliga a tocar el usercmd antes de que
+--     salga (hook CreateMove, cliente); hacerlo desde el server pelearía contra el
+--     mouse del jugador. El score de brazos viaja en el snapshot, con la isquemia
+--     incluida, así que el cliente calcula el MISMO número que este archivo.
+--   · Visión de cabeza: es pintado puro.
 --
--- Tick propio de 0.5 s, separado del de sangrado (1 s): la isquemia entra y sale
--- SOLA por paso del tiempo (§7), así que los scores no se pueden refrescar solo
--- desde los eventos de herida/tratamiento. Medio segundo también le da al sway
--- resolución suficiente sobre su intervalo de 1.5-3 s.
+-- Tick propio de 0.5 s, separado del de sangrado (1 s): la isquemia entra y sale SOLA
+-- por paso del tiempo (§7), así que los scores no se pueden refrescar solo desde los
+-- eventos de herida/tratamiento.
 
 local COAGULANT = Corpus.GetModule("coagulant")
 local Config = COAGULANT.Config
@@ -43,44 +47,12 @@ function COAGULANT.RefreshSpeed(ply)
     return mult
 end
 
--- Sway de brazos (§6): ViewPunch periódico, agnóstico al arma — funciona con
--- cualquier SWEP sin tocar su API (la integración fina con ARC9 queda diferida).
-local function TickSway(ply, st)
-    if not Config.cv_debuff_arms:GetBool() then
-        st._nextSway = nil
-        return
-    end
-
-    local score = COAGULANT.GetArmScore(ply)
-    if score <= 0 then
-        st._nextSway = nil -- sano: el próximo punch se reprograma al herirse
-        return
-    end
-
-    if st._nextSway == nil then
-        st._nextSway = CurTime() + math.Rand(Config.SWAY_MIN_S, Config.SWAY_MAX_S)
-        return
-    end
-    if CurTime() < st._nextSway then return end
-
-    -- Dirección aleatoria: el pulso no debe ser corregible por costumbre
-    local amp = Config.SwayAmplitude(score)
-    local ang = math.Rand(0, math.pi * 2)
-    ply:ViewPunch(Angle(math.cos(ang) * amp, math.sin(ang) * amp, 0))
-
-    st._nextSway = CurTime() + math.Rand(Config.SWAY_MIN_S, Config.SWAY_MAX_S)
-end
-
 timer.Create("corpus_coagulant_debuffs_tick", 0.5, 0, function()
     for _, ply in ipairs(player.GetAll()) do
         if ply:Alive() then
-            local st = COAGULANT.GetState(ply)
-            if st ~= nil then
-                -- la cojera se refresca SIEMPRE, incluso deshabilitada: apagar la
-                -- convar tiene que devolver el multiplicador a 1, no congelarlo
-                COAGULANT.RefreshSpeed(ply)
-                if Config.Enabled() then TickSway(ply, st) end
-            end
+            -- la cojera se refresca SIEMPRE, incluso deshabilitada: apagar la convar
+            -- tiene que devolver el multiplicador a 1, no congelarlo
+            COAGULANT.RefreshSpeed(ply)
         end
     end
 end)
