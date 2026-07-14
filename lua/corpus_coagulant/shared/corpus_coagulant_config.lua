@@ -19,6 +19,13 @@ Config.cv_regen_scale   = CreateConVar("coagulant_regen_scale", "1.0", FLAGS, "N
 Config.cv_hpdrain_scale = CreateConVar("coagulant_hpdrain_scale", "1.0", FLAGS, "HP drain multiplier while blood is critical")
 Config.cv_debug         = CreateConVar("coagulant_debug", "0", FLAGS, "Logs wounds/critical transitions to console")
 
+-- Debuffs zonales (§6, §11). REPLICADAS por necesidad, no por comodidad: la
+-- cojera se aplica en un hook Move PREDICHO (ambos realms) — si el cliente
+-- leyera un valor distinto al del server, el jugador haría rubber-band.
+Config.cv_debuff_legs = CreateConVar("coagulant_debuff_legs", "1", FLAGS, "Leg wounds slow you down (limp)")
+Config.cv_debuff_arms = CreateConVar("coagulant_debuff_arms", "1", FLAGS, "Arm wounds sway your aim")
+Config.cv_debuff_head = CreateConVar("coagulant_debuff_head", "1", FLAGS, "Head wounds blur and darken your vision")
+
 function Config.Enabled()
     return Config.cv_enabled:GetBool()
 end
@@ -69,6 +76,21 @@ Config.EXTREMITIES = {
 }
 
 -- ============================================================
+-- Debuffs zonales (§6) — score de zona = Σ severidades (tratadas cuentan la mitad)
+-- ============================================================
+Config.LIMP_PER_SCORE  = 0.12  -- cada punto de score de pierna quita 12 % de velocidad
+Config.LIMP_MIN_MULT   = 0.45  -- piso: cojo, nunca inmóvil
+Config.LIMP_SPEED_FLOOR = 30   -- piso ABSOLUTO en el Move hook (mismo que el movecompat
+                               -- de Cargo): componiendo dos multiplicadores, el producto
+                               -- podría dejar al jugador clavado
+Config.SWAY_PER_SCORE  = 0.35  -- grados de ViewPunch por punto de score de brazo
+Config.SWAY_MIN_S      = 1.5   -- intervalo aleatorio entre punches...
+Config.SWAY_MAX_S      = 3.0   -- ...para que el pulso no se vuelva un patrón legible
+Config.VISION_FULL_AT  = 6     -- score de cabeza donde el oscurecimiento satura
+Config.BLACKOUT_S      = 2     -- fade a negro al recibir una herida de cabeza...
+Config.BLACKOUT_MIN_SEVERITY = 2 -- ...media o grave (§6: es visual, sin pérdida de control)
+
+-- ============================================================
 -- Funciones puras
 -- ============================================================
 
@@ -111,4 +133,29 @@ function Config.HPDrainRate(blood)
     if blood >= Config.BLOOD_CRITICAL then return 0 end
     local falta = (Config.BLOOD_CRITICAL - blood) / Config.BLOOD_CRITICAL
     return Config.HP_DRAIN_BASE + Config.HP_DRAIN_EXTRA * falta
+end
+
+-- --- Debuffs (§6): puras, sin estado — el server las usa para publicar, el
+-- --- cliente las usa para pintar. Misma fórmula en ambos realms.
+
+-- Multiplicador de velocidad por heridas de pierna (score = suma de AMBAS piernas)
+function Config.LimpMult(scorePiernas)
+    return math.max(Config.LIMP_MIN_MULT, 1 - Config.LIMP_PER_SCORE * scorePiernas)
+end
+
+-- Amplitud del ViewPunch en grados por heridas de brazo (score = ambos brazos)
+function Config.SwayAmplitude(scoreBrazos)
+    return Config.SWAY_PER_SCORE * scoreBrazos
+end
+
+-- Intensidad 0..1 del oscurecimiento de visión por heridas de cabeza
+function Config.VisionIntensity(scoreCabeza)
+    return math.Clamp(scoreCabeza / Config.VISION_FULL_AT, 0, 1)
+end
+
+-- Intensidad 0..1 de la capa visual de sangre crítica (§5-§6): 0 sobre el umbral,
+-- 1 con sangre 0. Es información vital: no se apaga por convar (§11).
+function Config.CriticalIntensity(blood)
+    if blood >= Config.BLOOD_CRITICAL then return 0 end
+    return math.Clamp((Config.BLOOD_CRITICAL - blood) / Config.BLOOD_CRITICAL, 0, 1)
 end
