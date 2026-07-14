@@ -1,15 +1,17 @@
--- corpus_coagulant_hud.lua — estado replicado + debuff de visión (CLIENT)
--- Coagulant_Architecture.md §6 (cabeza → visión), §9 (snapshot), §10.
+-- corpus_coagulant_hud.lua — estado replicado, sway y capa de visión (CLIENT)
+-- Coagulant_Architecture.md §6 (brazos → sway, cabeza → visión), §9 (snapshot), §10.
 --
--- SLICE 3: este archivo nace con el receptor del snapshot (COAGULANT.ClientState —
--- la única fuente de verdad del cliente; nunca inventa estado) y la capa de visión:
--- vignette por heridas de cabeza, fade a negro al recibir una, y la capa de sangre
--- crítica. La silueta de 6 zonas, la barra de progreso de tratamiento y el
+-- SLICE 3: este archivo tiene el receptor del snapshot (COAGULANT.ClientState — la
+-- única fuente de verdad del cliente; nunca inventa estado), el sway de la mira y la
+-- capa de visión. La silueta de 6 zonas, la barra de progreso de tratamiento y el
 -- StatusPanel de Cargo llegan con el slice 4 y crecen sobre este mismo archivo.
 --
--- Sin materiales externos a propósito: el vignette se pinta con bandas de rects
--- (las esquinas se oscurecen solas por superposición) — nada que pueda faltar en
--- un cliente ni orientarse al revés.
+-- POR QUÉ EL SWAY ES CLIENTE: es una deriva CONTINUA de la puntería. La única forma
+-- de mover la mira sin pelear contra el mouse del jugador es tocar el usercmd ANTES
+-- de que salga (hook CreateMove) — y se aplica el DELTA del offset, no el offset
+-- absoluto, o la vista derivaría sin control en vez de oscilar. El score de brazos
+-- llega en el snapshot con la isquemia ya incluida, así que el número es el mismo que
+-- calcula el server.
 
 local COAGULANT = Corpus.GetModule("coagulant")
 local Config = COAGULANT.Config
@@ -22,22 +24,26 @@ COAGULANT.ClientState = COAGULANT.ClientState or { blood = Config.BLOOD_MAX, zon
 local blackoutHasta = 0
 local sevCabezaPrev = {}  -- severidades de la cabeza en el snapshot anterior
 
--- Score de cabeza desde el snapshot — misma fórmula que GetZoneScore en server
--- (§6: tratadas cuentan la mitad). La cabeza no admite torniquete, así que acá no
--- hay isquemia que reconciliar: el número coincide siempre.
-local function ScoreCabeza()
-    local head = COAGULANT.ClientState.zones and COAGULANT.ClientState.zones.head
-    if head == nil then return 0 end
+-- Score de una zona desde el snapshot — misma fórmula que GetZoneScore en server
+-- (§6: tratadas cuentan la mitad; la isquemia impone su piso).
+local function ScoreZona(zona)
+    local z = COAGULANT.ClientState.zones and COAGULANT.ClientState.zones[zona]
+    if z == nil then return 0 end
     local score = 0
-    for _, w in ipairs(head.w or {}) do
+    for _, w in ipairs(z.w or {}) do
         score = score + (w.tr and w.s * 0.5 or w.s)
     end
+    if z.isq then score = math.max(score, Config.ISCHEMIA_SCORE) end
     return score
 end
 
+local function ScoreBrazos()
+    return ScoreZona("left_arm") + ScoreZona("right_arm")
+end
+
 -- Fade a negro al recibir una herida de cabeza media/grave (§6). Se detecta
--- comparando el snapshot con el anterior — sin mensaje de red nuevo (§9 congela
--- los canales): una herida NUEVA en el índice i, o una vieja que se AGRAVÓ.
+-- comparando el snapshot con el anterior — sin mensaje de red nuevo (§9 congela los
+-- canales): una herida NUEVA en el índice i, o una vieja que se AGRAVÓ.
 local function DetectarBlackout(zonas)
     local ws = (zonas and zonas.head and zonas.head.w) or {}
 
@@ -67,7 +73,46 @@ net.Receive(MSG_STATE, function()
 end)
 
 -- ============================================================
--- Capa de visión (§6 cabeza + §5 crítico)
+-- Brazos → sway de la mira (§6)
+-- ============================================================
+
+-- El offset aplicado en el frame anterior: se resta para que la mira OSCILE en vez
+-- de derivar (sumar el offset absoluto cada tick lo acumularía sin control).
+local swayYawPrev, swayPitchPrev = 0, 0
+
+local function CortarSway()
+    swayYawPrev, swayPitchPrev = 0, 0
+end
+
+hook.Add("CreateMove", "corpus_coagulant_sway", function(cmd)
+    if not Config.Enabled() or not Config.cv_debuff_arms:GetBool() then
+        CortarSway()
+        return
+    end
+
+    local ply = LocalPlayer()
+    if not IsValid(ply) or not ply:Alive() then CortarSway() return end
+    if not IsValid(ply:GetActiveWeapon()) then CortarSway() return end -- sin arma, sin sway
+
+    local score = ScoreBrazos()
+    if score <= 0 then CortarSway() return end
+
+    -- Dos capas (§6): con el arma en mano el temblor es apenas perceptible; apuntando
+    -- (clic derecho — el ADS de ARC9/TFA/MW, y agnóstico al arma) la deriva se vuelve
+    -- incapacitante. Ahí es donde una herida de brazo tiene que doler.
+    local amp = Config.SwayFor(score, cmd:KeyDown(IN_ATTACK2))
+    local yaw, pitch = Config.SwayOffset(CurTime(), amp)
+
+    local ang = cmd:GetViewAngles()
+    ang.y = ang.y + (yaw - swayYawPrev)
+    ang.p = math.Clamp(ang.p + (pitch - swayPitchPrev), -89, 89)
+    cmd:SetViewAngles(ang)
+
+    swayYawPrev, swayPitchPrev = yaw, pitch
+end)
+
+-- ============================================================
+-- Cabeza → visión, y la capa de sangre crítica (§5-§6)
 -- ============================================================
 
 -- La sangre viaja por NW2 (no por el snapshot): siempre está, incluso antes del
@@ -78,15 +123,14 @@ local function SangreActual()
     return ply:GetNW2Float("coagulant_blood", Config.BLOOD_MAX)
 end
 
--- Intensidad del debuff de cabeza (0 si la convar lo apaga)
 local function IntensidadCabeza()
     if not Config.cv_debuff_head:GetBool() then return 0 end
-    return Config.VisionIntensity(ScoreCabeza())
+    return Config.VisionIntensity(ScoreZona("head"))
 end
 
--- Screenspace: la sangre crítica dessatura y apaga el contraste; la herida de
--- cabeza oscurece. Son capas distintas a propósito — desangrarse y estar
--- conmocionado no se sienten igual.
+-- Screenspace: la sangre crítica dessatura y apaga el contraste; la herida de cabeza
+-- oscurece. Son capas distintas a propósito — desangrarse y estar conmocionado no se
+-- sienten igual.
 hook.Add("RenderScreenspaceEffects", "corpus_coagulant_vision", function()
     if not Config.Enabled() then return end
     local ply = LocalPlayer()
@@ -109,25 +153,55 @@ hook.Add("RenderScreenspaceEffects", "corpus_coagulant_vision", function()
     })
 end)
 
--- Vignette por bandas concéntricas: cada banda pinta los 4 bordes, así que las
--- esquinas acumulan alpha solas. La curva cuadrática deja el centro limpio.
-local BANDAS = 24
+-- Vignette ELÍPTICO (reescrito el 2026-07-14 tras la ronda 5: la versión de bandas
+-- rectangulares daba un marco cuadrado con esquinas duras — "se ve raro", y con
+-- razón). Anillos concéntricos triangulados: geometría propia, sin materiales
+-- externos, así que no depende de ningún asset ni de la licencia de nadie.
+local CAPAS, SEG = 10, 24
+local geoW, geoH, geo = 0, 0, nil
+
+local function ConstruirGeo(w, h)
+    local cx, cy = w * 0.5, h * 0.5
+    local rxIn,  ryIn  = w * 0.34, h * 0.30 -- donde arranca el oscurecimiento
+    local rxOut, ryOut = w * 0.80, h * 0.88 -- fuera de pantalla: cubre las esquinas
+
+    geo = {}
+    for i = 1, CAPAS do
+        local f0, f1 = (i - 1) / CAPAS, i / CAPAS
+        local rx0, ry0 = Lerp(f0, rxIn, rxOut), Lerp(f0, ryIn, ryOut)
+        local rx1, ry1 = Lerp(f1, rxIn, rxOut), Lerp(f1, ryIn, ryOut)
+
+        local quads = {}
+        for s = 1, SEG do
+            local a0 = (s - 1) / SEG * math.pi * 2
+            local a1 = s / SEG * math.pi * 2
+            local c0, s0 = math.cos(a0), math.sin(a0)
+            local c1, s1 = math.cos(a1), math.sin(a1)
+            -- horario en pantalla (y crece hacia abajo): DrawPoly no pinta al revés
+            quads[s] = {
+                { x = cx + c0 * rx0, y = cy + s0 * ry0 },
+                { x = cx + c1 * rx0, y = cy + s1 * ry0 },
+                { x = cx + c1 * rx1, y = cy + s1 * ry1 },
+                { x = cx + c0 * rx1, y = cy + s0 * ry1 },
+            }
+        end
+        geo[i] = { alpha = f1 * f1, quads = quads } -- curva cuadrática: centro limpio
+    end
+    geoW, geoH = w, h
+end
+
 local function PintarVignette(intensidad, r, g, b)
     local w, h = ScrW(), ScrH()
-    local pasoX = (w * 0.18) / BANDAS
-    local pasoY = (h * 0.18) / BANDAS
+    if geo == nil or geoW ~= w or geoH ~= h then ConstruirGeo(w, h) end
 
-    for i = 1, BANDAS do
-        local f = (BANDAS - i + 1) / BANDAS -- 1 en el borde, ~0 hacia el centro
-        local a = intensidad * f * f * 255
+    draw.NoTexture()
+    for _, capa in ipairs(geo) do
+        local a = intensidad * capa.alpha * 255
         if a >= 1 then
-            surface.SetDrawColor(r, g, b, a)
-            local x = (i - 1) * pasoX
-            local y = (i - 1) * pasoY
-            surface.DrawRect(x, 0, pasoX, h)
-            surface.DrawRect(w - x - pasoX, 0, pasoX, h)
-            surface.DrawRect(0, y, w, pasoY)
-            surface.DrawRect(0, h - y - pasoY, w, pasoY)
+            surface.SetDrawColor(r, g, b, math.min(a, 255))
+            for _, q in ipairs(capa.quads) do
+                surface.DrawPoly(q)
+            end
         end
     end
 end
@@ -140,13 +214,16 @@ local function PintarVision()
     local head = IntensidadCabeza()
     if head > 0 then PintarVignette(head * 0.85, 0, 0, 0) end
 
-    -- Sangre crítica: vignette rojo. NO se apaga por convar — es información
+    -- Sangre crítica: vignette rojo que LATE. NO se apaga por convar — es información
     -- vital (§11): el jugador tiene que sentir que se desangra sin mirar el HUD.
     local crit = Config.CriticalIntensity(SangreActual())
-    if crit > 0 then PintarVignette(crit * 0.75, 90, 0, 0) end
+    if crit > 0 then
+        local pulso = 1 + 0.18 * math.sin(CurTime() * math.pi * 2 * Config.PULSE_HZ)
+        PintarVignette(crit * 0.75 * pulso, 95, 0, 0)
+    end
 
-    -- Fade a negro por herida de cabeza: arranca opaco y se desvanece (§6). Es
-    -- solo visual: el jugador nunca pierde el control.
+    -- Fade a negro por herida de cabeza: arranca opaco y se desvanece (§6). Es solo
+    -- visual: el jugador nunca pierde el control.
     if CurTime() < blackoutHasta then
         local f = math.Clamp((blackoutHasta - CurTime()) / Config.BLACKOUT_S, 0, 1)
         surface.SetDrawColor(0, 0, 0, 255 * f)
@@ -155,8 +232,8 @@ local function PintarVision()
 end
 
 -- pcall obligatorio: GMod DESENGANCHA un hook de HUDPaint que erra — un error de
--- pintado mataría la capa entera en silencio por el resto de la sesión (trampa
--- pagada por Cargo). Se avisa una sola vez para no inundar la consola.
+-- pintado mataría la capa entera en silencio por el resto de la sesión (trampa pagada
+-- por Cargo). Se avisa una sola vez para no inundar la consola.
 hook.Add("HUDPaint", "corpus_coagulant_vision_hud", function()
     if not Config.Enabled() then return end
     local ok, err = pcall(PintarVision)
