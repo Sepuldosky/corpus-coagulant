@@ -12,21 +12,43 @@ local Config = COAGULANT.Config
 local MSG_TREAT  = Corpus.Net.Register("coagulant", "treat")
 local MSG_CANCEL = Corpus.Net.Register("coagulant", "cancel")
 
--- Zona automática según el tipo (§7): la peor herida sangrante compatible.
+-- Zona automática según el tipo (§7).
 local function ZonaAuto(ply, kind)
-    if kind == "medkit" or kind == "bloodbag" then return "torso" end -- no usa zona
+    if kind == "bloodbag" then return "torso" end -- no usa zona
+
+    -- El medkit borra la secuela tratada: va a la zona con más de ella. Si no hay
+    -- ninguna, cae al torso (sigue sirviendo como cura de HP pura).
+    if kind == "medkit" then
+        return COAGULANT.WorstTreatedZone(ply) or "torso"
+    end
+
     if kind == "tourniquet" then
         local st = COAGULANT.GetState(ply)
+
+        -- 1) hay algo que atar: la extremidad SANGRANTE más grave, sin torniquete
         local mejor, mejorSev = nil, 0
         for zona in pairs(Config.EXTREMITIES) do
-            for _, w in ipairs(st.zones[zona].wounds) do
-                if Config.BleedRate(w) > 0 and w.severity > mejorSev then
-                    mejor, mejorSev = zona, w.severity
+            local zdata = st.zones[zona]
+            if not zdata.tourniquet then
+                for _, w in ipairs(zdata.wounds) do
+                    if Config.BleedRate(w) > 0 and w.severity > mejorSev then
+                        mejor, mejorSev = zona, w.severity
+                    end
                 end
             end
         end
-        return mejor
+        if mejor ~= nil then return mejor end
+
+        -- 2) nada que atar: la extremidad que YA lo tiene puesto — o sea, QUITARLO.
+        -- Sin esta rama el torniquete es imposible de sacar en cuanto vendás la zona
+        -- (la herida deja de sangrar y la búsqueda de arriba no encuentra nada):
+        -- reportado en juego, ronda 5, H4.
+        for zona in pairs(Config.EXTREMITIES) do
+            if st.zones[zona].tourniquet then return zona end
+        end
+        return nil
     end
+
     return COAGULANT.WorstBleedingZone(ply)
 end
 
@@ -57,7 +79,11 @@ function COAGULANT.ApplyTreatment(ply, kind, zone)
         end
         removing = st.zones[zone].tourniquet -- ya puesto: este tratamiento lo QUITA
     elseif kind == "medkit" then
-        if ply:Health() >= ply:GetMaxHealth() then return false, "Health is already full" end
+        -- el medkit hace DOS cosas (§7): cura HP y borra la secuela tratada. Solo se
+        -- rechaza si no tiene nada que hacer.
+        if ply:Health() >= ply:GetMaxHealth() and COAGULANT.WorstTreatedZone(ply) == nil then
+            return false, "Nothing to treat"
+        end
     elseif kind == "bloodbag" then
         if st.blood >= Config.BLOOD_MAX then return false, "Blood is already full" end
     end
@@ -147,6 +173,15 @@ local function Completar(ply, st)
         end
     elseif tr.kind == "medkit" then
         ply:SetHealth(math.min(ply:Health() + t.heal, ply:GetMaxHealth()))
+        -- ...y cierra la secuela: las heridas tratadas de la zona desaparecen y su
+        -- debuff con ellas (§7 — la única cura de la cojera/sway permanentes)
+        if t.healsWounds then
+            local n = COAGULANT.HealTreatedWounds(ply, tr.zone)
+            if n > 0 and Config.cv_debug:GetBool() then
+                Corpus.Log("coagulant", string.format("medkit: %d herida(s) tratada(s) cerrada(s) en %s",
+                    n, tr.zone))
+            end
+        end
     elseif tr.kind == "bloodbag" then
         st.blood = math.min(Config.BLOOD_MAX, st.blood + t.blood)
     end
