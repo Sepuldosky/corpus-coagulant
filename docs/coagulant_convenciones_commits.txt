@@ -104,9 +104,14 @@ Para corpus-coagulant/ (el módulo), los alcances definidos son:
     (corpus_coagulant_items.lua).
 
   hud:
-    HUD y capas de pantalla: estado replicado en cliente, visión (vignette,
-    blackout, capa de sangre crítica), silueta y barra de tratamiento
+    HUD y capas de pantalla: estado replicado en cliente, sway, visión (vignette,
+    blackout, capa de sangre crítica), silueta de zonas, barra de tratamiento y la
+    barra de sangre registrada en el StatusPanel de Cargo
     (corpus_coagulant_hud.lua).
+
+  medmenu:
+    El menú médico por zona: silueta clickeable, lista de heridas, botones de
+    tratamiento e intents al server (corpus_coagulant_medmenu.lua).
 
   options:
     El tab del menú Q (corpus_coagulant_options.lua).

@@ -127,10 +127,11 @@ Score de zona = Σ severidades de sus heridas; las `treated` cuentan **la mitad*
 
 ### Brazos → precisión
 
-- **Deriva continua de la mira, en dos capas** (reescrito el 2026-07-14 tras la ronda 5; el `ViewPunch` periódico original se sentía débil y llegaba estando idle):
-  - **Capa 1 — arma en mano:** temblor apenas perceptible (`amp × 0.35`).
-  - **Capa 2 — apuntando:** deriva incapacitante (`amp × 4.0`), estilo ARMA 3. "Apuntando" se detecta por el **clic derecho** (`IN_ATTACK2`): es el ADS de ARC9/TFA/MW y no depende de la API de ningún arma.
-  - `amp = 0.35° × (score_left_arm + score_right_arm)`. La deriva es **sobre todo horizontal** (el cabeceo es una fracción, `SWAY_VERTICAL`), y se compone de dos senos de períodos inconmensurables: nunca repite un patrón que se pueda aprender a compensar.
+- **Deriva continua de la mira, en dos capas** (reescrito el 2026-07-14 tras la ronda 5; el `ViewPunch` periódico original se sentía débil y llegaba estando idle. **Tuneado tras la ronda 6**: el autor pidió más amplitud en ambas capas y una **curva** entre ellas — el salto instantáneo se sentía tosco):
+  - **Capa 1 — arma en mano:** temblor perceptible pero manejable (`amp × 0.60`).
+  - **Capa 2 — apuntando:** deriva incapacitante (`amp × 4.5`), estilo ARMA 3. "Apuntando" se detecta por el **clic derecho** (`IN_ATTACK2`): es el ADS de ARC9/TFA/MW y no depende de la API de ningún arma.
+  - **Las capas son los extremos de una rampa, no un `if`:** un factor continuo 0..1 va del idle al ADS en `SWAY_ADS_RAMP_S` (0.45 s) por **smoothstep** (`SwayEase`). Solo se rampa la **amplitud** — la fase del bamboleo nunca se corta, así que la mira se abre y se cierra en vez de dar un tirón.
+  - `amp = 0.45° × (score_left_arm + score_right_arm)`. La deriva es **sobre todo horizontal** (el cabeceo es una fracción, `SWAY_VERTICAL`), y se compone de dos senos de períodos inconmensurables: nunca repite un patrón que se pueda aprender a compensar.
 - **Se aplica en el CLIENTE** (hook `CreateMove`), sumando el **delta** del offset al usercmd — no el offset absoluto, o la vista derivaría sin control en vez de oscilar. Es la única forma de mover la puntería de forma continua sin pelear contra el mouse del jugador. El score de brazos llega en el snapshot **con la isquemia incluida**, así que el cliente calcula el mismo número que el server.
 - Penalidad cruzada: brazo con score > 0 suma **+25 % al tiempo de aplicación** de tratamientos (§7).
 - Integración fina con ARC9 (spread/recoil por su API): **diferida**; cuando se haga, los nombres se verifican contra `dev/other/`, nunca de memoria (lección pagada por Cargo).

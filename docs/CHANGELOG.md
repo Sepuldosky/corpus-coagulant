@@ -351,12 +351,15 @@ verificación en juego (artefacto, ronda 5, sección H).
   `LIMP_MIN_MULT` 0.45, `LIMP_SPEED_FLOOR` 30, `SWAY_PER_SCORE` 0.35°,
   `SWAY_MIN_S`/`MAX_S` 1.5-3, `VISION_FULL_AT` 6, `BLACKOUT_S` 2) + las cuatro
   funciones puras que server y cliente comparten (`LimpMult`, `SwayAmplitude`,
-  `VisionIntensity`, `CriticalIntensity`). **[PENDIENTE]**
+  `VisionIntensity`, `CriticalIntensity`). **[APLICADO 2026-07-14]** (ronda 6 ✓ —
+  sección H completa; las constantes de sway las retunea la sesión de abajo)
 
 - PARCHE 2 — feat(debuffs): `shared/corpus_coagulant_move.lua` — hook `Move` que
   escala `mv:SetMaxSpeed` por el NW2 de cojera. **Nunca `SetWalkSpeed`** (contrato
   #6). Piso absoluto de 30 u/s, pero con `math.min(base, piso)`: jamás SUBE la
-  velocidad de un jugador que otro mod dejó frenado a propósito. **[PENDIENTE]**
+  velocidad de un jugador que otro mod dejó frenado a propósito.
+  **[APLICADO 2026-07-14]** (ronda 5/6 ✓ — H2: la cojera compone con el peso de
+  Cargo sin rubber-band, el punto crítico del slice)
 
 - PARCHE 3 — feat(debuffs): `server/corpus_coagulant_debuffs.lua` — tick propio de
   0.5 s (la isquemia entra y sale SOLA por tiempo: no alcanza con refrescar desde
@@ -365,7 +368,9 @@ verificación en juego (artefacto, ronda 5, sección H).
   escritura) y el sway con su intervalo. La cojera se refresca aunque la convar
   esté apagada: apagarla tiene que devolver el multiplicador a 1, no congelarlo.
   El NW2 se limpia en `PlayerSpawn` sin esperar al tick (medio segundo de cojera
-  heredada al reaparecer se siente como un bug). **[PENDIENTE]**
+  heredada al reaparecer se siente como un bug). **[APLICADO 2026-07-14]** (ronda
+  5/6 ✓ — H1/H8: la cojera muerde y las tres convars apagan. El sway de este parche
+  ya no vive acá: la sesión "Fix ronda 5" lo movió al cliente)
 
 - PARCHE 4 — feat(hud): `client/corpus_coagulant_hud.lua` — nace con el receptor
   del snapshot (`COAGULANT.ClientState`, la única fuente de verdad del cliente) y
@@ -377,7 +382,8 @@ verificación en juego (artefacto, ronda 5, sección H).
   en `pcall`: GMod desengancha un `HUDPaint` que erra y la capa moriría en silencio
   el resto de la sesión (trampa pagada por Cargo). La silueta, la barra de
   tratamiento y el StatusPanel crecen sobre este archivo en el slice 4.
-  **[PENDIENTE]**
+  **[APLICADO 2026-07-14]** (ronda 5/6 ✓ — H5/H6; el vignette de bandas que nació
+  acá lo reemplazó el elíptico de la sesión "Fix ronda 5", confirmado en I4)
 
 - PARCHE 5 — test(dev): el selftest cubre las cuatro curvas de §6 y el round-trip
   de scores (piernas suman ambas zonas, un brazo no mueve el score de piernas, la
@@ -386,7 +392,8 @@ verificación en juego (artefacto, ronda 5, sección H).
   selftest fallaba 2 checks en un jugador sin vendas — en juego pasaba solo porque
   Cargo persiste el inventario entre sesiones. Ahora se auto-abastece y devuelve lo
   que pidió prestado. `coagulant_status` suma una línea de debuffs (score por par de
-  zonas + el multiplicador **real** del NW2, no la curva teórica). **[PENDIENTE]**
+  zonas + el multiplicador **real** del NW2, no la curva teórica).
+  **[APLICADO 2026-07-14]** (ronda 5/6 ✓ — A2 y el status leído en toda la sección H)
 
 - PARCHE 6 — chore(init): manifest suma `move` (shared, tras config), `debuffs`
   (server, tras treatment) y `hud` (client, antes de options); el bloque CONTRATO
@@ -399,8 +406,13 @@ Resultado de la **ronda 5** (2026-07-14): **H1, H2, H5, H6, H7, H8 ✓** — la 
 muerde (score 6 → ×0.45), **compone con el peso de Cargo sin rubber-band** (el punto
 crítico del slice), el sway y la visión funcionan y las tres convars apagan. **H3 y H4
 ✗** (ver la sesión de abajo) y el sway/vignette quedaron con pedidos de diseño del
-autor. Los parches 1-4 quedan `[PENDIENTE]` hasta el re-test de la ronda 6, porque el
+autor. Los parches 1-4 quedaron `[PENDIENTE]` hasta el re-test de la ronda 6, porque el
 fix los reescribe en parte.
+
+**Cerrado por la ronda 6** (2026-07-14): el autor re-corrió las secciones A-H enteras y
+la I (los 4 fixes) — **todo ✓**, sin una sola marca en contra. Los 5 parches pasan a
+`[APLICADO]`. Única observación, sobre el sway: "dale un poco más en ambos casos,
+también es medio tosco; pasa muy fuerte al apuntar" → la sesión de tuning de más abajo.
 
 ---
 
@@ -441,14 +453,16 @@ en 200 frames).
 - PARCHE 1 — fix(treatment): la zona automática del torniquete gana su segunda rama —
   si no hay extremidad sangrante que atar, elige **la que ya lo tiene puesto**, o sea
   lo QUITA. Sin esto quedaba clavado de por vida. Quitarlo no exige ni consume ítem.
-  **[PENDIENTE]**
+  **[APLICADO 2026-07-14]** (ronda 6 ✓ — I2: el torniquete se saca de una zona ya
+  vendada)
 
 - PARCHE 2 — feat(core): `HealTreatedWounds(ply, zone)` y `WorstTreatedZone(ply)` —
   el Medkit cierra las heridas ya **tratadas** de una zona (única cura de la secuela) y
   su zona automática es la que más secuela tiene. Las heridas sin vendar no se tocan.
   `IsIschemic(ply, zone)` sale de `GetZoneScore` a función propia: la consultan el
   score, el snapshot y el status — vive en un solo lugar para que los tres digan lo
-  mismo. **[PENDIENTE]**
+  mismo. **[APLICADO 2026-07-14]** (ronda 6 ✓ — I1: el Medkit borra la secuela y la
+  cojera se va; la única cura, como decidió el autor)
 
 - PARCHE 3 — feat(hud): **el sway se reescribe como deriva continua en dos capas**
   (temblor con el arma en mano; deriva incapacitante al apuntar, ×4). Pasa de server
@@ -457,22 +471,146 @@ en 200 frames).
   offset, no el absoluto — si no, la mira derivaría sin control en vez de oscilar (el
   harness lo verifica midiendo el recorrido en 200 frames). El score de brazos llega en
   el snapshot **con la isquemia incluida**, así que cliente y server calculan igual.
-  **[PENDIENTE]**
+  **[APLICADO 2026-07-14]** (ronda 6 ✓ — I3: la deriva se siente y las dos capas se
+  distinguen; el autor pidió **más amplitud y una curva entre capas** → tuning abajo)
 
 - PARCHE 4 — feat(hud): **el vignette pasa de bandas rectangulares a elipse** — anillos
   concéntricos triangulados (`surface.DrawPoly`), geometría propia cacheada por
   resolución. El marco cuadrado con esquinas duras era lo que se veía raro. El de sangre
   crítica además **late** (`PULSE_HZ`). Cero assets externos: sin dependencia de la
-  licencia de nadie. **[PENDIENTE]**
+  licencia de nadie. **[APLICADO 2026-07-14]** (ronda 6 ✓ — I4, textual: "funcionó
+  bien")
 
 - PARCHE 5 — feat(config): `SWAY_IDLE_MULT`/`SWAY_ADS_MULT`/`SWAY_VERTICAL`,
   `SwayFor` y `SwayOffset` (puras, compartidas por cliente y selftest), `PULSE_HZ`, y
   `healsWounds` en la def del medkit. Se van `SWAY_MIN_S`/`SWAY_MAX_S` (ya no hay
-  intervalo: la deriva es continua). **[PENDIENTE]**
+  intervalo: la deriva es continua). **[APLICADO 2026-07-14]** (ronda 6 ✓ — I1/I3;
+  los tres números de sway los retunea la sesión de abajo)
 
 - PARCHE 6 — test(dev): `coagulant_status` imprime **el score de cada zona, el reloj
   del torniquete (`Xs/90s`) y la ISQUEMIA con sus segundos restantes** — sin esto el
   ciclo de isquemia es invisible en juego, que es exactamente por qué el H4 no se pudo
   evaluar. También dice dónde iría el próximo Medkit y muestra el sway en sus dos capas.
   El selftest cubre las curvas nuevas, el medkit borrando la secuela, el torniquete
-  quitable y que la deriva sea acotada y horizontal. **[PENDIENTE]**
+  quitable y que la deriva sea acotada y horizontal. **[APLICADO 2026-07-14]** (ronda 6
+  ✓ — I2b: la isquemia por fin se VE, que era lo que había dejado al H4 sin evaluar)
+
+Resultado de la **ronda 6** (2026-07-14): **los 4 fixes ✓**, y con ellos las secciones
+A-H re-corridas enteras sin una marca en contra. El slice 3 queda **verificado en
+juego**. Sale una sola observación —el sway— que no es un bug sino tuning: abajo.
+
+---
+
+## PARCHES DE sesión Tuning del sway — ronda 6 — 2026-07-14
+
+La ronda 6 pasó los 4 fixes, pero el autor dejó una nota sobre el sway (I3): *"Dale un
+poco tanto más de sway en ambos casos, también es medio tosco. Pasa muy fuerte al
+apuntar, creo que deberías hacer una curva para pasar de un estado al otro"*. Son dos
+cosas distintas: **poco** (amplitud) y **tosco** (el salto entre capas era un escalón —
+`SwayFor` elegía multiplicador con un `if apuntando`, así que la amplitud daba un tirón
+de 3.5° en UN frame al tocar el clic derecho). La amplitud ya estaba anotada como deuda
+tunable en `coagulant_estado.md`; la curva es lo que faltaba.
+
+Verificación previa: sintaxis (luaparser, 3 archivos) + harness de la curva (lupa +
+config real): smoothstep con extremos exactos y clamp, rampa monótona idle→ADS, la
+transición reparte el escalón en 28 frames (0.47 s) con un salto máximo de 0.19°/frame
+—18× menos que el tirón de la ronda 5— y la deriva sigue acotada y horizontal.
+
+- PARCHE 1 — feat(config): sube la amplitud de las dos capas (`SWAY_PER_SCORE`
+  0.35 → 0.45, `SWAY_IDLE_MULT` 0.35 → 0.60, `SWAY_ADS_MULT` 4.0 → 4.5) y **`SwayFor`
+  deja de recibir un booleano**: toma un factor continuo `ads` 0..1 y las dos capas
+  pasan a ser sus extremos, interpolados por `SwayEase` (smoothstep). Sigue aceptando
+  `true`/`false` por comodidad del selftest y de `coagulant_status`. Nace
+  `SWAY_ADS_RAMP_S` (0.45 s). Con score 2 la amplitud va de 0.25°/2.80° a
+  **0.54°/4.05°** (idle/ADS). **[PENDIENTE]**
+
+- PARCHE 2 — feat(hud): el hook `CreateMove` rampa el factor de ADS con
+  `math.Approach` en vez de leer el clic derecho como un booleano. Solo se rampa la
+  **amplitud**: la fase del bamboleo nunca se corta, así que la mira se abre y se cierra
+  en lugar de dar un tirón. El paso se clampea a 0.1 s de frame para que un tirón de FPS
+  no teletransporte la rampa, y `CortarSway` la resetea junto con el offset.
+  **[PENDIENTE]**
+
+- PARCHE 3 — test(dev): el selftest cubre la curva (extremos exactos, simetría en 0.5,
+  clamp), que la rampa crezca monótona de idle a ADS y que su mitad caiga entre las dos
+  capas; los checks de amplitud dejan de hardcodear 0.70 y se derivan de
+  `SWAY_PER_SCORE` (si no, retunear el número rompía el selftest en vez de validarlo).
+  **[PENDIENTE]**
+
+---
+
+## PARCHES DE sesión Block 3 — slice 4: UI — 2026-07-14
+
+Cuarto y último slice de `Coagulant_Architecture.md` §15, tras la ronda 6. Las tres
+piezas de §10 (silueta, menú médico, StatusPanel) más el tab Q con sus convars. **Este
+slice cierra el Block 3**: al verificarse, corre la checklist de cierre de §16.
+
+Decisión de diseño del slice, y la única que importa: **el dibujo y el área clickeable
+salen de la MISMA tabla** (`Config.SILHOUETTE` + `Config.ZoneAt`). La silueta se pinta
+dos veces —chica en el HUD, grande en el menú— y si cada una tuviera su geometría, el
+primer retoque las desincronizaría y el jugador terminaría vendando una zona que no
+eligió. El selftest lo asserta zona por zona (el centro de cada rect pintado tiene que
+resolver a su propia zona).
+
+Verificación previa: sintaxis (luaparser, 13 archivos) + harness offline en los cuatro
+cruces realm × Cargo — selftest **145 OK** (server+Cargo) / 140 (server) / **108**
+(client+Cargo) / 104 (client), más **69 checks de harness**: el snapshot llegando al
+cliente y sus scores coincidiendo con los del server (incluido el piso de isquemia), el
+sangrado por zona, la saturación del color, el clic cayendo en la zona correcta en las
+6, la barra de tratamiento a 0/50/100 %, el `HUDPaint` completo sin errar, el menú
+abriendo y su intent viajando con `{kind, zone}`, y la barra de sangre registrada en el
+StatusPanel de Cargo leyendo el NW2. Los parches nacen `[PENDIENTE]` hasta la
+verificación en juego (artefacto, ronda 7).
+
+- PARCHE 1 — feat(config): convar de CLIENTE `coagulant_hud` (§11) y las puras que
+  comparten el HUD y el menú: `SILHOUETTE` (las 6 zonas en coordenadas normalizadas),
+  `ZoneAt` (qué zona hay bajo el clic), `ZoneDamageFrac` (score → color, satura en
+  `ZONE_FULL_AT` 6), `TreatmentProgress` (la barra se calcula client-side desde el
+  `{endsAt, duration}` del snapshot — §9 no gana un canal de red) y `WoundFromSnap` (el
+  snapshot viaja con claves de una letra `{t,s,tr}` y las curvas de balance esperan la
+  herida entera: se traduce en UN lugar, no en cada llamador). **[PENDIENTE]**
+
+- PARCHE 2 — feat(hud): la silueta de 6 zonas y la barra de tratamiento. Color por
+  score en dos tramos (sano → amarillo → rojo: un lerp directo de verde a rojo se come
+  el amarillo), **la zona sangrante LATE** —la única señal que hay que ver sin leer
+  nada—, banda azul de torniquete que se pone morada con la isquemia, y **la silueta se
+  desvanece sola** cuando el cuerpo está sano y la sangre llena (un corte seco se lee
+  como un bug del HUD). Todo el pintado va en `pcall` con aviso una sola vez. La
+  superficie `COAGULANT.HUD` (score/sangrado/datos de zona por snapshot) queda expuesta
+  para que el menú médico lea **el mismo estado**, nunca uno propio. **[PENDIENTE]**
+
+- PARCHE 3 — feat(hud): barra de sangre en el **StatusPanel de Cargo** (§10/§12) —
+  `RegisterBar("coagulant", {id="blood", getValue=ply→NW2 0..100})`, con lazy-check en
+  `Corpus.OnReady`, jamás en file-scope (el orden de mount no está garantizado). **Sin
+  Cargo la sangre no desaparece:** el HUD propio pinta una mini-barra bajo la silueta —
+  la información vital no puede depender de un soft-dep (§14). **[PENDIENTE]**
+
+- PARCHE 4 — feat(medmenu): `client/corpus_coagulant_medmenu.lua` (archivo nuevo) —
+  comando `coagulant_menu`: silueta clickeable, lista de heridas de la zona (tipo,
+  severidad, si está vendada, si sangra), estado de torniquete/isquemia, y los 4 botones
+  de tratamiento con **el conteo real del inventario**. Ese conteo cuenta las DOS clases
+  de ítem: los `unique` viven como entradas con `uid` y sin `count`, así que un conteo
+  que solo mire stacks deja el botón del torniquete en gris con el torniquete en la
+  mochila — es el bug **G4 otra vez**, que en el server se pagó el 2026-07-13 y acá
+  volvería a morder desde el cliente. El botón sabe además que **quitar** un torniquete
+  no cuesta ítem. Todo se pinta leyendo el snapshot en vivo desde los `Paint`, sin
+  reconstruir el panel en callbacks (patrón del frame de Cargo). El cliente nunca es
+  autoridad: manda el intent y el server re-valida. Suma bind propio
+  (`coagulant_key_menu`, default M) que no le roba la tecla al chat ni a otro menú
+  abierto. **[PENDIENTE]**
+
+- PARCHE 5 — feat(options): el tab Q deja de ser el cartel del scaffold — convars de
+  cliente y de server, binder del menú médico, detección de soft-deps **con lo que
+  implica cada ausencia** (sin Cargo: tratamiento degradado; sin Caliber: hit-location
+  por hitgroup crudo) y la lista de comandos de verificación. **[PENDIENTE]**
+
+- PARCHE 6 — test(dev): el selftest cubre lo puro del slice — que la silueta cubra las
+  6 zonas sin repetirlas ni salirse de su caja, que **el centro de cada rect pintado
+  resuelva a su propia zona** (el contrato entre lo que se ve y lo que se clickea), la
+  saturación del color, la barra de tratamiento en sus tres puntos y la traducción del
+  snapshot; en realm cliente, que la superficie `COAGULANT.HUD` exista completa.
+  **[PENDIENTE]**
+
+- PARCHE 7 — chore(init): el manifest suma `medmenu` (client, **después** de `hud`: lee
+  su silueta), el header y el log de boot pasan a "Block 3 slice 4". Las convenciones de
+  commits ganan el alcance `medmenu`. **[PENDIENTE]**
