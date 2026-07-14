@@ -78,6 +78,23 @@ function COAGULANT._SelfTest()
     check(Config.LimpMult(100) == Config.LIMP_MIN_MULT, "la cojera no respeta su piso")
     check(Config.SwayAmplitude(0) == 0, "sway sin heridas de brazo")
     check(math.abs(Config.SwayAmplitude(2) - 0.70) < 0.001, "amplitud de sway incorrecta")
+
+    -- Sway en dos capas (§6): apuntar tiene que doler mucho más que estar idle
+    check(Config.SwayFor(2, true) > Config.SwayFor(2, false),
+        "apuntar no agrava el sway (la capa ADS no muerde)")
+    check(math.abs(Config.SwayFor(2, true) - 0.70 * Config.SWAY_ADS_MULT) < 0.001,
+        "la capa ADS del sway no aplica su multiplicador")
+    check(Config.SwayFor(0, true) == 0, "sway con los brazos sanos")
+
+    -- La deriva es acotada y sobre todo HORIZONTAL (pedido del autor, ronda 5)
+    local maxYaw, maxPitch = 0, 0
+    for i = 0, 300 do
+        local y, p = Config.SwayOffset(i * 0.13, 1)
+        maxYaw, maxPitch = math.max(maxYaw, math.abs(y)), math.max(maxPitch, math.abs(p))
+    end
+    check(maxYaw <= 1.001, "la deriva del sway se escapa de su amplitud")
+    check(maxPitch < maxYaw, "el sway no es principalmente horizontal")
+    check(maxPitch <= Config.SWAY_VERTICAL + 0.001, "el cabeceo del sway excede su fracción")
     check(Config.VisionIntensity(0) == 0, "visión afectada sin heridas de cabeza")
     check(Config.VisionIntensity(Config.VISION_FULL_AT) == 1, "la visión no satura en VISION_FULL_AT")
     check(Config.VisionIntensity(999) == 1, "la visión pasa de 1 (falta clamp)")
@@ -174,6 +191,47 @@ function COAGULANT._SelfTest()
             check(COAGULANT.GetArmScore(ply) == 2, "GetArmScore incorrecto")
             check(COAGULANT.GetLegScore(ply) == 3, "una herida de brazo movió el score de piernas")
 
+            -- El medkit borra la secuela TRATADA (§7): es la única cura del debuff
+            -- permanente. Sin esto, una pierna vendada te deja cojo hasta morir
+            -- (reportado en juego, ronda 5, H3).
+            COAGULANT.ResetState(ply)
+            COAGULANT.AddWound(ply, "left_leg", "bala", 2)
+            COAGULANT.BandageEffect(ply, "left_leg")
+            check(COAGULANT.GetZoneScore(ply, "left_leg") == 1,
+                "la herida tratada no cuenta la mitad")
+            check(COAGULANT.WorstTreatedZone(ply) == "left_leg",
+                "WorstTreatedZone no encuentra la secuela (el medkit iría a la zona equivocada)")
+            check(COAGULANT.HealTreatedWounds(ply, "left_leg") == 1,
+                "el medkit no cierra la herida tratada")
+            check(COAGULANT.GetZoneScore(ply, "left_leg") == 0,
+                "la secuela sobrevive al medkit: el debuff seguiría para siempre")
+            check(COAGULANT.WorstTreatedZone(ply) == nil, "quedó secuela tratada tras curarla")
+
+            -- ...pero NO toca las heridas sin vendar: primero se cierra el sangrado
+            COAGULANT.AddWound(ply, "left_leg", "bala", 2)
+            check(COAGULANT.HealTreatedWounds(ply, "left_leg") == 0,
+                "el medkit cerró una herida SIN vendar")
+            check(COAGULANT.IsBleeding(ply) == true,
+                "el medkit cortó un sangrado que nadie había tratado")
+
+            -- El torniquete se puede QUITAR aunque la zona ya no sangre. La zona
+            -- automática solo miraba extremidades SANGRANTES, así que en cuanto
+            -- vendabas la zona el torniquete quedaba clavado para siempre (bug
+            -- reportado en juego, ronda 5, H4). Quitarlo no consume ni exige ítem.
+            COAGULANT.ResetState(ply)
+            local stTq = COAGULANT.GetState(ply)
+            stTq.zones.right_leg.tourniquet = true
+            stTq.zones.right_leg.tourniquetAt = CurTime()
+            COAGULANT.AddWound(ply, "right_leg", "bala", 2)
+            COAGULANT.BandageEffect(ply, "right_leg") -- la zona deja de sangrar
+            local okQuitar, errQuitar = COAGULANT.ApplyTreatment(ply, "tourniquet")
+            check(okQuitar == true, "no se puede quitar el torniquete de una zona que ya "
+                .. "no sangra: " .. tostring(errQuitar))
+            check(istable(stTq.treatment) and stTq.treatment.removing == true,
+                "el toggle no detectó que había que QUITAR el torniquete")
+            check(isfunction(COAGULANT.IsIschemic), "IsIschemic no es función")
+            COAGULANT.CancelTreatment(ply, "selftest")
+
             COAGULANT.ResetState(ply) -- dejar limpio
         else
             Corpus.Log("coagulant", "selftest: sin jugadores — round-trip de estado omitido")
@@ -224,14 +282,32 @@ if SERVER then
             st.critical and " (CRÍTICA)" or "", objetivo:Health()))
         for _, zona in ipairs(COAGULANT.Zones.LIST) do
             local zdata = st.zones[zona]
-            if #zdata.wounds > 0 or zdata.tourniquet then
+            local isq = COAGULANT.IsIschemic(objetivo, zona)
+            if #zdata.wounds > 0 or zdata.tourniquet or isq then
                 local partes = {}
                 for _, w in ipairs(zdata.wounds) do
                     partes[#partes + 1] = string.format("%s sev%d%s",
                         w.type, w.severity, w.treated and " (tratada)" or "")
                 end
-                Corpus.Log("coagulant", "  " .. zona .. ": " .. table.concat(partes, ", ")
-                    .. (zdata.tourniquet and " [torniquete]" or ""))
+
+                -- El torniquete y la isquemia se imprimen con SUS RELOJES: sin esto,
+                -- el ciclo de isquemia es invisible en juego (ronda 5, H4)
+                local marcas = ""
+                if zdata.tourniquet then
+                    local puesto = zdata.tourniquetAt and (CurTime() - zdata.tourniquetAt) or 0
+                    marcas = marcas .. string.format(" [torniquete %.0fs/%ds]",
+                        puesto, COAGULANT.Config.TOURNIQUET_ISCHEMIA_S)
+                end
+                if isq then
+                    local resto = zdata.ischemiaUntil and (zdata.ischemiaUntil - CurTime()) or nil
+                    marcas = marcas .. (resto ~= nil
+                        and string.format(" [ISQUEMIA — %.0fs restantes]", math.max(0, resto))
+                        or " [ISQUEMIA activa]")
+                end
+
+                Corpus.Log("coagulant", string.format("  %s (score %.1f): %s%s",
+                    zona, COAGULANT.GetZoneScore(objetivo, zona),
+                    #partes > 0 and table.concat(partes, ", ") or "sin heridas", marcas))
             end
         end
         if not COAGULANT.IsBleeding(objetivo) then
@@ -240,14 +316,21 @@ if SERVER then
 
         -- Debuffs (§6). La velocidad se lee del NW2 REAL — es el número que el hook
         -- Move aplica de verdad; la curva teórica no dice si la convar está apagada.
+        local cfg = COAGULANT.Config
         local piernas = COAGULANT.GetLegScore(objetivo)
         local brazos  = COAGULANT.GetArmScore(objetivo)
         local cabeza  = COAGULANT.GetZoneScore(objetivo, "head")
         Corpus.Log("coagulant", string.format(
-            "  debuffs — piernas: score %.1f → velocidad ×%.2f | brazos: score %.1f → sway %.2f° | cabeza: score %.1f → visión %d%%",
+            "  debuffs — piernas: score %.1f → velocidad ×%.2f | brazos: score %.1f → sway %.2f° idle / %.2f° apuntando | cabeza: score %.1f → visión %d%%",
             piernas, objetivo:GetNW2Float("coagulant_speed_mult", 1),
-            brazos, COAGULANT.Config.SwayAmplitude(brazos),
-            cabeza, math.Round(COAGULANT.Config.VisionIntensity(cabeza) * 100)))
+            brazos, cfg.SwayFor(brazos, false), cfg.SwayFor(brazos, true),
+            cabeza, math.Round(cfg.VisionIntensity(cabeza) * 100)))
+
+        -- La secuela tratada solo la borra el medkit (§7): decir DÓNDE iría el próximo
+        local secuela = COAGULANT.WorstTreatedZone(objetivo)
+        if secuela ~= nil then
+            Corpus.Log("coagulant", "  secuela tratada (la cierra un Medkit): " .. secuela)
+        end
 
         if st.treatment ~= nil then
             Corpus.Log("coagulant", string.format("  tratamiento en curso: %s en %s (%.1fs restantes)",
