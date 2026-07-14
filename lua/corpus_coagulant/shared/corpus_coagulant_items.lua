@@ -5,6 +5,11 @@
 --
 -- REALM: SHARED a propósito — Cargo NO sincroniza defs por net: su grid cliente
 -- renderiza desde las defs locales (pagado en juego el 2026-07-13, punto E).
+-- El onUse TAMBIÉN se registra en ambos realms: la UI de Cargo exige
+-- isfunction(def.onUse) client-side para mostrar "Use" y el quick bind
+-- (corpus_cargo_ui.lua) — un onUse solo-server deja el ítem visible pero
+-- inusable. La closure es realm-safe: solo toca ApplyTreatment al INVOCARSE,
+-- y Cargo únicamente la invoca en server.
 --
 -- CONSUMO AL COMPLETAR (arquitectura §7): el onUse devuelve SIEMPRE false (Cargo
 -- no consume) y solo inicia el tratamiento; corpus_coagulant_treatment.lua hace
@@ -38,7 +43,7 @@ Corpus.OnReady(function()
         class    = "stackable",
         category = "medical",
         trivia   = "Stops light and medium bleeding. Applies over 4 seconds.",
-        onUse    = SERVER and UsarTratamiento("bandage") or nil,
+        onUse    = UsarTratamiento("bandage"),
     })
 
     cargo.Items.Register({
@@ -48,7 +53,7 @@ Corpus.OnReady(function()
         class    = "unique",
         category = "medical",
         trivia   = "Stops all bleeding on one limb while applied. Leaving it on too long damages the limb. Not consumed.",
-        onUse    = SERVER and UsarTratamiento("tourniquet") or nil,
+        onUse    = UsarTratamiento("tourniquet"),
     })
 
     cargo.Items.Register({
@@ -58,7 +63,7 @@ Corpus.OnReady(function()
         class    = "stackable",
         category = "medical",
         trivia   = "Restores health over 10 seconds. Does not stop bleeding or restore blood.",
-        onUse    = SERVER and UsarTratamiento("medkit") or nil,
+        onUse    = UsarTratamiento("medkit"),
     })
 
     cargo.Items.Register({
@@ -68,7 +73,7 @@ Corpus.OnReady(function()
         class    = "stackable",
         category = "medical",
         trivia   = "Restores blood volume over 8 seconds. Stop the bleeding first.",
-        onUse    = SERVER and UsarTratamiento("bloodbag") or nil,
+        onUse    = UsarTratamiento("bloodbag"),
     })
 
     Corpus.Log("coagulant", "ítems médicos registrados contra Cargo (4 defs, "
