@@ -58,10 +58,14 @@ Config.WOUND_TYPES = {
 -- ============================================================
 -- Tratamiento (§7) — tiempos en segundos, efectos por tipo
 -- ============================================================
+-- El Medkit es la ÚNICA cura de la secuela (§7, decisión del autor 2026-07-14): una
+-- herida vendada deja de sangrar pero su score sigue pesando a la mitad para siempre
+-- — el Medkit cierra las heridas ya TRATADAS de una zona. Las no tratadas no: hay
+-- que vendarlas primero.
 Config.TREATMENTS = {
     bandage    = { time = 4,  item = "corpus_coagulant_bandage" },
     tourniquet = { time = 2,  item = "corpus_coagulant_tourniquet" }, -- aplicar Y quitar
-    medkit     = { time = 10, item = "corpus_coagulant_medkit", heal = 50 },
+    medkit     = { time = 10, item = "corpus_coagulant_medkit", heal = 50, healsWounds = true },
     bloodbag   = { time = 8,  item = "corpus_coagulant_bloodbag", blood = 40 },
 }
 Config.ARM_TIME_MULT       = 1.25 -- brazo herido: tratamientos más lentos (§6)
@@ -83,12 +87,19 @@ Config.LIMP_MIN_MULT   = 0.45  -- piso: cojo, nunca inmóvil
 Config.LIMP_SPEED_FLOOR = 30   -- piso ABSOLUTO en el Move hook (mismo que el movecompat
                                -- de Cargo): componiendo dos multiplicadores, el producto
                                -- podría dejar al jugador clavado
-Config.SWAY_PER_SCORE  = 0.35  -- grados de ViewPunch por punto de score de brazo
-Config.SWAY_MIN_S      = 1.5   -- intervalo aleatorio entre punches...
-Config.SWAY_MAX_S      = 3.0   -- ...para que el pulso no se vuelva un patrón legible
+-- Sway (§6, reescrito el 2026-07-14 tras la ronda 5): el ViewPunch periódico se
+-- sentía débil y llegaba estando idle. Ahora es una DERIVA CONTINUA en dos capas
+-- (temblor sutil con el arma en mano; deriva fuerte al apuntar), sobre todo
+-- horizontal, estilo ARMA 3 — pedido del autor.
+Config.SWAY_PER_SCORE  = 0.35  -- grados de amplitud base por punto de score de brazo
+Config.SWAY_IDLE_MULT  = 0.35  -- capa 1: arma en mano, sin apuntar (apenas perceptible)
+Config.SWAY_ADS_MULT   = 4.0   -- capa 2: apuntando (incapacitante — el número a tunear)
+Config.SWAY_VERTICAL   = 0.30  -- el cabeceo es una fracción del bamboleo: deriva HORIZONTAL
+
 Config.VISION_FULL_AT  = 6     -- score de cabeza donde el oscurecimiento satura
 Config.BLACKOUT_S      = 2     -- fade a negro al recibir una herida de cabeza...
 Config.BLACKOUT_MIN_SEVERITY = 2 -- ...media o grave (§6: es visual, sin pérdida de control)
+Config.PULSE_HZ        = 1.1   -- latido del vignette de sangre crítica (ciclos/s)
 
 -- ============================================================
 -- Funciones puras
@@ -143,9 +154,25 @@ function Config.LimpMult(scorePiernas)
     return math.max(Config.LIMP_MIN_MULT, 1 - Config.LIMP_PER_SCORE * scorePiernas)
 end
 
--- Amplitud del ViewPunch en grados por heridas de brazo (score = ambos brazos)
+-- Amplitud base de la deriva en grados por heridas de brazo (score = ambos brazos)
 function Config.SwayAmplitude(scoreBrazos)
     return Config.SWAY_PER_SCORE * scoreBrazos
+end
+
+-- Amplitud EFECTIVA según la capa (§6): sutil con el arma en mano, fuerte al apuntar
+function Config.SwayFor(scoreBrazos, apuntando)
+    return Config.SwayAmplitude(scoreBrazos)
+        * (apuntando and Config.SWAY_ADS_MULT or Config.SWAY_IDLE_MULT)
+end
+
+-- Offset de la deriva en el instante t (grados: bamboleo, cabeceo). Dos senos de
+-- períodos inconmensurables: nunca repite un patrón legible, así que no se puede
+-- "aprender" a compensar. Pura: el cliente la usa para mover la mira y el selftest
+-- para verificarla.
+function Config.SwayOffset(t, amp)
+    local yaw = (math.sin(t * 1.13) * 0.7 + math.sin(t * 0.37) * 0.3) * amp
+    local pitch = math.sin(t * 0.83) * amp * Config.SWAY_VERTICAL
+    return yaw, pitch
 end
 
 -- Intensidad 0..1 del oscurecimiento de visión por heridas de cabeza
