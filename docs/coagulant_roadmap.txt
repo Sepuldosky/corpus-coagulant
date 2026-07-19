@@ -13,10 +13,16 @@ Metodología para ejecutar cada tramo: ../corpus/docs/corpus_flujo_trabajo.txt
 ------------------------------
 
 Coagulant es el Block 3 del rollout de Corpus (CORPUS_Architecture.md §9). Soft-deps
-(§2): Caliber (hit-location enriquecido — su pipeline de jugador aún no existe, va
-mock-first) y Cargo (ítems médicos — su framework de ítems YA está en código y
-verificado, los ítems registran desde ya). Craving lo consumirá a él (efectos de
-salud por inanición/deshidratación, opcional).
+(§2 — cita COR-11: la única hard-dep del ecosistema es Corpus, y COR-5: se detectan,
+no se asumen): Caliber (hit-location enriquecido — su pipeline de jugador aún no
+existe, va mock-first, cita FLU-17) y Cargo (ítems médicos — su framework de ítems YA
+está en código y verificado, los ítems registran desde ya). Craving lo consumirá a él
+(efectos de salud por inanición/deshidratación, opcional).
+
+NOTA DE LECTURA (cita FLU-22 y el voto del autor del 2026-07-19): este doc es
+INTENCIÓN PURA, no autoridad. Los IDs que aparecen acá son CITAS a normas cuya sede
+está en otro lado — este roadmap no acuña ninguna. Un "limpio" del gate de coherencia
+sobre este archivo se reporta NO-AUDITABLE POR DISEÑO.
 
 
 1. INMEDIATO
@@ -38,7 +44,11 @@ salud por inanición/deshidratación, opcional).
 
   [3] Wiring real con Caliber cuando su Block 3 (pipeline de armadura de jugador)
       exponga el hit-location enriquecido / eventos de daño-limb: reemplazar la
-      rama mock-first de ScalePlayerDamage sin tocar la vía de degradación.
+      rama mock-first de ScalePlayerDamage sin tocar la vía de degradación
+      (cita COA-7: el mapa hitgroup→zona NUNCA se borra — es la vía standalone).
+      Ojo con CAL-22: la Limbs API es agnóstica por diseño pero NPC-only en la
+      práctica, así que este tramo no puede darse por servido hasta que su Block 3
+      cierre de verdad.
 
   [4] Superficie para Craving: eventos de estado clínico consumibles (soft-dep
       inversa — Craving detecta a Coagulant, nunca al revés). Concretamente, la
@@ -46,6 +56,9 @@ salud por inanición/deshidratación, opcional).
       ApplyExternalCondition(ply, id, severity) — el 2.º argumento es el ID DE
       CONDICIÓN CLÍNICA {"starvation","dehydration"}, NO el stat de Craving
       (hunger/hydration): así lo emite ya el puente (corpus_craving_coagulant.lua).
+      Es la firma que CRV-4 congeló desde el CONSUMIDOR y que este módulo —el
+      dueño— todavía no ratificó: deuda D-5 del registro. Ratificarla en
+      Coagulant_Architecture.md §8 (o negociarla) es parte de este tramo.
 
 
 =====================================================

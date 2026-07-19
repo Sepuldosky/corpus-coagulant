@@ -875,3 +875,55 @@ acreditaciones `tipo: harness` vivas en entradas COA. NO se tocó a propósito: 
 decidir (materializar el harness vs. re-acreditar la evidencia), después parchear.
 
 Verificación: checker en verde + suite 12/12. Sin superficie de runtime.
+
+---
+
+## PARCHES DE sesión D-12: el harness de Coagulant se materializa — 2026-07-19
+
+Cierra la deuda **D-12** que la tanda anterior dejó anotada arriba, por **voto del autor**
+(opción (a): materializar, no re-acreditar). Guiada por `dev/PROMPT_d12_d13_segundo_completo.txt`.
+
+**Lo que la derivación del árbol corrigió antes de votar (FLU-27):** el acta nombraba
+`COA-2`, `COA-4`, `COA-5` y `COA-6`. El registro llevaba **dieciséis** entradas `COA` con
+`tipo: harness` — el 47 % de la familia — más la de `COR-12`, que se apoyaba a medias en el
+mismo archivo ausente. El costo real de re-acreditar era 17 adjudicaciones, no 4.
+
+- PARCHE 1 — **`dev/harness_coagulant.py` existe** (tercero del patrón, detrás de
+  `harness_cargo.py` y `harness_craving.py`): LuaJIT vía `lupa` + stubs de GMod, carga el
+  framework real de `corpus/` y este módulo en **ambos realms**. Corre **173 checks propios**
+  (124 server / 49 client) más el `_SelfTest` del módulo en los dos realms (145 + 108). Los
+  checks se **re-derivaron** del CHANGELOG de este repo (rondas 1-6) y del código: ninguno se
+  inventó. **[APLICADO 2026-07-19]**
+
+- PARCHE 2 — **La igualdad de escalado entre realms (`COA-5`) se verifica de verdad.** El
+  snapshot que produce el realm SERVER se **inyecta** en el CLIENT y ambos derivan el mismo
+  score de zona y el mismo multiplicador de cojera. Un harness que fabricara el snapshot en
+  el cliente probaría su propia aritmética, no la igualdad. **[APLICADO 2026-07-19]**
+
+- PARCHE 3 — **`CLAUDE.md` §Verificación pasa al régimen permanente.** La línea que declaraba
+  el harness «de scratchpad, se reconstruye por sesión» (el mismo régimen viejo que Cargo dejó
+  atrás en el hallazgo 2.5) ahora nombra la ruta, el comando y por qué el archivo es
+  versionado. **[APLICADO 2026-07-19]**
+
+- PARCHE 4 — **Las 17 acreditaciones pasan a ser citables.** Las 16 refs `COA` con
+  `tipo: harness` y la de `COR-12` dejan de describir un check suelto («el piso absoluto»,
+  «snapshot llegando al cliente») y nombran la ruta del archivo más el escenario que corre.
+  El checker cazó de paso que una ref con **dos** rutas no resuelve a ninguna: la de `COR-12`
+  quedó partida en dos entradas, una por harness. **[APLICADO 2026-07-19]**
+
+**Dos escenarios del primer borrador eran IRREALES y se corrigieron contra el código, no al
+revés** — es la disciplina de FLU-22 (el código manda) aplicada al propio verificador:
+**(a)** sin herida abierta el tick **regenera** antes de calcular el drenaje de HP (§4), así
+que «sangre 0 → drenaje máximo» exigía una herida activa; el harness ahora prueba las dos
+ramas por separado. **(b)** Comparar el multiplicador de cojera del cliente contra un estado
+del server **posterior** al snapshot no probaba igualdad entre realms: probaba que dos
+estados distintos dan números distintos. Los tres números del puente se toman ahora del mismo
+estado que produjo el snapshot.
+
+Efecto colateral en `corpus-craving/CLAUDE.md:70`: su «mismo patrón que verificó Corpus,
+Cargo **y Coagulant**» era falso cuando el acta lo señaló (H3) y **pasó a ser verdadero** sin
+tocar una línea de ese repo — el hueco no estaba en la afirmación sino en el árbol.
+
+Verificación: harness en verde (`ALL GREEN`, exit 0) + checker en verde sobre 197 IDs + suite
+12/12. Sin superficie de runtime: **ni una línea de Lua cambió** en esta tanda, y **ningún
+check de planilla nace de ella** (FLU-37) — un harness es capa offline, no planilla.

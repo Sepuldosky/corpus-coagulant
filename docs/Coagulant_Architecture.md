@@ -124,6 +124,8 @@ Score de zona = Σ severidades de sus heridas; las `treated` cuentan **la mitad*
 
 - `speedMult = max(0.45, 1 − 0.12 × (score_left_leg + score_right_leg))`.
 - **Aplicación composable, nunca `SetWalkSpeed`:** Cargo (movecompat) escala su propio multiplicador sobre `mv:SetMaxSpeed` del move data cada tick — **nunca** re-estampa walk/run: eso es el antipatrón de terceros («better movement v2») que CRG-12 existe para evitar. Si Coagulant escribiera `SetWalkSpeed`/`SetRunSpeed` se pisaría con cualquier mod que haga lo mismo. Coagulant publica `NW2Float("coagulant_speed_mult")` y lo aplica en un hook `Move` compartido propio escalando `mv:SetMaxSpeed(mv:GetMaxSpeed() × mult)` (ambos realms leen el mismo NW2 → predicción consistente). Componen multiplicativamente: `final = (lo que sea que dejaron gamemode/Cargo/mods) × coagulant_speed_mult`.
+- **COA-6 — Piso absoluto con `math.min(base, piso)`.** Componiendo dos multiplicadores el producto puede acercarse a cero, así que el hook aplica `max(base × mult, min(base, LIMP_SPEED_FLOOR))` — el mismo piso de 30 que usa el movecompat de Cargo. El `math.min` es la mitad que importa y es fácil de perder al releer: sin él, un jugador que **otro** mod dejó a propósito por debajo del piso (freeze, agarre, un guion) vería su velocidad **subida** por una norma médica. Un piso nunca acelera a nadie: solo evita que la cojera clave a quien ya caminaba normal.
+- **COA-17 — El NW2 de cojera se publica solo cuando el valor CAMBIÓ.** Cada escritura de un NW2 se replica a **todos** los clientes, no solo al dueño: reescribir el mismo número en cada tick de 0,5 s es tráfico multiplicado por la cantidad de jugadores, a cambio de nada. El tick refresca el cálculo siempre —incluso con la convar apagada, para que apagarla devuelva el multiplicador a 1 en vez de congelarlo— pero la escritura va detrás de una comparación con el último valor publicado.
 
 ### Brazos → precisión
 
@@ -220,7 +222,7 @@ Todo net string vía `Corpus.Net.Register("coagulant", msg)` → `corpus_coagula
 | Canal | Dirección | Contenido |
 |---|---|---|
 | `NW2Float "coagulant_blood"` | S→todos | sangre 0..100 (para StatusPanel/HUD, barato) |
-| `NW2Float "coagulant_speed_mult"` | S→todos | multiplicador de cojera (Move hook en ambos realms) |
+| `NW2Float "coagulant_speed_mult"` | S→todos | multiplicador de cojera (Move hook en ambos realms) — **COA-17: se escribe solo si cambió** (§6); un NW2 se replica a todos los clientes en cada escritura |
 | `corpus_coagulant_state` | S→C (owner) | snapshot de heridas/torniquetes/tratamiento en curso — **COA-16: on-change**, no por tick |
 | `corpus_coagulant_treat` | C→S | intent `{ kind, zone }` — server valida (ítem presente vía Cargo o modo degradado, zona válida, sin tratamiento en curso) |
 | `corpus_coagulant_cancel` | C→S | cancela el tratamiento propio en curso |
