@@ -793,3 +793,85 @@ autor— nacen `[APLICADO]`.
   siguiera el puntero caía en la silueta. Se corrige el número y se completa el enunciado con la
   primera mitad del contrato (el daño es de Caliber), que el comentario recortaba.
   **[APLICADO 2026-07-14]**
+
+---
+
+## PARCHES DE sesión Etiquetado de IDs normativos (deuda D-7) — 2026-07-19
+
+Tanda multi-repo del ecosistema, guiada por `dev/PROMPT_d7_etiquetado_ids.txt` (§8 del flujo).
+Solo prosa: **ninguna norma cambió**. Cada sede que el registro
+(`../corpus/docs/ids.yaml`) declara ahora lleva su ID visible, para que un lector que
+aterriza en el doc vea de qué norma se trata sin abrir el registro, y para que el gate de
+coherencia (§7.8) pueda contrastar el título del yaml contra la prosa de su sede.
+
+- PARCHE 1 — **27 de 31 IDs de la familia `COA` etiquetados en su sede.**
+  Los 4 restantes NO se etiquetaron a propósito: sus sedes viven en archivos `.lua`,
+  en el CHANGELOG, en el estado o en el roadmap. Etiquetar ahí volvería **definitorio** un
+  comentario, que es lo que **FLU-26** prohíbe, o tocaría un doc que no se reescribe
+  (**FLU-14**). Son deuda **D-3** del registro y se cierran moviendo la sede a un doc —
+  decisión de diseño, no mecánica. **[APLICADO 2026-07-19]**
+
+- PARCHE 2 — **Contratos que eran copias, ahora CITAN por ID.** Los contratos 1, 2 y 9 del
+  `CLAUDE.md` pasan a citar `COR-2`/`COR-7`, `COR-5` y `COR-6`; la regla cardinal
+  cita `COR-10`/`COR-1`; el boot diferido cita `CAL-1` (su sede es Caliber); y la regla
+  de defs en ambos realms cita **`COR-12`** en sus dos apariciones, en vez de re-enunciarla.
+  Esto último es la reparación de la deuda **D-1**. **[APLICADO 2026-07-19]**
+
+Verificación: `corpus/.claude/check-ids/corpus_check_ids.ps1` en verde (una etiqueta mal
+tipeada habría salido como `HUERFANO_DOC`). Sin superficie de runtime: nada que cargar en
+un mapa, y **ningún check de planilla nace de esta tanda** (FLU-37).
+
+---
+
+## PARCHES DE sesión Anti-drift: cierre de votos — 2026-07-19
+
+Tanda multi-repo guiada por `dev/PROMPT_cierre_antidrift.txt`: el autor votó las deudas
+abiertas del registro y acá se aplica lo que toca a este repo.
+
+- PARCHE 1 — **Voto D-10 aplicado: la prosa sube a la sede.** §7 enuncia la mitad de
+  **`COA-20`** que solo el registro afirmaba (quitar el torniquete **no exige ni consume
+  ítem** — el toggle opera sobre el ya puesto), y §11 gana **`COA-35`** (un check jamás
+  hardcodea un número tunable: se deriva de la config), partido de `COA-27`, que queda solo
+  con «los números de balance viven en config». **[APLICADO 2026-07-19]**
+- PARCHE 2 — **Curaduría de títulos fusionados:** la cancelación del tratamiento es ahora
+  **`COA-34`** (§7, con su evidencia de planilla G3) y la barra de progreso client-side es
+  **`COA-33`** (§9, a ratificar en juego en la ronda 7); `COA-16` y `COA-19` quedan con un
+  solo enunciado y un solo ancla cada uno. **[APLICADO 2026-07-19]**
+- PARCHE 3 — **D-3 recortada: `COA-14` sube a §10.** «Todo el pintado va en `pcall` +
+  `Corpus.Log` ruidoso» — la norma real peor ubicada del ecosistema (su sede era un
+  comentario de código; la trampa la pagó Cargo) vive ahora en el doc de diseño, y el
+  comentario de `corpus_coagulant_hud.lua` pasa de definir a **citar** (FLU-26).
+  **[APLICADO 2026-07-19]**
+
+Verificación: `corpus/.claude/check-ids/corpus_check_ids.ps1` en verde sobre 197 IDs. Sin
+superficie de runtime (el comentario de hud.lua no cambia lógica), y **ningún check de
+planilla nace de esta tanda** (FLU-37).
+
+---
+
+## PARCHES DE sesión Anti-drift: reparación del COMPLETO — 2026-07-19
+
+Aplica los hallazgos del acta `corpus/docs/auditorias/2026-07-19_coherencia_docs.md` que
+tocan este repo.
+
+- PARCHE 1 — **2.9:** la semilla anota como **DEROGADA** la identidad
+  `onUse == ApplyBandage` (el slice 2 la reemplazó: `onUse` fabricado que devuelve
+  SIEMPRE `false`, consumo al COMPLETAR — COA-3; `ApplyBandage` quedó como azúcar del
+  contrato). La viñeta convivía con contratos vivos en la lista «Marco fijo» y se leía
+  como vigente. **[APLICADO 2026-07-19]**
+- PARCHE 2 — **2.12:** el estado y el roadmap dejan de escribir la firma pendiente como
+  `ApplyExternalCondition(ply, stat, …)`: el 2.º argumento es el **id de condición
+  clínica** `{starvation, dehydration}`, no el stat — implementar switcheando sobre el
+  stat pasaría el gate de CAPACIDAD sin aplicar nada, y la inanición quedaría inofensiva
+  **en silencio**. **[APLICADO 2026-07-19]**
+- PARCHE 3 — **H4 (el hallazgo que el cruce dejó escapar, con árbitro en el Lua):** §6
+  deja de atribuirle a Cargo el re-estampado de walk/run por tick — movecompat escala
+  `mv:SetMaxSpeed` del move data, y re-estampar walk/run es el antipatrón de terceros
+  que CRG-12 existe para evitar. **[APLICADO 2026-07-19]**
+
+Del acta queda **para el autor** (deuda **D-12** del registro): `dev/harness_coagulant.py`
+**no existe** como archivo, este CLAUDE.md aún declara el harness «de scratchpad», y hay
+acreditaciones `tipo: harness` vivas en entradas COA. NO se tocó a propósito: primero
+decidir (materializar el harness vs. re-acreditar la evidencia), después parchear.
+
+Verificación: checker en verde + suite 12/12. Sin superficie de runtime.

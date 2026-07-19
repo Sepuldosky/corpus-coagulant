@@ -43,7 +43,9 @@ salud por inanición/deshidratación, opcional).
   [4] Superficie para Craving: eventos de estado clínico consumibles (soft-dep
       inversa — Craving detecta a Coagulant, nunca al revés). Concretamente, la
       firma que ya se negocia con su Block 4 (cerrado, hoy en puente mock-first):
-      ApplyExternalCondition(ply, stat, severity).
+      ApplyExternalCondition(ply, id, severity) — el 2.º argumento es el ID DE
+      CONDICIÓN CLÍNICA {"starvation","dehydration"}, NO el stat de Craving
+      (hunger/hydration): así lo emite ya el puente (corpus_craving_coagulant.lua).
 
 
 =====================================================

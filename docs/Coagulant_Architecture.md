@@ -69,7 +69,7 @@ st = {
 
 ## 3. Heridas — tipos por damage type
 
-Una herida se crea **con el daño ya aplicado**, no con el daño entrante: `ScalePlayerDamage` captura el hitgroup del evento (ya lo hace el scaffold) y `PostEntityTakeDamage(ply, dmg, took)` crea la herida con el daño **final**. Esto deja gratis el punto de integración con Caliber Block 3 (la mitigación de armadura ocurre antes, la herida nace del daño post-armadura) y evita contar daño que un mod canceló.
+**COA-9 —** Una herida se crea **con el daño ya aplicado**, no con el daño entrante: `ScalePlayerDamage` captura el hitgroup del evento (ya lo hace el scaffold) y `PostEntityTakeDamage(ply, dmg, took)` crea la herida con el daño **final**. Esto deja gratis el punto de integración con Caliber Block 3 (la mitigación de armadura ocurre antes, la herida nace del daño post-armadura) y evita contar daño que un mod canceló.
 
 ### Tabla damage type → tipo de herida
 
@@ -95,7 +95,7 @@ Lista de heridas por zona: `wound = { type, severity, treated = false }`. Tope d
 
 ## 4. Sangrado y regeneración
 
-Un **timer único de 1 s** (`timer.Create("corpus_coagulant_tick")`, no Think) recorre los jugadores vivos:
+**COA-15 —** Un **timer único de 1 s** (`timer.Create("corpus_coagulant_tick")`, no Think) recorre los jugadores vivos:
 
 - **Drenaje por herida** (unidades de sangre/s): `base(severity) × mult(type)`, con `base = { [1]=0.15, [2]=0.40, [3]=1.00 }`. Heridas `treated` no drenan. Zona con torniquete puesto: sus heridas no drenan mientras esté puesto.
 - **Drenaje total** = Σ de todas las zonas × `coagulant_bleed_scale`.
@@ -109,7 +109,7 @@ Referencias de letalidad con los números propuestos: una herida de bala grave s
 
 - `blood ≥ 40`: sin efecto sobre HP.
 - `blood < 40` (**crítico**): el mismo tick drena HP: `hpDrain = (1 + 4 × (40 − blood) / 40) × coagulant_hpdrain_scale` HP/s — de 1 HP/s al entrar en crítico a 5 HP/s con sangre 0.
-- El drenaje se aplica como `DMG_GENERIC` sin atacante (mundo), así la muerte pasa por el pipeline normal del engine. Feedback de "bled out": mensaje propio en el chat/consola del jugador al morir con sangre crítica (el killfeed queda genérico — aceptado en v1).
+- **COA-11 —** El drenaje se aplica como `DMG_GENERIC` sin atacante (mundo), así la muerte pasa por el pipeline normal del engine. Feedback de "bled out": mensaje propio en el chat/consola del jugador al morir con sangre crítica (el killfeed queda genérico — aceptado en v1).
 - Cruce de umbral (en ambas direcciones) dispara `Coagulant_BloodCritical` (§8) y el feedback visual de cabeza/vignette (§10) se intensifica.
 
 ---
@@ -118,21 +118,21 @@ Referencias de letalidad con los números propuestos: una herida de bala grave s
 
 Score de zona = Σ severidades de sus heridas; las `treated` cuentan **la mitad**. Los tres debuffs entran en v1, cada uno con su convar de apagado (§11).
 
-> **Enmienda 2026-07-14 (ronda 5 en juego).** La media severidad de una herida tratada pesaba **para siempre**: vendarse las piernas dejaba al jugador cojo (×0.76) hasta morir, porque nada borraba la herida. El autor resolvió que la cura de esa secuela es el **Medkit** (§7): cierra las heridas ya tratadas de una zona. Vendar corta el sangrado; el Medkit borra la marca. Una herida sin vendar no se toca (primero hay que cerrarla).
+> **COA-21 — Enmienda 2026-07-14 (ronda 5 en juego).** La media severidad de una herida tratada pesaba **para siempre**: vendarse las piernas dejaba al jugador cojo (×0.76) hasta morir, porque nada borraba la herida. El autor resolvió que la cura de esa secuela es el **Medkit** (§7): cierra las heridas ya tratadas de una zona. Vendar corta el sangrado; el Medkit borra la marca. Una herida sin vendar no se toca (primero hay que cerrarla).
 
 ### Piernas → cojera
 
 - `speedMult = max(0.45, 1 − 0.12 × (score_left_leg + score_right_leg))`.
-- **Aplicación composable, nunca `SetWalkSpeed`:** Cargo (movecompat) re-aplica su propio multiplicador sobre walk/run cada tick de movimiento — si Coagulant escribiera las mismas propiedades se pisarían mutuamente. Coagulant publica `NW2Float("coagulant_speed_mult")` y lo aplica en un hook `Move` compartido propio escalando `mv:SetMaxSpeed(mv:GetMaxSpeed() × mult)` (ambos realms leen el mismo NW2 → predicción consistente). Componen multiplicativamente: `final = (lo que sea que dejaron gamemode/Cargo/mods) × coagulant_speed_mult`.
+- **Aplicación composable, nunca `SetWalkSpeed`:** Cargo (movecompat) escala su propio multiplicador sobre `mv:SetMaxSpeed` del move data cada tick — **nunca** re-estampa walk/run: eso es el antipatrón de terceros («better movement v2») que CRG-12 existe para evitar. Si Coagulant escribiera `SetWalkSpeed`/`SetRunSpeed` se pisaría con cualquier mod que haga lo mismo. Coagulant publica `NW2Float("coagulant_speed_mult")` y lo aplica en un hook `Move` compartido propio escalando `mv:SetMaxSpeed(mv:GetMaxSpeed() × mult)` (ambos realms leen el mismo NW2 → predicción consistente). Componen multiplicativamente: `final = (lo que sea que dejaron gamemode/Cargo/mods) × coagulant_speed_mult`.
 
 ### Brazos → precisión
 
 - **Deriva continua de la mira, en dos capas** (reescrito el 2026-07-14 tras la ronda 5; el `ViewPunch` periódico original se sentía débil y llegaba estando idle. **Tuneado tras la ronda 6**: el autor pidió más amplitud en ambas capas y una **curva** entre ellas — el salto instantáneo se sentía tosco):
   - **Capa 1 — arma en mano:** temblor perceptible pero manejable (`amp × 0.60`).
   - **Capa 2 — apuntando:** deriva incapacitante (`amp × 4.5`), estilo ARMA 3. "Apuntando" se detecta por el **clic derecho** (`IN_ATTACK2`): es el ADS de ARC9/TFA/MW y no depende de la API de ningún arma.
-  - **Las capas son los extremos de una rampa, no un `if`:** un factor continuo 0..1 va del idle al ADS en `SWAY_ADS_RAMP_S` (0.45 s) por **smoothstep** (`SwayEase`). Solo se rampa la **amplitud** — la fase del bamboleo nunca se corta, así que la mira se abre y se cierra en vez de dar un tirón.
-  - `amp = 0.45° × (score_left_arm + score_right_arm)`. La deriva es **sobre todo horizontal** (el cabeceo es una fracción, `SWAY_VERTICAL`), y se compone de dos senos de períodos inconmensurables: nunca repite un patrón que se pueda aprender a compensar.
-- **Se aplica en el CLIENTE** (hook `CreateMove`), sumando el **delta** del offset al usercmd — no el offset absoluto, o la vista derivaría sin control en vez de oscilar. Es la única forma de mover la puntería de forma continua sin pelear contra el mouse del jugador. El score de brazos llega en el snapshot **con la isquemia incluida**, así que el cliente calcula el mismo número que el server.
+  - **Las capas son los extremos de una rampa, no un `if`:** un factor continuo 0..1 va del idle al ADS en `SWAY_ADS_RAMP_S` (0.45 s) por **smoothstep** (`SwayEase`). **COA-23:** solo se rampa la **amplitud** — la fase del bamboleo nunca se corta, así que la mira se abre y se cierra en vez de dar un tirón.
+  - `amp = 0.45° × (score_left_arm + score_right_arm)`. La deriva es **sobre todo horizontal** (el cabeceo es una fracción, `SWAY_VERTICAL`), y **(COA-24)** se compone de dos senos de períodos inconmensurables: nunca repite un patrón que se pueda aprender a compensar.
+- **COA-22 — Se aplica en el CLIENTE** (hook `CreateMove`), sumando el **delta** del offset al usercmd — no el offset absoluto, o la vista derivaría sin control en vez de oscilar. Es la única forma de mover la puntería de forma continua sin pelear contra el mouse del jugador. El score de brazos llega en el snapshot **con la isquemia incluida**, así que el cliente calcula el mismo número que el server.
 - Penalidad cruzada: brazo con score > 0 suma **+25 % al tiempo de aplicación** de tratamientos (§7).
 - Integración fina con ARC9 (spread/recoil por su API): **diferida**; cuando se haga, los nombres se verifican contra `dev/other/`, nunca de memoria (lección pagada por Cargo).
 
@@ -154,15 +154,15 @@ Torso no tiene debuff propio en v1: su castigo es que concentra los impactos (do
 | id | Nombre | Clase | Peso | Tiempo | Efecto |
 |---|---|---|---|---|---|
 | `corpus_coagulant_bandage` | Bandage | stackable | 0.1 | 4 s | Cierra (`treated = true`) **una** herida sangrante leve/media de la zona. Sobre una grave: la baja a media sin cerrarla (una grave cuesta 2 vendas). |
-| `corpus_coagulant_tourniquet` | Tourniquet | unique | 0.2 | 2 s | Detiene todo el sangrado de **una extremidad** mientras esté puesto. A los 90 s puesto: isquemia — la zona pasa a score máximo de debuff hasta 60 s después de quitarlo. Quitar (2 s) reanuda el sangrado de lo no cerrado. **No se consume.** |
+| `corpus_coagulant_tourniquet` | Tourniquet | unique | 0.2 | 2 s | Detiene todo el sangrado de **una extremidad** mientras esté puesto. A los 90 s puesto: isquemia — la zona pasa a score máximo de debuff hasta 60 s después de quitarlo. Quitar (2 s) reanuda el sangrado de lo no cerrado. **COA-20 — No se consume, y quitarlo no exige ni consume ítem** (el toggle opera sobre el torniquete ya puesto). |
 | `corpus_coagulant_medkit` | Medkit | stackable | 0.5 | 10 s | +50 HP (cap MaxHealth) **y cierra las heridas ya TRATADAS de una zona** — la única cura de la secuela (§6, enmienda 2026-07-14). No toca sangre ni heridas sin vendar. |
 | `corpus_coagulant_bloodbag` | Blood Bag | stackable | 0.3 | 8 s | +40 sangre (cap 100). |
 
 ### Mecánica de aplicación
 
-- **Server-authoritative**: `st.treatment = { kind, zone, endsAt }`. Un solo tratamiento a la vez.
-- **Cancelación**: recibir daño, saltar, o superar velocidad de caminata → cancela sin efecto y **sin consumir**.
-- **El consumo ocurre al completar, no al iniciar.** Consecuencia de contrato con Cargo: el `onUse` de un ítem médico **devuelve `false`** (Cargo no consume) e inicia el tratamiento; al completarse, Coagulant consume explícitamente vía `CARGO.Inventory.TakeItem(ply, id, 1)` (re-validando que la unidad siga ahí). El tooltip del ítem lo dice ("applies over N seconds").
+- **COA-19 — Server-authoritative**: `st.treatment = { kind, zone, endsAt }`. Un solo tratamiento a la vez.
+- **COA-34 — Cancelación**: recibir daño, saltar, o superar velocidad de caminata → cancela sin efecto y **sin consumir**.
+- **COA-3 — El consumo ocurre al completar, no al iniciar.** Consecuencia de contrato con Cargo: el `onUse` de un ítem médico **devuelve `false`** (Cargo no consume) e inicia el tratamiento; al completarse, Coagulant consume explícitamente vía `CARGO.Inventory.TakeItem(ply, id, 1)` (re-validando que la unidad siga ahí). El tooltip del ítem lo dice ("applies over N seconds").
 - **Selección de zona**: desde el menú médico (§10), la zona la elige el jugador; desde el uso rápido (quick slot / onUse de Cargo), automática — la zona con la herida más grave **compatible con el ítem**:
   - venda → la zona sangrante más grave.
   - torniquete → **(1)** la extremidad sangrante más grave **sin** torniquete (ponerlo); **(2)** si no hay ninguna, la extremidad que **ya lo tiene puesto** (quitarlo). *Sin la rama (2) el torniquete es imposible de sacar en cuanto vendás la zona: la herida deja de sangrar y la búsqueda no encuentra nada — bug reportado en juego, ronda 5.*
@@ -209,7 +209,7 @@ COAGULANT.Zones.*            -- como en el scaffold (mapa de degradación)
 | `Coagulant_TreatmentComplete` | `ply, kind, zone` | al completar |
 | `Coagulant_TreatmentCancel` | `ply, kind, zone, reason` | al cancelar |
 
-No hay evento por cada punto de sangre (spam); el estado continuo se lee por `GetBlood`/NW2.
+**COA-32 —** No hay evento por cada punto de sangre (spam); el estado continuo se lee por `GetBlood`/NW2.
 
 ---
 
@@ -221,11 +221,11 @@ Todo net string vía `Corpus.Net.Register("coagulant", msg)` → `corpus_coagula
 |---|---|---|
 | `NW2Float "coagulant_blood"` | S→todos | sangre 0..100 (para StatusPanel/HUD, barato) |
 | `NW2Float "coagulant_speed_mult"` | S→todos | multiplicador de cojera (Move hook en ambos realms) |
-| `corpus_coagulant_state` | S→C (owner) | snapshot de heridas/torniquetes/tratamiento en curso — **on-change**, no por tick |
+| `corpus_coagulant_state` | S→C (owner) | snapshot de heridas/torniquetes/tratamiento en curso — **COA-16: on-change**, no por tick |
 | `corpus_coagulant_treat` | C→S | intent `{ kind, zone }` — server valida (ítem presente vía Cargo o modo degradado, zona válida, sin tratamiento en curso) |
 | `corpus_coagulant_cancel` | C→S | cancela el tratamiento propio en curso |
 
-La barra de progreso se calcula client-side desde `{ kind, endsAt, duration }` del snapshot — sin tick de red.
+**COA-33 —** La barra de progreso se calcula client-side desde `{ kind, endsAt, duration }` del snapshot — sin tick de red.
 
 ---
 
@@ -236,6 +236,8 @@ Tres piezas cliente, todas leyendo el snapshot + NW2 (nunca estado propio invent
 1. **HUD silueta** (`HUDPaint`): silueta de 6 zonas coloreadas por score (sano→amarillo→rojo), pulso en zonas sangrando, icono de torniquete. Se desvanece cuando todo está sano y la sangre es 100. Barra de progreso de tratamiento centrada abajo cuando hay uno en curso. Capa de vignette de cabeza/sangre crítica en `RenderScreenspaceEffects` (§6).
 2. **Menú médico**: concommand `coagulant_menu` + **tecla propia** (convar de cliente `coagulant_key_menu`, default `KEY_M`, con su DBinder en el tab Q; un hook `PlayerButtonDown` la ABRE). **La tecla no cierra**: el guard que evita robarle la tecla al chat o a otro menú (`gui.IsGameUIVisible()` / `vgui.CursorVisible()`) corre ANTES del toggle, y el frame se abre con `MakePopup()` → con el menú abierto el cursor siempre está visible y la rama de cierre queda inalcanzable. El menú se cierra con la **X de su `DFrame`** (`SetDeleteOnClose`, comportamiento default). Es deuda del slice 4, anotada para la ronda 7 —y el patrón ya está pago en Cargo: `PlayerButtonDown` **ni siquiera dispara client-side en singleplayer** (quirk del engine, `corpus_cargo_ui.lua`), que por eso poletea `input.IsButtonDown` en `Think` con detector de flanco y guards de foco (`vgui.GetKeyboardFocus() == nil`, que **no** es lo mismo que `CursorVisible`). Silueta clickeable → lista de heridas de la zona (tipo, severidad, tratada) → botones de tratamiento habilitados según disponibilidad: conteo de ítems si Cargo está; **sin Cargo se rotulan *field* y no se grisan por cooldown** — el cooldown del modo degradado **no viaja en el snapshot (§9)**, así que el rechazo llega por chat desde el server. Se grisan igual mientras hay un tratamiento en curso (uno a la vez, §7), y el torniquete cuando la zona seleccionada no es una extremidad. Al hacer clic manda el intent y **queda abierto** mostrando el progreso: no se cierra solo.
 3. **StatusPanel de Cargo** (lazy-check en el archivo de HUD): `CARGO.StatusPanel.RegisterBar("coagulant", { id = "blood", label = "Blood", getValue = ply → NW2Float × 1, color = rojo })` — firma real verificada contra `corpus_cargo_statuspanel.lua`. Sin Cargo, la sangre se muestra como mini-barra en el HUD propio.
+
+**COA-14 — Todo el pintado va en `pcall` + `Corpus.Log` ruidoso (avisando una sola vez):** GMod **desengancha** un hook de `HUDPaint` que erra — un error de pintado mata la capa entera en silencio por el resto de la sesión. La trampa la pagó Cargo (cita CRG-25) y acá rige para la silueta, la capa de visión y las barras.
 
 El tab Q existente crece: convars de server (admin) + cliente, y el **binder** de la tecla del menú médico (`coagulant_key_menu`).
 
@@ -253,10 +255,12 @@ El tab Q existente crece: convars de server (admin) + cliente, y el **binder** d
 | `coagulant_debuff_legs` | sv | 1 | on/off cojera |
 | `coagulant_debuff_arms` | sv | 1 | on/off sway de brazos |
 | `coagulant_debuff_head` | sv | 1 | on/off efectos de visión |
-| `coagulant_hud` | cl | 1 | on/off HUD silueta (el crítico visual no se apaga: es información vital) |
+| `coagulant_hud` | cl | 1 | on/off HUD silueta (**COA-25**: el crítico visual no se apaga: es información vital) |
 | `coagulant_key_menu` | cl | `KEY_M` | tecla que abre el menú médico (0 = sin bind; se ajusta desde el tab Q) |
 
-Los números internos de balance (tabla §3, curvas §4-§6, tiempos §7) viven en `corpus_coagulant_config.lua` como tablas — tunables editando data, sin tocar lógica.
+**COA-27 —** Los números internos de balance (tabla §3, curvas §4-§6, tiempos §7) viven en `corpus_coagulant_config.lua` como tablas — tunables editando data, sin tocar lógica.
+
+**COA-35 —** Un check (selftest/harness) jamás hardcodea un número tunable: se deriva de la config. Si el check congelara el número, retunear **rompería** el selftest en vez de validarlo — los checks de amplitud del sway se derivan de `SWAY_PER_SCORE`, no de un `0.70` literal.
 
 ---
 
@@ -274,7 +278,7 @@ Los números internos de balance (tabla §3, curvas §4-§6, tiempos §7) viven 
 
 ### Craving (futuro consumidor)
 
-- Consume los eventos de §8 y `GetBlood`/`IsBleeding`. Coagulant **no** detecta a Craving (dirección única de la soft-dep).
+- Consume los eventos de §8 y `GetBlood`/`IsBleeding`. **COA-31 —** Coagulant **no** detecta a Craving (dirección única de la soft-dep).
 
 ---
 
@@ -292,7 +296,7 @@ El manifest del init crece a (orden de carga determinista; regla de siempre: nun
 | `server/corpus_coagulant_bleeding.lua` | server | timer 1 s: drenaje, regen, HP crítico | **nuevo** |
 | `server/corpus_coagulant_treatment.lua` | server | ApplyTreatment, progreso, consumo Cargo, torniquetes, net intents | **nuevo** |
 | `server/corpus_coagulant_debuffs.lua` | server | scores de zona, tick 0.5 s (la isquemia entra y sale sola), speed mult por NW2 | **nuevo** |
-| `shared/corpus_coagulant_items.lua` | shared | 4 defs contra Cargo — **shared obligatorio**: Cargo no sincroniza defs por net, su grid cliente lee `Items.Get` local (lección del punto E, 2026-07-13) | existe, crece |
+| `shared/corpus_coagulant_items.lua` | shared | 4 defs contra Cargo — **shared obligatorio (cita COR-12)**: Cargo no sincroniza defs por net, su grid cliente lee `Items.Get` local (lección del punto E, 2026-07-13) | existe, crece |
 | `client/corpus_coagulant_hud.lua` | client | snapshot replicado + **sway de la mira (`CreateMove`)** + vignettes + silueta + barra progreso + StatusPanel | **nuevo** |
 | `client/corpus_coagulant_medmenu.lua` | client | panel médico (`coagulant_menu`) | **nuevo** |
 | `client/corpus_coagulant_options.lua` | client | tab Q (crece: convars de cliente y server + el **DBinder** de `coagulant_key_menu`, §10) | existe |
@@ -305,11 +309,11 @@ Trampas de VGUI heredadas del ecosistema aplican al medmenu (ver CLAUDE.md de Ca
 
 | Montado | Comportamiento |
 |---|---|
-| Solo Corpus + Coagulant | Sistema completo con hitgroup crudo; tratamiento en modo degradado (menú sin ítems, cooldown 30 s); sangre en mini-barra del HUD propio |
+| Solo Corpus + Coagulant | Sistema completo con hitgroup crudo; tratamiento en modo degradado (menú sin ítems, cooldown 30 s); sangre en mini-barra del HUD propio (**COA-25**) |
 | + Cargo | Ítems reales (4 defs), consumo al completar, barra de sangre en StatusPanel, uso rápido por quick slots |
 | + Caliber (hoy, Block 2) | Sin cambio (Caliber aún no toca daño de jugador) |
 | + Caliber Block 3 (futuro) | Heridas nacen del daño post-armadura automáticamente (§12); hit-location enriquecido como refinamiento opcional |
-| `coagulant_enabled 0` | Módulo inerte: hooks registrados pero de retorno temprano; el registro y el contrato siguen vivos (otros módulos no crashean) |
+| `coagulant_enabled 0` | **COA-26 —** Módulo inerte: hooks registrados pero de retorno temprano; el registro y el contrato siguen vivos (otros módulos no crashean) |
 
 ---
 

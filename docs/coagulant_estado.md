@@ -120,8 +120,14 @@ retuneado. **Esa ronda cierra el Block 3**)
 2. Si pasa: **checklist de cierre del Block 3** (arquitectura §16) — resumen + link
    en `CORPUS_Architecture.md` §9, CLAUDE.md al día, y anotar en
    `corpus/docs/corpus_estado.md` que Coagulant deja de ser scaffold. Después, el
-   pendiente cross-repo: negociar `ApplyExternalCondition(ply, stat, severity)` con
-   **Craving**, que tiene un puente mock-first esperándolo.
+   pendiente cross-repo: ratificar `ApplyExternalCondition(ply, id, severity)` con
+   **Craving**, que tiene un puente mock-first esperándolo. **Ojo con el 2.º
+   argumento**: NO es el stat de Craving (`hunger`/`hydration`) sino el **id de
+   condición clínica** `{"starvation", "dehydration"}` — así lo emite ya el puente
+   (`corpus_craving_coagulant.lua`). Implementar switcheando sobre el stat pasaría el
+   gate de CAPACIDAD sin aplicar nada: Craving delegaría y dejaría de tocar HP
+   (CRV-4), y la inanición quedaría inofensiva **en silencio**. `severity` es float
+   0..1; `0` = condición limpia.
 
 ---
 

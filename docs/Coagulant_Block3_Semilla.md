@@ -30,6 +30,13 @@
   - `COAGULANT.ApplyBandage(ply) -> bool` como firma de `onUse` (§5 de la
     arquitectura de Corpus). El diseño puede generalizarla (p.ej.
     `ApplyTreatment(ply, kind, zone)`) manteniendo `ApplyBandage` como azúcar.
+    > **DEROGADO por el slice 2** (CHANGELOG PARCHE 2 y PARCHE 3, ambos
+    > `[APLICADO 2026-07-13]`): la generalización prevista ocurrió, pero la identidad
+    > `onUse == ApplyBandage` **no** sobrevivió. Hoy `ApplyBandage` es SOLO azúcar del
+    > contrato público (`= ApplyTreatment(ply, "bandage")`, `true` si el tratamiento
+    > ARRANCÓ) y el `onUse` de cada ítem es un wrapper fabricado por
+    > `UsarTratamiento(kind)` que devuelve **SIEMPRE `false`** — el `TakeItem` corre al
+    > COMPLETAR. Sede vigente: **COA-3** (`Coagulant_Architecture.md` §7).
   - Degradación honesta: sin Caliber → hitgroup crudo; sin Cargo → vía mínima
     propia. Nunca crash, nunca asunción.
 - **Reglas de ecosistema:** nada de dominio ajeno acá (contenedor/peso = Cargo,
@@ -65,7 +72,7 @@ dónde vive su resolución.
 ### B. Incapacitación y muerte
 - **→ RESUELTO (2026-07-13): muerte directa en v1** — sin estado caído/revive
   (se difiere a bloque futuro, ver §4).
-- **→ RESUELTO: la sangre no mata por umbral propio — sangre baja drena HP.**
+- **→ RESUELTO (COA-10): la sangre no mata por umbral propio — sangre baja drena HP.**
   Por debajo de un % crítico, la sangre drena HP progresivamente; la muerte es
   SIEMPRE por HP 0 (compatible con killfeed, respawn y mods que setean HP). Los
   medkits HL2 curan HP pero no sangre: con sangre crítica, el HP curado se vuelve
@@ -120,7 +127,7 @@ dónde vive su resolución.
 - **→ RESUELTO: menú médico propio por zona** (tecla propia → silueta clickeable:
   zona → heridas → aplicar ítem del inventario). El uso rápido desde Cargo/quick
   slot aplica automáticamente a la zona más grave compatible.
-- **→ RESUELTO: spawn = cuerpo nuevo.** Morir/respawnear resetea el estado;
+- **→ RESUELTO (COA-29): spawn = cuerpo nuevo.** Morir/respawnear resetea el estado;
   desconectarse en vida lo conserva en memoria del server. **Sin persistencia a
   disco en v1** (sin `Corpus.Data` hasta que algo lo justifique).
 - **→ RESUELTO (arquitectura §11, en código): 10 convars** — 8 de server
