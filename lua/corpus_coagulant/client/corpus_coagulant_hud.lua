@@ -275,9 +275,9 @@ local function PintarVision()
     end
 end
 
--- pcall obligatorio: GMod DESENGANCHA un hook de HUDPaint que erra — un error de
--- pintado mataría la capa entera en silencio por el resto de la sesión (trampa pagada
--- por Cargo). Se avisa una sola vez para no inundar la consola.
+-- pcall obligatorio (cita COA-14, sede en la arquitectura §10): GMod DESENGANCHA un
+-- hook de HUDPaint que erra — un error de pintado mataría la capa entera en silencio
+-- por el resto de la sesión (trampa pagada por Cargo). Se avisa una sola vez.
 hook.Add("HUDPaint", "corpus_coagulant_vision_hud", function()
     if not Config.Enabled() then return end
     local ok, err = pcall(PintarVision)
