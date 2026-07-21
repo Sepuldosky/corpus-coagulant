@@ -522,20 +522,23 @@ transición reparte el escalón en 28 frames (0.47 s) con un salto máximo de 0.
   pasan a ser sus extremos, interpolados por `SwayEase` (smoothstep). Sigue aceptando
   `true`/`false` por comodidad del selftest y de `coagulant_status`. Nace
   `SWAY_ADS_RAMP_S` (0.45 s). Con score 2 la amplitud va de 0.25°/2.80° a
-  **0.54°/4.05°** (idle/ADS). **[PENDIENTE]**
+  **0.54°/4.05°** (idle/ADS). **[APLICADO 2026-07-20]** (ronda 7 ✓ — K1: la amplitud
+  nueva se nota y se sigue pudiendo caminar y disparar; sin pedido de re-tuning)
 
 - PARCHE 2 — feat(hud): el hook `CreateMove` rampa el factor de ADS con
   `math.Approach` en vez de leer el clic derecho como un booleano. Solo se rampa la
   **amplitud**: la fase del bamboleo nunca se corta, así que la mira se abre y se cierra
   en lugar de dar un tirón. El paso se clampea a 0.1 s de frame para que un tirón de FPS
   no teletransporte la rampa, y `CortarSway` la resetea junto con el offset.
-  **[PENDIENTE]**
+  **[APLICADO 2026-07-20]** (ronda 7 ✓ — K2: el paso idle→ADS ya no da tirón; la
+  transición se siente gradual en los dos sentidos)
 
 - PARCHE 3 — test(dev): el selftest cubre la curva (extremos exactos, simetría en 0.5,
   clamp), que la rampa crezca monótona de idle a ADS y que su mitad caiga entre las dos
   capas; los checks de amplitud dejan de hardcodear 0.70 y se derivan de
   `SWAY_PER_SCORE` (si no, retunear el número rompía el selftest en vez de validarlo).
-  **[PENDIENTE]**
+  **[APLICADO 2026-07-20]** (ronda 7 ✓ — J1: selftest 145 OK server / 108 client,
+  0 fallos)
 
 ---
 
@@ -568,7 +571,9 @@ verificación en juego (artefacto, ronda 7).
   `ZONE_FULL_AT` 6), `TreatmentProgress` (la barra se calcula client-side desde el
   `{endsAt, duration}` del snapshot — §9 no gana un canal de red) y `WoundFromSnap` (el
   snapshot viaja con claves de una letra `{t,s,tr}` y las curvas de balance esperan la
-  herida entera: se traduce en UN lugar, no en cada llamador). **[PENDIENTE]**
+  herida entera: se traduce en UN lugar, no en cada llamador). **[APLICADO 2026-07-20]**
+  (ronda 7 ✓ — sus puras se ejercitaron en J2-J5 y J9: silueta, `ZoneAt`, barra de
+  tratamiento y convar de HUD)
 
 - PARCHE 2 — feat(hud): la silueta de 6 zonas y la barra de tratamiento. Color por
   score en dos tramos (sano → amarillo → rojo: un lerp directo de verde a rojo se come
@@ -577,13 +582,20 @@ verificación en juego (artefacto, ronda 7).
   desvanece sola** cuando el cuerpo está sano y la sangre llena (un corte seco se lee
   como un bug del HUD). Todo el pintado va en `pcall` con aviso una sola vez. La
   superficie `COAGULANT.HUD` (score/sangrado/datos de zona por snapshot) queda expuesta
-  para que el menú médico lea **el mismo estado**, nunca uno propio. **[PENDIENTE]**
+  para que el menú médico lea **el mismo estado**, nunca uno propio. **[APLICADO
+  2026-07-20]** (ronda 7 ✓ — J2: aparece sola al herirse, la zona sangrante late y con
+  el cuerpo sano no hay silueta; J3: la barra de tratamiento se llena quieto y correr
+  la cancela. La nota del autor en J9 —«no desaparece al curarme»—
+  es el diseño vigente, no un bug: el fade exige TAMBIÉN la sangre llena, y la regen es
+  lenta (0.10/s); su pedido de toggle queda ANOTADO como decisión de diseño abierta)
 
 - PARCHE 3 — feat(hud): barra de sangre en el **StatusPanel de Cargo** (§10/§12) —
   `RegisterBar("coagulant", {id="blood", getValue=ply→NW2 0..100})`, con lazy-check en
   `Corpus.OnReady`, jamás en file-scope (el orden de mount no está garantizado). **Sin
   Cargo la sangre no desaparece:** el HUD propio pinta una mini-barra bajo la silueta —
-  la información vital no puede depender de un soft-dep (§14). **[PENDIENTE]**
+  la información vital no puede depender de un soft-dep (§14). **[APLICADO 2026-07-20]**
+  (ronda 7 ✓ — J8: barra Blood en el StatusPanel de Cargo, sin duplicado en el HUD;
+  L1: sin Cargo la sangre aparece como mini-barra bajo la silueta)
 
 - PARCHE 4 — feat(medmenu): `client/corpus_coagulant_medmenu.lua` (archivo nuevo) —
   comando `coagulant_menu`: silueta clickeable, lista de heridas de la zona (tipo,
@@ -597,23 +609,32 @@ verificación en juego (artefacto, ronda 7).
   reconstruir el panel en callbacks (patrón del frame de Cargo). El cliente nunca es
   autoridad: manda el intent y el server re-valida. Suma bind propio
   (`coagulant_key_menu`, default M) que no le roba la tecla al chat ni a otro menú
-  abierto. **[PENDIENTE]**
+  abierto. **[APLICADO 2026-07-20]** (ronda 7 ✓ — J4: el clic cae en la zona que se ve;
+  J5: el flujo completo sin consola, el criterio de §15; J6: el torniquete `unique`
+  contado y quitable gratis — el G4 del cliente NO volvió; J7: torniquete e isquemia
+  visibles. La tecla configurable NO respondía: el lector era `PlayerButtonDown`, que
+  no dispara client-side en singleplayer → sesión «Fix ronda 7», abajo)
 
 - PARCHE 5 — feat(options): el tab Q deja de ser el cartel del scaffold — convars de
   cliente y de server, binder del menú médico, detección de soft-deps **con lo que
   implica cada ausencia** (sin Cargo: tratamiento degradado; sin Caliber: hit-location
-  por hitgroup crudo) y la lista de comandos de verificación. **[PENDIENTE]**
+  por hitgroup crudo) y la lista de comandos de verificación. **[APLICADO 2026-07-20]**
+  (ronda 7 ✓ — J9: convars, soft-deps y comandos a la vista; la falla del binder que
+  reportó el autor era en realidad del LECTOR de la tecla —el binder escribía bien la
+  convar—, ver «Fix ronda 7»)
 
 - PARCHE 6 — test(dev): el selftest cubre lo puro del slice — que la silueta cubra las
   6 zonas sin repetirlas ni salirse de su caja, que **el centro de cada rect pintado
   resuelva a su propia zona** (el contrato entre lo que se ve y lo que se clickea), la
   saturación del color, la barra de tratamiento en sus tres puntos y la traducción del
   snapshot; en realm cliente, que la superficie `COAGULANT.HUD` exista completa.
-  **[PENDIENTE]**
+  **[APLICADO 2026-07-20]** (ronda 7 ✓ — J1: 145 OK server / 108 client con Cargo,
+  0 fallos en ambos realms)
 
 - PARCHE 7 — chore(init): el manifest suma `medmenu` (client, **después** de `hud`: lee
   su silueta), el header y el log de boot pasan a "Block 3 slice 4". Las convenciones de
-  commits ganan el alcance `medmenu`. **[PENDIENTE]**
+  commits ganan el alcance `medmenu`. **[APLICADO 2026-07-20]** (ronda 7 ✓ — J1: log de
+  boot «Block 3 slice 4» en ambos realms, sin errores Lua)
 
 ---
 
@@ -927,3 +948,67 @@ tocar una línea de ese repo — el hueco no estaba en la afirmación sino en el
 Verificación: harness en verde (`ALL GREEN`, exit 0) + checker en verde sobre 197 IDs + suite
 12/12. Sin superficie de runtime: **ni una línea de Lua cambió** en esta tanda, y **ningún
 check de planilla nace de ella** (FLU-37) — un harness es capa offline, no planilla.
+
+---
+
+## PARCHES DE sesión Fix ronda 7 — la tecla del menú y el residuo del selftest — 2026-07-20
+
+La **ronda 7** (2026-07-20) pasó **13/13**: las secciones J y K enteras **y también la L1
+opcional** — el modo degradado sin Cargo queda verificado EN JUEGO y la deuda G6 (diferida
+dos veces) se salda. **Con J y K en verde, el Block 3 CIERRA**: la checklist de §16 corrió
+en esta misma sesión (resumen en `CORPUS_Architecture.md` §9, estados y roadmaps de ambos
+repos refrescados). El reporte dejó cuatro notas sobre checks ✓ — dos eran bugs mecánicos
+(se fixean acá; nacen `[PENDIENTE]` hasta la **mini-ronda 8**, sección M de la planilla) y
+dos son **decisiones de diseño que quedan con el autor** (toggle del paperdoll; que la
+tecla del menú también cierre). Las «heridas de bala» que el autor vio en J1 no son un
+bug: son las heridas de PRUEBA del round-trip del selftest sobre el primer jugador
+conectado — se loguean porque `coagulant_debug` está activo y se limpian al final.
+
+- PARCHE 1 — fix(medmenu): el lector de la tecla pasa de `PlayerButtonDown` a **poleo de
+  `input.IsButtonDown` en `Think`** con detector de flanco y guard de foco
+  (`vgui.GetKeyboardFocus() == nil`). `PlayerButtonDown` **no dispara client-side en
+  singleplayer** (quirk del engine, pagado por Cargo con su tecla I) — por eso «no
+  funcionó el cambiar el bind» (nota de J4/J9): el binder del tab escribía bien la
+  convar; el que nunca corría era el lector. La tecla sigue SOLO abriendo (el cierre es
+  la X del `DFrame`; pasarla a toggle es la decisión de diseño abierta).
+  **[APLICADO 2026-07-21]** (mini-ronda 8 ✓ — M1: la tecla del binder abre sin `bind`
+  de consola. Nota del autor: elegir la tecla en el binder desplegaba el menú dentro
+  del tab Q → sesión «Fix mini-ronda 8», abajo)
+
+- PARCHE 2 — fix(core): `ResetState` despublica también el NW2 de cojera
+  (`coagulant_speed_mult` → 1), como ya hacía con el de sangre: el selftest resetea SIN
+  pasar por `PlayerSpawn` y dejaba publicado el multiplicador de sus heridas de prueba
+  hasta el siguiente tick — el «piernas: score 0.0 → velocidad ×0.64» que el autor pegó
+  en J1. Era transitorio (el tick de 0.5 s lo normalizaba solo), pero un reset tiene que
+  dejar limpio YA — el mismo criterio que ya rige en el spawn. **[APLICADO 2026-07-21]**
+  (mini-ronda 8 ✓ — M2: `coagulant_status` tras el selftest muestra `score 0.0 →
+  velocidad ×1.00`)
+
+- PARCHE 3 — test(dev): el selftest verifica que su propio reset final despublique la
+  cojera. El conteo server pasa de 145 a **146 OK**; el de cliente no cambia (108).
+  **[APLICADO 2026-07-21]** (mini-ronda 8 ✓ — M2: selftest 146 OK, 0 fallos en juego)
+
+Verificación previa: sintaxis (luaparser, 3 archivos) + harness offline
+(`dev/harness_coagulant.py`): **ALL GREEN** — selftest 146 OK (server+Cargo) / 108
+(client+Cargo), 0 fallos en ambos realms.
+
+---
+
+## PARCHES DE sesión Fix mini-ronda 8 — la tecla no dispara con un menú de cursor abierto — 2026-07-21
+
+La mini-ronda 8 (2026-07-21) pasó **2/2** y los tres parches de «Fix ronda 7» flipean
+arriba. Quedó UNA nota (M1): **al elegir la tecla en el binder del tab Q, el menú médico
+se desplegaba ahí mismo**. Mecanismo: la tecla recién elegida sigue físicamente abajo con
+el spawnmenu en pantalla — el binder la captura por key-trapping pero la convar ya cambió,
+y el poleo de «Fix ronda 7» la veía como flanco válido (el spawnmenu no retiene foco de
+teclado, así que el guard de foco no lo frenaba).
+
+- PARCHE 1 — fix(medmenu): el poleo gana el guard `not vgui.CursorVisible()` — la tecla
+  solo ABRE, así que con cualquier menú de cursor en pantalla (el Q, el propio medmenu)
+  no debe disparar. OJO: el guard es válido JUSTAMENTE porque no hay rama de cierre; si
+  la tecla pasa a toggle (decisión de diseño abierta), se revisa — es el mismo guard que
+  volvía inalcanzable el cierre en el slice 4. **[PENDIENTE]**
+
+Verificación previa: sintaxis (luaparser) + harness offline: **ALL GREEN** — selftest
+146 OK (server+Cargo) / 108 (client+Cargo), 0 fallos. En juego: check **N1** de la
+planilla.
