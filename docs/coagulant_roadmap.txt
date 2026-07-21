@@ -28,11 +28,14 @@ sobre este archivo se reporta NO-AUDITABLE POR DISEÑO.
 1. INMEDIATO
 --------------
 
-  [1] Check N1 en juego (la corre el autor; sección N de la planilla): el guard que
-      evita que elegir la tecla en el binder del tab Q despliegue el menú ahí mismo.
-      Al pasar: flipear a [APLICADO] la sesión "Fix mini-ronda 8" (1 parche) del
-      CHANGELOG. (La ronda 7 fue 13/13 y CERRÓ el Block 3; la mini-ronda 8 fue 2/2
-      y dejó aplicado el "Fix ronda 7".)
+  [1] Partir la zona clínica `torso` en `chest` & `stomach` (pedido del autor,
+      2026-07-21): el motor Source ya separa HITGROUP_CHEST/STOMACH y Caliber los usa
+      para NPCs — Coagulant hoy los funde en el mapa de Zones. Es cambio del contrato
+      COA-8, y del orden arquitectura → código → ronda en juego (cita COA-28) la
+      PRIMERA fase ya corrió: la enmienda quedó RATIFICADA el 2026-07-21 (cinco
+      decisiones en Coagulant_Architecture.md §3; CHANGELOG sesión «Enmienda de
+      zonas»). Falta la bajada a código y la ronda O de la planilla. Semilla:
+      dev/HANDOFF_coagulant_zonas.md.
 
   [2] Las dos decisiones de diseño que dejó la ronda 7 (se discuten con el autor y
       se anotan en la arquitectura ANTES de implementar, cita COA-28): el toggle del

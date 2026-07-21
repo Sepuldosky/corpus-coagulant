@@ -5,12 +5,12 @@
 > secciones ni historial). El historial vive en `git` + [`CHANGELOG.md`](CHANGELOG.md).
 > Si crece de una pantalla, está mal redactado: recortar.
 
-**Última actualización:** 2026-07-21 (**mini-ronda 8: 2/2 ✓ — «Fix ronda 7» queda
-APLICADO**: la tecla del menú funciona desde el binder y el selftest deja el status
-en ×1.00. El **Block 3 está CERRADO** desde la ronda 7 (13/13, 2026-07-20). La nota
-de M1 dejó un último guard —elegir la tecla en el binder desplegaba el menú dentro
-del tab Q—, ya en código y **pendiente del check N1**; siguen las **dos decisiones
-de diseño abiertas**)
+**Última actualización:** 2026-07-21 (**enmienda `torso` → `chest` & `stomach`
+RATIFICADA** — las cinco preguntas de la semilla resueltas con el autor y los docs
+enmendados: arquitectura §3-§10, CLAUDE.md contrato 4, ids.yaml COA-7/COA-8; CHANGELOG
+sesión «Enmienda de zonas», todo `[APLICADO]` — es solo docs. **La bajada a código está
+PENDIENTE**: el árbol aún dice `torso`. El **Block 3 sigue CERRADO** (ronda 7: 13/13;
+mini-ronda 8: 2/2; check N1 ✓) y siguen las **dos decisiones de diseño abiertas**)
 
 ---
 
@@ -31,11 +31,10 @@ de diseño abiertas**)
     barra de tratamiento, sangre en el StatusPanel de Cargo (mini-barra propia sin
     él) y tab Q real. **El flujo completo sin consola (§15) confirmado en J5**, y el
     modo degradado sin Cargo verificado EN JUEGO (L1 — la vieja deuda G6, saldada).
-- **Fix ronda 7 verificado en juego** (mini-ronda 8, 2/2): la tecla del menú se lee
-  por **poleo en `Think`** (`PlayerButtonDown` no dispara client-side en singleplayer)
-  y `ResetState` despublica la cojera. Encima quedó el **«Fix mini-ronda 8»** (en
-  código, verificado offline, pendiente de N1): guard `vgui.CursorVisible()` para que
-  elegir la tecla en el binder no despliegue el menú dentro del propio tab Q.
+- **Fixes post-cierre verificados en juego** (mini-ronda 8: 2/2; check N1 ✓): la tecla
+  del menú se lee por **poleo en `Think`** con guard de cursor (`PlayerButtonDown` no
+  dispara client-side en singleplayer; elegir la tecla en el binder ya no despliega el
+  menú) y `ResetState` despublica la cojera del selftest.
 - **Verificación offline:** sintaxis (luaparser, 13 archivos) + harness versionado
   ([`../../dev/harness_coagulant.py`](../../dev/harness_coagulant.py), 173 checks +
   selftest en ambos realms): **146 OK server / 108 client, 0 fallos, ALL GREEN**.
@@ -44,9 +43,7 @@ de diseño abiertas**)
 
 ## Pendiente de verificar
 
-- **Check N1** (planilla, sección N): cambiar la tecla con el binder del tab Q ya NO
-  despliega el menú dentro del Q; al salir del Q, la tecla nueva abre normal. Al
-  pasar: flipear el parche de «Fix mini-ronda 8».
+- Nada — el CHANGELOG está todo en `[APLICADO]`.
 
 ## Remanentes / deuda conocida
 
@@ -68,7 +65,12 @@ de diseño abiertas**)
 
 ## Próximo paso
 
-1. **Check N1 en juego** (autor, planilla sección N) → flipear «Fix mini-ronda 8».
+1. **Bajar a código la enmienda de zonas** (ratificada 2026-07-21, ver arquitectura §3;
+   semilla de la sesión: `dev/HANDOFF_coagulant_zonas_codigo.md`):
+   `zones.lua` (LIST/LABELS 7 zonas, fallback `chest`), `config.lua` (SILHOUETTE 7
+   rects 58/42 + `ZONE_BLEED_MULT` neutra en el drenaje), barrido de `or "torso"` en
+   medmenu/core/treatment, dev + harness (los conteos 146/108 cambian), y después la
+   ronda **O** de la planilla.
 2. Las dos **decisiones de diseño abiertas** de arriba (se discuten y se anotan en la
    arquitectura antes de tocar código).
 3. Cross-repo: ratificar `ApplyExternalCondition(ply, id, severity)` con **Craving**

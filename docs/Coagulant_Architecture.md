@@ -69,6 +69,41 @@ st = {
 
 ## 3. Heridas — tipos por damage type
 
+> **COA-8 y COA-7 — Enmienda 2026-07-21 (ratificada por el autor): `torso` se parte en
+> `chest` y `stomach`.** El Source siempre separó `HITGROUP_CHEST` de `HITGROUP_STOMACH`
+> y Caliber los trata como zonas distintas de cara al usuario (placas 2 y 3 de su
+> armadura, silueta del browser, toolgun) — Coagulant los fundía en `torso` y tiraba
+> información que ya llegaba separada. Las zonas clínicas pasan de 6 a **7**: `head`,
+> `chest`, `stomach`, `left_arm`, `right_arm`, `left_leg`, `right_leg` (la definición
+> canónica del contrato sigue en su sede: CLAUDE.md, contrato 4). Decisiones de la ronda
+> de diseño:
+>
+> 1. **Sin diferencia clínica en v1** — la separación es anatómica. Nace el eje de tuning
+>    `ZONE_BLEED_MULT` (§4) **neutro** (todas las zonas ×1.0); el número se decide en
+>    juego. **El balanceo se calibrará contra el referente ACE (Arma 3 / Arma Reforger) y
+>    ritmos reales de exanguinación** — expectativa del autor que el doc no tenía escrita
+>    y desde esta enmienda sí (es data tunable, cita COA-27). Base médica anotada en la
+>    ronda: la catástrofe del pecho (corazón/grandes vasos) ya viaja en daño→severidad;
+>    lo que un mult de zona expresaría es el sangrado sostenido y no compresible del
+>    abdomen (hígado/bazo) — si algún día deja de ser neutro, sube `stomach`, no `chest`.
+> 2. **Fallback → `chest`** (re-enuncia COA-7): `HITGROUP_GENERIC`, `HITGROUP_GEAR` y
+>    todo hitgroup desconocido caen a `chest` — alineado con Caliber, que manda GENERIC a
+>    chest tanto en su mult de zona como en el fallback de placas (chest antes que
+>    stomach).
+> 3. **Sin alias `torso`, se rompe ahora**: barrido del 2026-07-21 — ningún repo del
+>    ecosistema consume los IDs de zona (los `condition_zones` de Cargo son de su ropa,
+>    otro namespace). `Zones.IsValid("torso")` pasa a false; sin persistencia a disco
+>    (decisión F) no hay migración de datos.
+> 4. **Tope de heridas 5+5, aceptado**: el tope es cota de ESTADO (la lista no crece sin
+>    límite; la 6.ª herida agrava a la más leve), no número de balance — más zonas son
+>    más fuentes de drenaje simultáneas, no menos castigo.
+> 5. **Silueta 58/42** — el rect del torso se parte en la proporción del browser de
+>    Caliber; geometría en §10.
+>
+> **Bajada a código pendiente** al cierre de la sesión de diseño (2026-07-21): el árbol
+> aún dice `torso` y hasta que el código baje, el código manda (flujo §7.1). La
+> verificación abrirá la sección **O** de la planilla cuando llegue la bajada.
+
 **COA-9 —** Una herida se crea **con el daño ya aplicado**, no con el daño entrante: `ScalePlayerDamage` captura el hitgroup del evento (ya lo hace el scaffold) y `PostEntityTakeDamage(ply, dmg, took)` crea la herida con el daño **final**. Esto deja gratis el punto de integración con Caliber Block 3 (la mitigación de armadura ocurre antes, la herida nace del daño post-armadura) y evita contar daño que un mod canceló.
 
 ### Tabla damage type → tipo de herida
@@ -97,7 +132,7 @@ Lista de heridas por zona: `wound = { type, severity, treated = false }`. Tope d
 
 **COA-15 —** Un **timer único de 1 s** (`timer.Create("corpus_coagulant_tick")`, no Think) recorre los jugadores vivos:
 
-- **Drenaje por herida** (unidades de sangre/s): `base(severity) × mult(type)`, con `base = { [1]=0.15, [2]=0.40, [3]=1.00 }`. Heridas `treated` no drenan. Zona con torniquete puesto: sus heridas no drenan mientras esté puesto.
+- **Drenaje por herida** (unidades de sangre/s): `base(severity) × mult(type) × mult(zone)`, con `base = { [1]=0.15, [2]=0.40, [3]=1.00 }`. El mult de zona (`ZONE_BLEED_MULT`, enmienda 2026-07-21 en §3) nace **neutro** — todas las zonas ×1.0: es el eje donde un gut shot podrá sangrar distinto cuando el balance se tunee contra el referente ACE (cita COA-27). Heridas `treated` no drenan. Zona con torniquete puesto: sus heridas no drenan mientras esté puesto.
 - **Drenaje total** = Σ de todas las zonas × `coagulant_bleed_scale`.
 - **Regeneración natural**: si el drenaje total es 0 y `blood < 100`: `+0.10/s × coagulant_regen_scale` (~17 min de 0 a 100 — la bolsa de sangre es el atajo, §7).
 
@@ -145,7 +180,7 @@ Score de zona = Σ severidades de sus heridas; las `treated` cuentan **la mitad*
 - Al recibir una herida de cabeza media/grave: fade a negro breve (~2 s) sin pérdida de control ("desmayo" v1 es solo visual).
 - La sangre crítica (§5) suma su propia capa de desaturación/vignette progresiva — el jugador *siente* que se desangra antes de mirar el HUD.
 
-Torso no tiene debuff propio en v1: su castigo es que concentra los impactos (dos hitgroups mapean a él).
+Ni chest ni stomach tienen debuff propio en v1 (enmienda 2026-07-21, §3 — antes esta línea hablaba de `torso`). Chest sigue concentrando los impactos sin ubicación real: es el fallback de `GENERIC`/`GEAR`/hitgroup desconocido.
 
 ---
 
@@ -168,7 +203,7 @@ Torso no tiene debuff propio en v1: su castigo es que concentra los impactos (do
 - **Selección de zona**: desde el menú médico (§10), la zona la elige el jugador; desde el uso rápido (quick slot / onUse de Cargo), automática — la zona con la herida más grave **compatible con el ítem**:
   - venda → la zona sangrante más grave.
   - torniquete → **(1)** la extremidad sangrante más grave **sin** torniquete (ponerlo); **(2)** si no hay ninguna, la extremidad que **ya lo tiene puesto** (quitarlo). *Sin la rama (2) el torniquete es imposible de sacar en cuanto vendás la zona: la herida deja de sangrar y la búsqueda no encuentra nada — bug reportado en juego, ronda 5.*
-  - medkit → la zona con más secuela **tratada** (la que va a curar); torso si no hay ninguna (sigue sirviendo como cura de HP pura).
+  - medkit → la zona con más secuela **tratada** (la que va a curar); `chest` si no hay ninguna (sigue sirviendo como cura de HP pura; enmienda 2026-07-21 — era `torso`).
   - bloodbag → no usa zona.
 - Brazos heridos: +25 % de tiempo (§6).
 
@@ -195,7 +230,7 @@ COAGULANT.GetZoneScore(ply, zone) -- score de debuff de la zona (0 = sana)
 COAGULANT.OnEncumbrance(ply, fraction) -- contrato YA congelado por Cargo
                                        -- (corpus_cargo_movement.lua): v1 lo
                                        -- acepta y guarda; stamina es bloque futuro
-COAGULANT.Zones.*            -- como en el scaffold (mapa de degradación)
+COAGULANT.Zones.*            -- mapa de degradación; 7 zonas (COA-8, enmienda 2026-07-21)
 ```
 
 ### Eventos de estado clínico (la superficie que pide `CORPUS_Architecture.md` §4)
@@ -235,7 +270,7 @@ Todo net string vía `Corpus.Net.Register("coagulant", msg)` → `corpus_coagula
 
 Tres piezas cliente, todas leyendo el snapshot + NW2 (nunca estado propio inventado):
 
-1. **HUD silueta** (`HUDPaint`): silueta de 6 zonas coloreadas por score (sano→amarillo→rojo), pulso en zonas sangrando, icono de torniquete. Se desvanece cuando todo está sano y la sangre es 100. Barra de progreso de tratamiento centrada abajo cuando hay uno en curso. Capa de vignette de cabeza/sangre crítica en `RenderScreenspaceEffects` (§6).
+1. **HUD silueta** (`HUDPaint`): silueta de **7 zonas** (enmienda 2026-07-21: el rect del torso se parte en `chest` y `stomach` en proporción **58/42** — la de la silueta del browser de Caliber — con gap de 0.01 y mismo x/w: chest `y=0.18 h=0.21`, stomach `y=0.40 h=0.15`) coloreadas por score (sano→amarillo→rojo), pulso en zonas sangrando, icono de torniquete. Se desvanece cuando todo está sano y la sangre es 100. Barra de progreso de tratamiento centrada abajo cuando hay uno en curso. Capa de vignette de cabeza/sangre crítica en `RenderScreenspaceEffects` (§6).
 2. **Menú médico**: concommand `coagulant_menu` + **tecla propia** (convar de cliente `coagulant_key_menu`, default `KEY_M`, con su DBinder en el tab Q). La tecla la lee un **poleo de `input.IsButtonDown` en `Think`** con detector de flanco y guards (`gui.IsGameUIVisible()`, `vgui.GetKeyboardFocus() == nil`, y `vgui.CursorVisible()` — la tecla solo abre, así que con cualquier menú de cursor en pantalla no dispara; sin este último, elegir la tecla en el binder desplegaba el menú dentro del propio tab Q, mini-ronda 8) — **no** `PlayerButtonDown`, que **no dispara client-side en singleplayer** (quirk del engine): la trampa la pagó Cargo con su tecla I (`corpus_cargo_ui.lua`) y este módulo la volvió a pagar en la ronda 7 —la tecla parecía muerta y la culpa se la llevó el binder del tab, que escribía bien—; el fix es de la sesión «Fix ronda 7». **La tecla no cierra**: con el menú abierto (`MakePopup()`) el foco de teclado es del frame y el poleo no dispara; el menú se cierra con la **X de su `DFrame`** (`SetDeleteOnClose`, comportamiento default). Pasar la tecla a toggle (que también cierre) es **decisión de diseño del autor, abierta desde la ronda 7**. Silueta clickeable → lista de heridas de la zona (tipo, severidad, tratada) → botones de tratamiento habilitados según disponibilidad: conteo de ítems si Cargo está; **sin Cargo se rotulan *field* y no se grisan por cooldown** — el cooldown del modo degradado **no viaja en el snapshot (§9)**, así que el rechazo llega por chat desde el server. Se grisan igual mientras hay un tratamiento en curso (uno a la vez, §7), y el torniquete cuando la zona seleccionada no es una extremidad. Al hacer clic manda el intent y **queda abierto** mostrando el progreso: no se cierra solo.
 3. **StatusPanel de Cargo** (lazy-check en el archivo de HUD): `CARGO.StatusPanel.RegisterBar("coagulant", { id = "blood", label = "Blood", getValue = ply → NW2Float × 1, color = rojo })` — firma real verificada contra `corpus_cargo_statuspanel.lua`. Sin Cargo, la sangre se muestra como mini-barra en el HUD propio.
 

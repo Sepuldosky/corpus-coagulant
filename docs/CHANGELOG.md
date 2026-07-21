@@ -1007,8 +1007,44 @@ teclado, así que el guard de foco no lo frenaba).
   solo ABRE, así que con cualquier menú de cursor en pantalla (el Q, el propio medmenu)
   no debe disparar. OJO: el guard es válido JUSTAMENTE porque no hay rama de cierre; si
   la tecla pasa a toggle (decisión de diseño abierta), se revisa — es el mismo guard que
-  volvía inalcanzable el cierre en el slice 4. **[PENDIENTE]**
+  volvía inalcanzable el cierre en el slice 4. **[APLICADO 2026-07-21]** (check N1 ✓ —
+  reporte del autor por chat: «funciona el bind»; elegir la tecla en el binder ya no
+  despliega el menú)
 
 Verificación previa: sintaxis (luaparser) + harness offline: **ALL GREEN** — selftest
 146 OK (server+Cargo) / 108 (client+Cargo), 0 fallos. En juego: check **N1** de la
 planilla.
+
+---
+
+## PARCHES DE sesión Enmienda de zonas — `torso` → `chest` & `stomach` (diseño) — 2026-07-21
+
+Sesión de DISEÑO del tramo que el autor pidió el 2026-07-21 (semilla:
+`dev/HANDOFF_coagulant_zonas.md`): alinear las zonas clínicas con Caliber partiendo
+`torso` en `chest` y `stomach` — el Source ya separa los hitgroups y Coagulant tiraba la
+información. Es cambio del contrato COA-8, así que rige el orden de COA-28: **(1) ronda
+de preguntas con el autor y enmienda en los docs — esta sesión —, (2) código, (3) ronda
+en juego (sección O de la planilla)**. Las cinco preguntas de la semilla se resolvieron
+con el autor: **sin diferencia clínica en v1** pero nace `ZONE_BLEED_MULT` **neutra**
+(todas ×1.0) con el balanceo futuro calibrado contra el referente ACE (Arma 3 / Arma
+Reforger) y ritmos reales de exanguinación — expectativa del autor que los docs no
+tenían escrita y ahora sí; **fallback** `GENERIC`/`GEAR`/desconocido → `chest`; **sin
+alias** `torso` (barrido: ningún repo del ecosistema consume los IDs — los
+`condition_zones` de Cargo son de su ropa, otro namespace); **tope 5+5** aceptado (cota
+de estado, no balance); **silueta 58/42** (proporción del browser de Caliber, gap 0.01).
+Sin superficie de runtime — solo docs; los parches nacen `[APLICADO]`. La bajada a
+código es la próxima sesión y abre sus propios parches `[PENDIENTE]`.
+
+- PARCHE 1 — docs(docs): `Coagulant_Architecture.md` — bloque de enmienda en §3 (las
+  cinco decisiones, con fecha, voto y la base médica de la ronda), la fórmula de §4 gana
+  `× mult(zone)` neutro, §6 reescribe la línea «torso no tiene debuff» (su racional
+  murió con la partición), §7 la zona automática del medkit cae a `chest`, §8 anota las
+  7 zonas en `Zones.*`, §10 la silueta pasa a 7 rects con la geometría ratificada
+  (chest `y=0.18 h=0.21`, stomach `y=0.40 h=0.15`). **[APLICADO 2026-07-21]**
+
+- PARCHE 2 — docs(docs): re-enunciación de las normas en su sede e índice — `CLAUDE.md`
+  contrato 4 (COA-8: los 7 IDs, con marca explícita de **bajada a código pendiente**:
+  hasta que el código baje, el árbol dice `torso` y el código manda, flujo §7.1) y
+  `corpus/docs/ids.yaml` con COA-8 **y COA-7** re-enunciados en el mismo parche (§7.4
+  del flujo — COA-7 entra porque su título fijaba «torso como fallback» y el fallback
+  nuevo es `chest`). **[APLICADO 2026-07-21]**
