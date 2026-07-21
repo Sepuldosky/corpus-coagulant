@@ -5,12 +5,13 @@
 > secciones ni historial). El historial vive en `git` + [`CHANGELOG.md`](CHANGELOG.md).
 > Si crece de una pantalla, está mal redactado: recortar.
 
-**Última actualización:** 2026-07-21 (**enmienda `torso` → `chest` & `stomach`
-COMPLETA: bajada a código Y verificada en juego** — **ronda O: 6/6 ✓**, selftest
-170/132 en juego, chest/stomach por disparo real, fallback, medmenu, medkit y debuffs
-sin regresión. CHANGELOG sesión «Bajada de zonas a código» todo `[APLICADO]`. El
-**Block 3 sigue CERRADO** (ronda 7: 13/13; mini-ronda 8: 2/2; check N1 ✓) y siguen
-las **dos decisiones de diseño abiertas**)
+**Última actualización:** 2026-07-21 (**barrido de drifts de docs**: el CLAUDE.md ya
+no lista la mini-ronda 8 como pendiente —está 2/2, N1 ✓—, los comentarios «6 zonas»
+del HUD pasan a 7, y los ecos de estado de Coagulant en `corpus/`, `corpus-cargo/` y
+`corpus-craving/` quedan corregidos. CHANGELOG sesión «Barrido de drifts de docs»
+`[APLICADO]`. El tramo de zonas `torso` → `chest`/`stomach` sigue **COMPLETO** —ronda O
+6/6, selftest 170/132—; el **Block 3 sigue CERRADO** —ronda 7 13/13, mini-ronda 8 2/2,
+check N1 ✓— y siguen las **dos decisiones de diseño abiertas**)
 
 ---
 
@@ -69,10 +70,12 @@ las **dos decisiones de diseño abiertas**)
 
 ## Próximo paso
 
-1. El tramo acordado con el autor: **(1) arreglar drifts de docs**
-   (ej.: el «Estado actual» del CLAUDE.md aún lista la mini-ronda 8 como pendiente
-   estando 2/2), **(2) las dos decisiones de diseño abiertas** de arriba, **(3) la
-   mejora a la UI que el autor tiene diseñada en Claude** (la trae él).
+1. El tramo acordado con el autor: (1) arreglar drifts de docs — **HECHO** (barrido del
+   2026-07-21: el «Estado actual» del CLAUDE.md ya no lista la mini-ronda 8 como
+   pendiente, los comentarios «6 zonas» del HUD pasan a 7, y los ecos de estado en
+   `corpus/`, `corpus-cargo/` y `corpus-craving/` corregidos). Quedan **(2) las dos
+   decisiones de diseño abiertas** de arriba y **(3) la mejora a la UI que el autor
+   tiene diseñada en Claude** (la trae él).
 2. Cross-repo: ratificar `ApplyExternalCondition(ply, id, severity)` con **Craving**
    (deuda D-5). **Ojo con el 2.º argumento**: es el **id de condición clínica**
    `{"starvation", "dehydration"}`, NO el stat de Craving — implementarlo switcheando

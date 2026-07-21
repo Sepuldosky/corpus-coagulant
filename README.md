@@ -5,7 +5,7 @@ para **Garry's Mod**, estilo ACE3: heridas por zona, sangrado, vitales y tratami
 independiente que **hard-depende** de Corpus (la única dependencia dura del ecosistema) y
 detecta a los demás módulos en runtime, nunca los asume.
 
-> **Estado: Block 3 en bajada — slice 4 de 4.** El diseño del dominio médico está
+> **Estado: Block 3 CERRADO — los 4 slices verificados en juego.** El diseño del dominio médico está
 > ratificado (2026-07-13) en [`docs/Coagulant_Architecture.md`](docs/Coagulant_Architecture.md)
 > y bajado a código: volumen de sangre (0-100) en paralelo al HP nativo, heridas por zona
 > con tipo según el damage type y severidad según el daño final, sangrado que drena sangre
@@ -13,8 +13,9 @@ detecta a los demás módulos en runtime, nunca los asume.
 > tratamiento con tiempo de aplicación e interrupción, cuatro ítems médicos contra el
 > framework de ítems de [Cargo](https://github.com/Sepuldosky/corpus-cargo) (venda,
 > torniquete, medkit, bolsa de sangre) y la UI (silueta zonal, menú médico, tab Q). Los
-> slices 1-3 están verificados en juego; el 4 (UI) espera su ronda de verificación, que
-> **cierra el bloque**. La integración con Caliber va mock-first hasta que exista su
+> **4 slices están verificados en juego** (rondas 1-7, 2026-07-20) y el bloque cerró; el
+> tramo de zonas `torso` → `chest`/`stomach` bajó a código y se verificó el 2026-07-21
+> (ronda O — 7 zonas clínicas). La integración con Caliber va mock-first hasta que exista su
 > pipeline de jugador. Foto de HOY → [`docs/coagulant_estado.md`](docs/coagulant_estado.md);
 > el rumbo del ecosistema vive en el
 > [roadmap de Corpus](https://github.com/Sepuldosky/corpus/blob/main/docs/corpus_roadmap.txt).

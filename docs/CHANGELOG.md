@@ -1116,3 +1116,70 @@ parches quedan `[PENDIENTE]` hasta su reporte.
   `corpus/docs/ids.yaml` COA-7/COA-8 pierden la marca en sus notas; el estado refleja
   la bajada y apunta a la ronda O. **[APLICADO 2026-07-21]** (ronda O ✓ 6/6 — con el
   reporte, COA-7/COA-8 ganan evidencia `planilla`: checks O2/O3/O4)
+
+---
+
+## PARCHES DE sesión Barrido de drifts de docs — post-zonas — 2026-07-21
+
+Punto (1) de los tres que el autor acordó para después del tramo de zonas (semilla:
+`dev/HANDOFF_coagulant_drift_docs.md`): barrer los docs vivos de Coagulant y los ecos
+sobre Coagulant en las otras raíces buscando enunciados que el árbol ya desmiente, y
+corregirlos EN SITIO. Es un ejercicio de flujo §7: jerarquía de autoridad (7.1 — el
+código manda), barrido de ratificación (7.3 — por el VALOR, abriendo ambos lados de
+cada cita) y conducta DETENTE (nada quedó sin árbitro, así que no hubo voto). Los
+puntos (2) —las dos decisiones de diseño abiertas— y (3) —la mejora de UI que el autor
+trae— NO son de esta sesión. **Tramo SOLO de docs** (comentarios de Lua incluidos, sin
+lógica): sin superficie de runtime, los parches nacen `[APLICADO]` (precedente:
+«Enmienda de zonas»). Sin planilla. **Ninguna norma tocada** → `ids.yaml` sin cambios
+(COA-7/COA-8 ya quedaron al día en «Bajada de zonas a código»).
+
+- PARCHE 1 — docs(docs): los docs de cabecera de Coagulant, reescritos contra el estado
+  real. `CLAUDE.md` §Qué es dejaba la **mini-ronda 8** como «pendiente chico» estando
+  2/2 con el check N1 ✓, y no mencionaba el tramo de zonas ya cerrado; el **`README.md`**
+  se declaraba «Block 3 en bajada — slice 4 de 4» con «los slices 1-3 verificados; el 4
+  espera su ronda». Ambos afirman ahora los fixes post-cierre confirmados, el Block 3
+  CERRADO (4 slices en juego) y el tramo `torso`→`chest`&`stomach` COMPLETO (ronda O
+  6/6, 7 zonas), dejando como único pendiente las dos decisiones de diseño abiertas.
+  **[APLICADO 2026-07-21]**
+
+- PARCHE 2 — docs(hud): barrido §7.3 de comentarios de Lua — `corpus_coagulant_hud.lua`
+  decía «silueta de 6 zonas» en dos comentarios (cabecera del archivo y encabezado del
+  bloque de silueta). El código ya pinta 7 (SILHOUETTE de 7 rects, verificado ronda O);
+  la sesión de bajada barrió la lógica y las filas del mapa del `CLAUDE.md`, pero no
+  estos dos comentarios. Solo texto de comentario — sin cambio de runtime, el conteo del
+  selftest no se mueve. **[APLICADO 2026-07-21]**
+
+- PARCHE 3 — docs(docs): ecos de estado de Coagulant en las otras raíces, corregidos en
+  el mismo parche (§7.3a — el eco que el informe no lista es el que sobrevive):
+  - `corpus/README.md` (tabla de módulos): la celda de Estado de Coagulant decía «la UI
+    espera su ronda» estando cerrada; pasa a «En código, verificado», como los demás.
+  - `corpus/docs/corpus_roadmap.txt` [3]: listaba la **mini-ronda 8** como pendiente
+    («le quedan una mini-ronda 8…») estando cerrada; ahora la da por cerrada junto con
+    el tramo de zonas.
+  - `corpus/docs/corpus_estado.md` (Próximo paso 2): daba la **bajada a código** de las
+    zonas como pendiente y apuntaba a la semilla ya consumida — contradecía su propia
+    foto de «Qué existe hoy», que ya la daba completa (§7.1: el código manda, gana la
+    línea alineada al árbol).
+  - `corpus-cargo/docs/Cargo_Architecture.md`: «silueta de 6 zonas del HUD de Coagulant»
+    → 7 (la cita misma remite a `Coagulant_Architecture.md §10`, que ya dice 7).
+  - `corpus-craving/docs/Craving_Architecture.md` (tabla de peers **y** §4, el intro del
+    puente) y `craving_estado.md` (remanentes): describían el Block 3 de Coagulant como
+    «slices 1-3 verificados, UI pendiente / pendiente de la ronda 7». El Block cerró (4
+    slices, ronda 7 13/13). Se **preserva** «todavía no expone condición externa»:
+    `ApplyExternalCondition` sigue con 0 hits en el `lua/` de Coagulant (verificado) — es
+    la deuda D-5, aún abierta.
+
+  **[APLICADO 2026-07-21]**
+
+- PARCHE 4 — chore(workspace): espejo Code→Desktop regenerado (`sync.ps1`, 7 repos, 44
+  archivos; propósito: «barrido de drifts de docs de Coagulant (post-zonas)»). Estaba
+  desactualizado desde antes del tramo de zonas; el autor pidió refrescarlo en esta
+  pasada. Los snapshots están gitignoreados (§6) — la regeneración no produce cambio
+  commiteable, solo este registro. **[APLICADO 2026-07-21]**
+
+Verificación: sin superficie de runtime en ningún repo (solo docs y dos comentarios de
+Lua) — el harness/selftest de Coagulant no cambia (170 OK server / 132 client). El
+checker de IDs (§7.7) corre en cada commit que toca superficie normativa. **NO se
+disparó el gate de coherencia LLM (§7.8)**: tramo de un solo módulo — el autor lo dispara
+en un chat aparte. Espejo desktop-sync regenerado (PARCHE 4). Commiteado y pusheado con
+autorización expresa del autor (2026-07-21).
