@@ -42,6 +42,10 @@ function COAGULANT.ResetState(ply)
     local sid = ply:SteamID64() or "singleplayer"
     COAGULANT.State[sid] = NuevoEstado()
     ply:SetNW2Float("coagulant_blood", Config.BLOOD_MAX)
+    -- También el NW2 de cojera, acá mismo: el selftest resetea SIN pasar por
+    -- PlayerSpawn y dejaba publicado el multiplicador viejo hasta el siguiente tick
+    -- (ronda 7: "piernas: score 0.0 → velocidad ×0.64" en coagulant_status).
+    ply:SetNW2Float("coagulant_speed_mult", 1)
 end
 
 -- ============================================================

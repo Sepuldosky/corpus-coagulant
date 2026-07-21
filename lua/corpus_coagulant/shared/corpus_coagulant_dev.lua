@@ -302,6 +302,10 @@ function COAGULANT._SelfTest()
             COAGULANT.CancelTreatment(ply, "selftest")
 
             COAGULANT.ResetState(ply) -- dejar limpio
+            -- ...y limpio DE VERDAD: el reset tiene que despublicar la cojera de las
+            -- heridas de prueba, no dejarla hasta el próximo tick (ronda 7, ×0.64)
+            check(ply:GetNW2Float("coagulant_speed_mult", 1) == 1,
+                "ResetState dejó publicada la cojera vieja en el NW2")
         else
             Corpus.Log("coagulant", "selftest: sin jugadores — round-trip de estado omitido")
         end

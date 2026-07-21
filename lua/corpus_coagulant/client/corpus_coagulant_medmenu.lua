@@ -284,20 +284,33 @@ concommand.Add("coagulant_menu", Abrir, nil,
 COAGULANT.CV_KEY_MENU = CreateClientConVar("coagulant_key_menu", tostring(KEY_M), true, false,
     "Key that opens the medical menu (0 = unbound; bind it from the Q tab)")
 
-hook.Add("PlayerButtonDown", "corpus_coagulant_medmenu_key", function(ply, boton)
-    if ply ~= LocalPlayer() then return end
+-- Poleo de input.IsButtonDown en Think con detector de flanco, NO PlayerButtonDown:
+-- ese hook no dispara client-side en singleplayer (quirk del engine), así que la
+-- tecla parecía muerta con el juego local (ronda 7: el bind "no funcionó" — el
+-- binder del tab escribía bien la convar; el que nunca corría era el lector).
+-- Patrón ya pagado por Cargo con su tecla I (corpus_cargo_ui.lua). El guard de foco
+-- (vgui.GetKeyboardFocus() == nil) evita robar la tecla mientras se escribe en el
+-- chat; con el menú abierto el foco es del frame (MakePopup), así que la tecla solo
+-- ABRE — el cierre sigue siendo la X del DFrame (pasarla a toggle es decisión de
+-- diseño del autor, anotada en §10).
+--
+-- El guard de cursor (mini-ronda 8): al elegir tecla en el binder del tab Q, la tecla
+-- recién elegida sigue físicamente abajo con el spawnmenu en pantalla — el binder la
+-- captura por key-trapping pero la convar ya cambió, y sin este guard el poleo la
+-- veía como flanco válido y desplegaba el menú ahí mismo. Vale JUSTAMENTE porque la
+-- tecla solo abre: si algún día pasa a toggle, este guard se revisa (es el que volvía
+-- inalcanzable el cierre en el slice 4).
+local teclaAbajo = false
+hook.Add("Think", "corpus_coagulant_medmenu_key", function()
     local tecla = COAGULANT.CV_KEY_MENU:GetInt()
-    if tecla <= 0 or boton ~= tecla then return end
+    if tecla <= 0 then teclaAbajo = false return end
 
-    -- No robarle la tecla al chat ni a otro menú abierto: PlayerButtonDown dispara
-    -- igual mientras se escribe.
-    if gui.IsGameUIVisible() or vgui.CursorVisible() then return end
-    -- DEUDA (slice 4, anotada para la ronda 7 — §10): esta rama es INALCANZABLE. El guard
-    -- de arriba corre ANTES, y el frame se abre con MakePopup() → con el menú abierto el
-    -- cursor SIEMPRE está visible, así que nunca se llega al Remove. Hoy la tecla solo ABRE;
-    -- el cierre es la X del DFrame. El patrón que sí funciona ya está pago en Cargo
-    -- (corpus_cargo_ui.lua): poleo de input.IsButtonDown en Think con detector de flanco y
-    -- guard vgui.GetKeyboardFocus() == nil, que NO es lo mismo que CursorVisible.
-    if IsValid(frame) then frame:Remove() return end
-    Abrir()
+    local abajo = input.IsButtonDown(tecla)
+    if abajo and not teclaAbajo
+        and not gui.IsGameUIVisible()
+        and not vgui.CursorVisible()
+        and vgui.GetKeyboardFocus() == nil then
+        Abrir()
+    end
+    teclaAbajo = abajo
 end)
