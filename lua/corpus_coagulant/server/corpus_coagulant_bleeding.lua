@@ -37,13 +37,14 @@ local function EnviarSnapshot(ply, st)
 end
 
 -- Drenaje total de sangre del jugador en unidades/s (§4): suma de heridas no
--- tratadas de zonas sin torniquete, escalada por convar.
+-- tratadas de zonas sin torniquete, escalada por convar. La zona se pasa a
+-- BleedRate: es donde el mult de zona (ZONE_BLEED_MULT) muerde de verdad.
 local function DrenajeTotal(st)
     local total = 0
-    for _, zdata in pairs(st.zones) do
+    for zona, zdata in pairs(st.zones) do
         if not zdata.tourniquet then
             for _, w in ipairs(zdata.wounds) do
-                total = total + Config.BleedRate(w)
+                total = total + Config.BleedRate(w, zona)
             end
         end
     end

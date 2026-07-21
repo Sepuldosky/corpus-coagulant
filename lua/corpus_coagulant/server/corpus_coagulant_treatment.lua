@@ -12,14 +12,14 @@ local Config = COAGULANT.Config
 local MSG_TREAT  = Corpus.Net.Register("coagulant", "treat")
 local MSG_CANCEL = Corpus.Net.Register("coagulant", "cancel")
 
--- Zona automática según el tipo (§7).
+-- Zona automática según el tipo (§7 enmendado: el default sin zona es chest).
 local function ZonaAuto(ply, kind)
-    if kind == "bloodbag" then return "torso" end -- no usa zona
+    if kind == "bloodbag" then return "chest" end -- no usa zona
 
     -- El medkit borra la secuela tratada: va a la zona con más de ella. Si no hay
-    -- ninguna, cae al torso (sigue sirviendo como cura de HP pura).
+    -- ninguna, cae a chest (sigue sirviendo como cura de HP pura).
     if kind == "medkit" then
-        return COAGULANT.WorstTreatedZone(ply) or "torso"
+        return COAGULANT.WorstTreatedZone(ply) or "chest"
     end
 
     if kind == "tourniquet" then
@@ -31,7 +31,7 @@ local function ZonaAuto(ply, kind)
             local zdata = st.zones[zona]
             if not zdata.tourniquet then
                 for _, w in ipairs(zdata.wounds) do
-                    if Config.BleedRate(w) > 0 and w.severity > mejorSev then
+                    if Config.BleedRate(w, zona) > 0 and w.severity > mejorSev then
                         mejor, mejorSev = zona, w.severity
                     end
                 end

@@ -6,11 +6,11 @@
 > Si crece de una pantalla, está mal redactado: recortar.
 
 **Última actualización:** 2026-07-21 (**enmienda `torso` → `chest` & `stomach`
-RATIFICADA** — las cinco preguntas de la semilla resueltas con el autor y los docs
-enmendados: arquitectura §3-§10, CLAUDE.md contrato 4, ids.yaml COA-7/COA-8; CHANGELOG
-sesión «Enmienda de zonas», todo `[APLICADO]` — es solo docs. **La bajada a código está
-PENDIENTE**: el árbol aún dice `torso`. El **Block 3 sigue CERRADO** (ronda 7: 13/13;
-mini-ronda 8: 2/2; check N1 ✓) y siguen las **dos decisiones de diseño abiertas**)
+COMPLETA: bajada a código Y verificada en juego** — **ronda O: 6/6 ✓**, selftest
+170/132 en juego, chest/stomach por disparo real, fallback, medmenu, medkit y debuffs
+sin regresión. CHANGELOG sesión «Bajada de zonas a código» todo `[APLICADO]`. El
+**Block 3 sigue CERRADO** (ronda 7: 13/13; mini-ronda 8: 2/2; check N1 ✓) y siguen
+las **dos decisiones de diseño abiertas**)
 
 ---
 
@@ -26,7 +26,7 @@ mini-ronda 8: 2/2; check N1 ✓) y siguen las **dos decisiones de diseño abiert
   - **Slice 3** — debuffs zonales: cojera (NW2 + hook `Move` shared, compone con el
     peso de Cargo), sway continuo en dos capas con rampa de ADS (cliente), visión
     (vignette elíptico + capa de sangre crítica). El Medkit borra la secuela tratada.
-  - **Slice 4** — UI: silueta de 6 zonas que late y se desvanece, menú médico por
+  - **Slice 4** — UI: silueta de 7 zonas que late y se desvanece, menú médico por
     zona (dibujo y clic desde la MISMA tabla; intents que el server re-valida),
     barra de tratamiento, sangre en el StatusPanel de Cargo (mini-barra propia sin
     él) y tab Q real. **El flujo completo sin consola (§15) confirmado en J5**, y el
@@ -35,15 +35,19 @@ mini-ronda 8: 2/2; check N1 ✓) y siguen las **dos decisiones de diseño abiert
   del menú se lee por **poleo en `Think`** con guard de cursor (`PlayerButtonDown` no
   dispara client-side en singleplayer; elegir la tecla en el binder ya no despliega el
   menú) y `ResetState` despublica la cojera del selftest.
+- **Zonas: 7 desde el 2026-07-21** (COA-8 enmendado, bajado a código y verificado en
+  juego el mismo día — ronda O: 6/6): `torso` partido en `chest`/`stomach` sin alias,
+  fallback `chest` (COA-7), `ZONE_BLEED_MULT` neutra como eje de tuning, silueta 58/42.
 - **Verificación offline:** sintaxis (luaparser, 13 archivos) + harness versionado
-  ([`../../dev/harness_coagulant.py`](../../dev/harness_coagulant.py), 173 checks +
-  selftest en ambos realms): **146 OK server / 108 client, 0 fallos, ALL GREEN**.
+  ([`../../dev/harness_coagulant.py`](../../dev/harness_coagulant.py), checks de la
+  partición incluidos + selftest en ambos realms): **170 OK server / 132 client,
+  0 fallos, ALL GREEN**.
 - Mapa archivo → rol en [`../CLAUDE.md`](../CLAUDE.md). Comandos: `coagulant_selftest`,
   `coagulant_status`, `coagulant_setblood`, `coagulant_bandage`, `coagulant_dev_give`.
 
 ## Pendiente de verificar
 
-- Nada — el CHANGELOG está todo en `[APLICADO]`.
+- Nada — el CHANGELOG está todo en `[APLICADO]` (la ronda O cerró 6/6 el 2026-07-21).
 
 ## Remanentes / deuda conocida
 
@@ -65,15 +69,11 @@ mini-ronda 8: 2/2; check N1 ✓) y siguen las **dos decisiones de diseño abiert
 
 ## Próximo paso
 
-1. **Bajar a código la enmienda de zonas** (ratificada 2026-07-21, ver arquitectura §3;
-   semilla de la sesión: `dev/HANDOFF_coagulant_zonas_codigo.md`):
-   `zones.lua` (LIST/LABELS 7 zonas, fallback `chest`), `config.lua` (SILHOUETTE 7
-   rects 58/42 + `ZONE_BLEED_MULT` neutra en el drenaje), barrido de `or "torso"` en
-   medmenu/core/treatment, dev + harness (los conteos 146/108 cambian), y después la
-   ronda **O** de la planilla.
-2. Las dos **decisiones de diseño abiertas** de arriba (se discuten y se anotan en la
-   arquitectura antes de tocar código).
-3. Cross-repo: ratificar `ApplyExternalCondition(ply, id, severity)` con **Craving**
+1. El tramo acordado con el autor: **(1) arreglar drifts de docs**
+   (ej.: el «Estado actual» del CLAUDE.md aún lista la mini-ronda 8 como pendiente
+   estando 2/2), **(2) las dos decisiones de diseño abiertas** de arriba, **(3) la
+   mejora a la UI que el autor tiene diseñada en Claude** (la trae él).
+2. Cross-repo: ratificar `ApplyExternalCondition(ply, id, severity)` con **Craving**
    (deuda D-5). **Ojo con el 2.º argumento**: es el **id de condición clínica**
    `{"starvation", "dehydration"}`, NO el stat de Craving — implementarlo switcheando
    sobre el stat pasaría el gate de CAPACIDAD sin aplicar nada y la inanición quedaría

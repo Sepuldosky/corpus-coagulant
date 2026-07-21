@@ -58,7 +58,7 @@ end
 -- herida sin tratar cuyo BleedRate es > 0.
 function HUD.ZoneBleeding(zona)
     for _, w in ipairs(HUD.ZoneData(zona).w or {}) do
-        if Config.BleedRate(Config.WoundFromSnap(w)) > 0 then return true end
+        if Config.BleedRate(Config.WoundFromSnap(w), zona) > 0 then return true end
     end
     return false
 end

@@ -60,10 +60,10 @@ end
 function COAGULANT.IsBleeding(ply)
     local st = COAGULANT.GetState(ply)
     if st == nil then return false end
-    for _, zdata in pairs(st.zones) do
+    for zona, zdata in pairs(st.zones) do
         if not zdata.tourniquet then
             for _, w in ipairs(zdata.wounds) do
-                if Config.BleedRate(w) > 0 then return true end
+                if Config.BleedRate(w, zona) > 0 then return true end
             end
         end
     end
@@ -159,7 +159,7 @@ function COAGULANT.BandageEffect(ply, zone)
 
     local objetivo
     for _, w in ipairs(st.zones[zone].wounds) do
-        if Config.BleedRate(w) > 0 and (objetivo == nil or w.severity > objetivo.severity) then
+        if Config.BleedRate(w, zone) > 0 and (objetivo == nil or w.severity > objetivo.severity) then
             objetivo = w
         end
     end
@@ -219,7 +219,7 @@ function COAGULANT.WorstBleedingZone(ply)
     local mejorZona, mejorSev = nil, 0
     for zona, zdata in pairs(st.zones) do
         for _, w in ipairs(zdata.wounds) do
-            if Config.BleedRate(w) > 0 and w.severity > mejorSev then
+            if Config.BleedRate(w, zona) > 0 and w.severity > mejorSev then
                 mejorZona, mejorSev = zona, w.severity
             end
         end
@@ -250,14 +250,15 @@ hook.Add("PostEntityTakeDamage", "corpus_coagulant_wound", function(ent, dmginfo
     if wtype == nil then return end
 
     -- Zona: hitgroup capturado en este mismo evento (ventana corta); las caídas
-    -- no pasan por ScalePlayerDamage → pierna al azar; resto sin dato → torso.
+    -- no pasan por ScalePlayerDamage → pierna al azar; resto sin dato → chest
+    -- (COA-7: el fallback sin ubicación es chest, enmienda 2026-07-21).
     local zona
     if ent.m_coagHitTime ~= nil and CurTime() - ent.m_coagHitTime < 0.1 then
         zona = COAGULANT.Zones.FromHitgroup(ent.m_coagHitgroup)
     elseif bit.band(dmginfo:GetDamageType(), DMG_FALL) ~= 0 then
         zona = math.random(2) == 1 and "left_leg" or "right_leg"
     else
-        zona = "torso"
+        zona = "chest"
     end
 
     local dano = dmginfo:GetDamage()

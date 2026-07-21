@@ -54,7 +54,7 @@ end
 
 -- Zona con la que abrir: la que más urge (sangrando y grave), si no la más dañada.
 local function ZonaInicial()
-    local mejor, mejorPeso = "torso", -1
+    local mejor, mejorPeso = "chest", -1
     for _, z in ipairs(COAGULANT.Zones.LIST) do
         local peso = HUD.ZoneScore(z) + (HUD.ZoneBleeding(z) and 100 or 0)
         if peso > mejorPeso then mejor, mejorPeso = z, peso end
@@ -108,7 +108,7 @@ local function ConstruirDetalle(padre)
         surface.SetDrawColor(COL_PANEL)
         surface.DrawRect(0, 0, w, h)
 
-        local zona = zonaSel or "torso"
+        local zona = zonaSel or "chest"
         draw.SimpleText(COAGULANT.Zones.LABELS[zona] or zona, "DermaLarge", 12, 8, COL_TEXTO)
 
         local score = HUD.ZoneScore(zona)
@@ -124,7 +124,7 @@ local function ConstruirDetalle(padre)
             y = y + 20
         else
             for _, herida in ipairs(heridas) do
-                local sangra = Config.BleedRate(Config.WoundFromSnap(herida)) > 0
+                local sangra = Config.BleedRate(Config.WoundFromSnap(herida), zona) > 0
                 local txt = string.format("%s — %s%s",
                     SEV_LABEL[herida.s] or ("Sev " .. tostring(herida.s)),
                     TIPO_LABEL[herida.t] or tostring(herida.t),
@@ -187,7 +187,7 @@ local function ConstruirBoton(padre, kind, etiqueta)
 
     b.Think = function(self)
         local n = ContarItem(Config.TREATMENTS[kind].item)
-        local zona = zonaSel or "torso"
+        local zona = zonaSel or "chest"
         local puede = true
 
         if n == nil then
@@ -213,7 +213,7 @@ local function ConstruirBoton(padre, kind, etiqueta)
     end
 
     b.DoClick = function()
-        MandarIntent(kind, kind == "bloodbag" and "" or (zonaSel or "torso"))
+        MandarIntent(kind, kind == "bloodbag" and "" or (zonaSel or "chest"))
     end
 
     return b

@@ -50,8 +50,23 @@ Config.SEVERITY_MEDIUM_AT = 15  -- daño final >= 15 → severidad 2
 Config.SEVERITY_GRAVE_AT  = 40  -- daño final  > 40 → severidad 3
 Config.MAX_WOUNDS_PER_ZONE = 5  -- al exceder: se agrava la más leve (§3)
 
--- Drenaje base por severidad (unidades de sangre/s), × mult del tipo
+-- Drenaje base por severidad (unidades de sangre/s), × mult del tipo × mult de zona
 Config.BLEED_BASE = { [1] = 0.15, [2] = 0.40, [3] = 1.00 }
+
+-- Mult de sangrado por zona (§3-§4, enmienda 2026-07-21): nace NEUTRO a propósito —
+-- la partición chest/stomach es anatómica, sin diferencia clínica en v1. Es el eje
+-- donde un gut shot podrá sangrar distinto cuando el balance se tunee contra el
+-- referente ACE y ritmos reales de exanguinación (cita COA-27); si algún día deja
+-- de ser neutro, sube stomach, no chest (la base médica está en §3).
+Config.ZONE_BLEED_MULT = {
+    head      = 1.0,
+    chest     = 1.0,
+    stomach   = 1.0,
+    left_arm  = 1.0,
+    right_arm = 1.0,
+    left_leg  = 1.0,
+    right_leg = 1.0,
+}
 
 -- Tipos de herida (§3). label es de cara al jugador (idioma del mod: inglés).
 Config.WOUND_TYPES = {
@@ -144,12 +159,17 @@ function Config.SeverityFromDamage(dmg)
     return 1
 end
 
--- Drenaje de una herida en unidades de sangre/s (0 si está tratada, §4)
-function Config.BleedRate(wound)
+-- Drenaje de una herida en unidades de sangre/s (0 si está tratada, §4):
+-- base(sev) × mult(type) × mult(zone). El mult de zona vive ACÁ y no en el timer
+-- de bleeding.lua para que la fórmula entera de §4 sea una sola función pura que
+-- ambos realms comparten. `zone` es opcional y nil-safe (sin zona → ×1.0): un
+-- llamador que solo pregunta "¿sangra?" no necesita conocerla.
+function Config.BleedRate(wound, zone)
     if wound.treated then return 0 end
     local tipo = Config.WOUND_TYPES[wound.type]
     if tipo == nil then return 0 end
-    return Config.BLEED_BASE[wound.severity] * tipo.mult
+    local multZona = (zone ~= nil and Config.ZONE_BLEED_MULT[zone]) or 1.0
+    return Config.BLEED_BASE[wound.severity] * tipo.mult * multZona
 end
 
 -- Drenaje de HP por segundo dada la sangre actual (0 si no es crítica, §5)
@@ -240,12 +260,15 @@ function Config.TreatmentProgress(tr, now)
     return math.Clamp(1 - (tr.endsAt - now) / tr.duration, 0, 1)
 end
 
--- Silueta de 6 zonas en coordenadas normalizadas 0..1 dentro de su caja (§10). Se ve
+-- Silueta de 7 zonas en coordenadas normalizadas 0..1 dentro de su caja (§10). Se ve
 -- desde la perspectiva del jugador (su brazo izquierdo, a la izquierda del dibujo):
 -- la alternativa —espejarla como un espejo— confunde al vendar bajo presión.
+-- El rect del viejo torso se partió 58/42 (proporción del browser de Caliber,
+-- gap 0.01, mismo x/w — enmienda 2026-07-21, geometría ratificada en §10).
 Config.SILHOUETTE = {
     { zone = "head",      x = 0.37, y = 0.00, w = 0.26, h = 0.16 },
-    { zone = "torso",     x = 0.32, y = 0.18, w = 0.36, h = 0.37 },
+    { zone = "chest",     x = 0.32, y = 0.18, w = 0.36, h = 0.21 },
+    { zone = "stomach",   x = 0.32, y = 0.40, w = 0.36, h = 0.15 },
     { zone = "left_arm",  x = 0.10, y = 0.19, w = 0.19, h = 0.36 },
     { zone = "right_arm", x = 0.71, y = 0.19, w = 0.19, h = 0.36 },
     { zone = "left_leg",  x = 0.33, y = 0.57, w = 0.16, h = 0.43 },

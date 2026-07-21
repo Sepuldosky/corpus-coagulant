@@ -23,8 +23,9 @@ function COAGULANT._SelfTest()
     check(Corpus.GetModule("coagulant") == COAGULANT, "GetModule no devuelve la misma tabla by-ref")
     check(Corpus.HasModule("coagulant") == true, "HasModule('coagulant') no es true")
 
-    -- Contrato de zonas: lista/labels consistentes y mapa total sobre hitgroups
-    check(#COAGULANT.Zones.LIST == 6, "Zones.LIST no tiene 6 zonas")
+    -- Contrato de zonas (COA-8, enmienda 2026-07-21): 7 zonas, lista/labels
+    -- consistentes y mapa total sobre hitgroups
+    check(#COAGULANT.Zones.LIST == 7, "Zones.LIST no tiene 7 zonas")
     for _, zona in ipairs(COAGULANT.Zones.LIST) do
         check(COAGULANT.Zones.IsValid(zona), "zona de LIST sin label: " .. tostring(zona))
     end
@@ -37,7 +38,15 @@ function COAGULANT._SelfTest()
         check(COAGULANT.Zones.IsValid(COAGULANT.Zones.FromHitgroup(hg)),
             "FromHitgroup devuelve zona inválida para hitgroup " .. tostring(hg))
     end
-    check(COAGULANT.Zones.FromHitgroup(999) == "torso", "FromHitgroup sin fallback a torso")
+    check(COAGULANT.Zones.FromHitgroup(HITGROUP_CHEST) == "chest"
+        and COAGULANT.Zones.FromHitgroup(HITGROUP_STOMACH) == "stomach",
+        "CHEST y STOMACH no mapean a zonas distintas (COA-8)")
+    check(COAGULANT.Zones.FromHitgroup(HITGROUP_GENERIC) == "chest"
+        and COAGULANT.Zones.FromHitgroup(HITGROUP_GEAR) == "chest",
+        "GENERIC/GEAR no caen a chest (COA-7)")
+    check(COAGULANT.Zones.FromHitgroup(999) == "chest", "FromHitgroup sin fallback a chest")
+    check(COAGULANT.Zones.IsValid("torso") == false,
+        "torso sigue siendo zona válida (murió sin alias, COA-8)")
 
     -- Config pura (slice 1, arquitectura §3-§5)
     check(Config.WoundTypeFromDMG(DMG_BULLET) == "bala", "DMG_BULLET no mapea a bala")
@@ -57,6 +66,25 @@ function COAGULANT._SelfTest()
         "herida tratada sigue drenando")
     check(Config.BleedRate({ type = "contusion", severity = 3, treated = false }) == 0,
         "contusión drena sangre")
+
+    -- ZONE_BLEED_MULT (§4, enmienda 2026-07-21): cubre las 7 zonas exactas y
+    -- BleedRate lo aplica. Todo derivado de la config, jamás del literal (COA-35):
+    -- si el autor tunea el mult de stomach, este check sigue validando.
+    local nMults = 0
+    for _ in pairs(Config.ZONE_BLEED_MULT) do nMults = nMults + 1 end
+    check(nMults == #COAGULANT.Zones.LIST, "ZONE_BLEED_MULT no cubre exactamente las zonas de LIST")
+    for _, zona in ipairs(COAGULANT.Zones.LIST) do
+        check(isnumber(Config.ZONE_BLEED_MULT[zona]),
+            "ZONE_BLEED_MULT sin la zona " .. tostring(zona))
+        local wZona = { type = "bala", severity = 3, treated = false }
+        local esperado = Config.BLEED_BASE[3] * Config.WOUND_TYPES.bala.mult
+            * Config.ZONE_BLEED_MULT[zona]
+        check(math.abs(Config.BleedRate(wZona, zona) - esperado) < 0.001,
+            "BleedRate no aplica el mult de zona de " .. zona)
+    end
+    check(Config.BleedRate({ type = "bala", severity = 3, treated = false }, nil)
+        == Config.BLEED_BASE[3] * Config.WOUND_TYPES.bala.mult,
+        "BleedRate sin zona no es nil-safe (×1.0)")
     check(Config.HPDrainRate(Config.BLOOD_CRITICAL) == 0, "HP drena con sangre no crítica")
     check(Config.HPDrainRate(0) == Config.HP_DRAIN_BASE + Config.HP_DRAIN_EXTRA,
         "HP drain con sangre 0 no es el máximo")
@@ -128,7 +156,7 @@ function COAGULANT._SelfTest()
     -- UI (slice 4, §10): las puras que comparten el HUD y el menú médico. El dibujo y
     -- el área clickeable salen de la MISMA tabla — un desvío acá y el jugador le erra
     -- a la zona que quería vendar.
-    check(#Config.SILHOUETTE == #COAGULANT.Zones.LIST, "la silueta no cubre las 6 zonas")
+    check(#Config.SILHOUETTE == #COAGULANT.Zones.LIST, "la silueta no cubre las 7 zonas")
     local vistas = {}
     for _, p in ipairs(Config.SILHOUETTE) do
         check(COAGULANT.Zones.IsValid(p.zone), "la silueta nombra una zona inexistente: " .. tostring(p.zone))
@@ -195,14 +223,15 @@ function COAGULANT._SelfTest()
             check(COAGULANT.GetZoneScore(ply, "left_arm") == 2, "score de zona incorrecto")
             check(COAGULANT.WorstBleedingZone(ply) == "left_arm", "WorstBleedingZone incorrecta")
 
-            -- efecto venda puro: cierra leve/media; una grave cuesta 2 (§7)
+            -- efecto venda puro: cierra leve/media; una grave cuesta 2 (§7).
+            -- La grave va a stomach: ejercita una de las dos zonas nuevas (COA-8)
             check(COAGULANT.BandageEffect(ply, "left_arm") == true, "BandageEffect sin efecto")
             check(COAGULANT.IsBleeding(ply) == false, "la venda no cortó el sangrado")
             check(COAGULANT.GetZoneScore(ply, "left_arm") == 1, "herida tratada no cuenta la mitad")
-            COAGULANT.AddWound(ply, "torso", "bala", 3)
-            COAGULANT.BandageEffect(ply, "torso")
+            COAGULANT.AddWound(ply, "stomach", "bala", 3)
+            COAGULANT.BandageEffect(ply, "stomach")
             check(COAGULANT.IsBleeding(ply) == true, "una sola venda cerró una grave")
-            COAGULANT.BandageEffect(ply, "torso")
+            COAGULANT.BandageEffect(ply, "stomach")
             check(COAGULANT.IsBleeding(ply) == false, "dos vendas no cerraron la grave")
 
             -- Motor de tratamiento (slice 2): arranca (brazo herido → +25%) y cancela.
@@ -237,8 +266,9 @@ function COAGULANT._SelfTest()
             end
             if prestada then cargoInv.TakeItem(ply, itemVenda, 1) end
 
-            -- la zona se valida ANTES que el ítem: esto rechaza aunque no haya torniquete
-            check(COAGULANT.ApplyTreatment(ply, "tourniquet", "torso") == false,
+            -- la zona se valida ANTES que el ítem: esto rechaza aunque no haya
+            -- torniquete (chest es válida como zona pero no es extremidad)
+            check(COAGULANT.ApplyTreatment(ply, "tourniquet", "chest") == false,
                 "torniquete aceptó una zona no-extremidad")
 
             -- Debuffs (slice 3): scores por par de zonas y publicación de la cojera.

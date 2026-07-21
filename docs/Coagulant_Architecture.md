@@ -100,9 +100,11 @@ st = {
 > 5. **Silueta 58/42** — el rect del torso se parte en la proporción del browser de
 >    Caliber; geometría en §10.
 >
-> **Bajada a código pendiente** al cierre de la sesión de diseño (2026-07-21): el árbol
-> aún dice `torso` y hasta que el código baje, el código manda (flujo §7.1). La
-> verificación abrirá la sección **O** de la planilla cuando llegue la bajada.
+> **Bajada a código aplicada y VERIFICADA EN JUEGO el 2026-07-21** (sesión «Bajada de
+> zonas a código» del CHANGELOG, la siguiente a la de diseño): las 7 zonas viven en el
+> árbol, la verificación offline cerró ALL GREEN (selftest 170 OK server / 132 client)
+> y la ronda **O** de la planilla pasó **6/6** — chest/stomach por disparo real,
+> fallback, medmenu, medkit automático y debuffs sin regresión.
 
 **COA-9 —** Una herida se crea **con el daño ya aplicado**, no con el daño entrante: `ScalePlayerDamage` captura el hitgroup del evento (ya lo hace el scaffold) y `PostEntityTakeDamage(ply, dmg, took)` crea la herida con el daño **final**. Esto deja gratis el punto de integración con Caliber Block 3 (la mitigación de armadura ocurre antes, la herida nace del daño post-armadura) y evita contar daño que un mod canceló.
 

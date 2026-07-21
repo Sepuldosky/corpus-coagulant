@@ -1048,3 +1048,71 @@ código es la próxima sesión y abre sus propios parches `[PENDIENTE]`.
   `corpus/docs/ids.yaml` con COA-8 **y COA-7** re-enunciados en el mismo parche (§7.4
   del flujo — COA-7 entra porque su título fijaba «torso como fallback» y el fallback
   nuevo es `chest`). **[APLICADO 2026-07-21]**
+
+---
+
+## PARCHES DE sesión Bajada de zonas a código — `torso` → `chest` & `stomach` — 2026-07-21
+
+Fase 2 de las tres que fijó la sesión de diseño (orden COA-28): la enmienda ratificada
+de §3 baja al árbol tal cual — nada se re-litigó. Los 13 archivos pasan sintaxis
+(luaparser) y el harness versionado (`dev/harness_coagulant.py`) cierra **ALL GREEN**
+con checks nuevos de la partición: selftest **170 OK server / 132 client** (antes
+146/108; +24 por realm, todos shared — zonas 7, partición CHEST/STOMACH en el mapa Y
+en el pipeline, `torso` inválido, `ZONE_BLEED_MULT` derivada de la config, silueta
+58/42 con gap 0.01). La fase 3 es la ronda **O** de la planilla, en juego — estos
+parches quedan `[PENDIENTE]` hasta su reporte.
+
+- PARCHE 1 — feat(zones): `Zones.LIST`/`LABELS` pasan a **7 zonas** en orden estable de
+  UI (head, chest, stomach, left_arm, right_arm, left_leg, right_leg); `HITGROUP_A_ZONA`
+  parte CHEST→`chest` / STOMACH→`stomach` y GENERIC/GEAR caen a `chest`; el fallback de
+  `FromHitgroup` pasa a `"chest"` (COA-7); `IsValid("torso")` pasa a false — murió sin
+  alias (COA-8). Header del archivo re-escrito (decía «6 zonas»). **[APLICADO
+  2026-07-21]** (ronda O ✓ — O2: chest/stomach por disparo real; O3: fallback chest y
+  torso muerto)
+
+- PARCHE 2 — feat(config): nace `Config.ZONE_BLEED_MULT` **neutra** (las 7 zonas ×1.0,
+  eje de tuning contra el referente ACE, cita COA-27) y `SILHOUETTE` pasa a 7 rects —
+  el rect del torso partido 58/42 (chest `y=0.18 h=0.21`, stomach `y=0.40 h=0.15`, gap
+  0.01, mismo x/w); `ZoneAt` intacto, itera la tabla. Micro-decisión de implementación
+  (documentada en el comentario): `BleedRate` gana el 2.º parámetro `zone`, **nil-safe**
+  (sin zona → ×1.0) — la fórmula entera de §4 (`base × mult(type) × mult(zone)`) queda
+  en UNA pura compartida por ambos realms, en vez de repartir el mult en el timer.
+  **[APLICADO 2026-07-21]** (ronda O ✓ — O4: el clic de la silueta cae en chest y en
+  stomach)
+
+- PARCHE 3 — fix(core): el fallback de la herida sin hitgroup capturado pasa de
+  `"torso"` a `"chest"` (COA-7); `IsBleeding`/`BandageEffect`/`WorstBleedingZone` y el
+  `DrenajeTotal` del timer de bleeding pasan la zona a `BleedRate` — el timer es donde
+  el mult de zona muerde de verdad. **[APLICADO 2026-07-21]** (ronda O ✓ — O2)
+
+- PARCHE 4 — fix(treatment): los defaults de zona automática pasan a `"chest"` (§7
+  enmendado): bloodbag (no usa zona) y medkit sin secuela tratada; la búsqueda del
+  torniquete pasa la zona a `BleedRate`. **[APLICADO 2026-07-21]** (ronda O ✓ — O5:
+  medkit automático → chest sin secuela)
+
+- PARCHE 5 — fix(medmenu): barrido de los `or "torso"` → `"chest"` (zona con la que
+  abre, título del detalle, botones, intent del clic) y el detalle pasa la zona a
+  `BleedRate`. **[APLICADO 2026-07-21]** (ronda O ✓ — O4)
+
+- PARCHE 6 — fix(hud): `HUD.ZoneBleeding` pasa la zona a `BleedRate` — misma pregunta,
+  misma curva y ahora mismo eje de zona que el server (COA-5). `hud` y `debuffs` no
+  necesitaron más: son genéricos sobre `Zones.LIST`/`SILHOUETTE` (revisado, no asumido);
+  el bloque CONTRATO del init no enumera IDs de zona (confirmado). **[APLICADO
+  2026-07-21]** (ronda O ✓ — O6: cojera, sway y visión sin regresión)
+
+- PARCHE 7 — test(dev): el selftest exige 7 zonas, la partición explícita
+  (CHEST→chest, STOMACH→stomach, GENERIC/GEAR→chest), el fallback
+  `FromHitgroup(999) == "chest"` y `IsValid("torso") == false`; los checks de
+  `ZONE_BLEED_MULT` cubren las 7 zonas y verifican que `BleedRate` la aplica,
+  **derivando todo de la config, jamás del literal 1.0** (COA-35); las heridas de
+  prueba sobre `"torso"` pasan a `chest`/`stomach` (la grave de la venda ejercita
+  stomach) y el rechazo del torniquete usa `chest` como no-extremidad. **[APLICADO
+  2026-07-21]** (ronda O ✓ — O1: selftest 170 OK server / 132 client EN JUEGO, 0 fallos)
+
+- PARCHE 8 — docs(docs): transición de la enmienda cerrada en el mismo parche que el
+  código (flujo §7.3): `CLAUDE.md` pierde la marca «bajada a código pendiente» del
+  contrato 4 y los «6 zonas» del mapa (filas `zones` y `hud`) y actualiza los conteos
+  del harness (170/132); la arquitectura §3 flipea su cierre a «bajada aplicada»;
+  `corpus/docs/ids.yaml` COA-7/COA-8 pierden la marca en sus notas; el estado refleja
+  la bajada y apunta a la ronda O. **[APLICADO 2026-07-21]** (ronda O ✓ 6/6 — con el
+  reporte, COA-7/COA-8 ganan evidencia `planilla`: checks O2/O3/O4)
