@@ -3,7 +3,7 @@
 --
 -- SLICE 3: este archivo tiene el receptor del snapshot (COAGULANT.ClientState — la
 -- única fuente de verdad del cliente; nunca inventa estado), el sway de la mira y la
--- capa de visión. La silueta de 6 zonas, la barra de progreso de tratamiento y el
+-- capa de visión. La silueta de 7 zonas, la barra de progreso de tratamiento y el
 -- StatusPanel de Cargo llegan con el slice 4 y crecen sobre este mismo archivo.
 --
 -- POR QUÉ EL SWAY ES CLIENTE: es una deriva CONTINUA de la puntería. La única forma
@@ -288,7 +288,7 @@ hook.Add("HUDPaint", "corpus_coagulant_vision_hud", function()
 end)
 
 -- ============================================================
--- Silueta de 6 zonas + barra de tratamiento (§10) — slice 4
+-- Silueta de 7 zonas + barra de tratamiento (§10) — slice 4
 -- ============================================================
 
 local COL_SANO   = Color(70, 90, 70)
