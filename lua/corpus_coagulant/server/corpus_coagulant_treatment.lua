@@ -145,7 +145,7 @@ local function Completar(ply, st)
     local cargo = Corpus.GetModule("cargo")
     if cargo ~= nil then
         if tr.kind ~= "tourniquet" then
-            if cargo.Inventory.CountItem(ply, t.item) < 1 then
+            if not cargo.Inventory.HasItem(ply, t.item) then
                 hook.Run("Coagulant_TreatmentCancel", ply, tr.kind, tr.zone, "item_gone")
                 return
             end
