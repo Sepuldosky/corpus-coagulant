@@ -30,11 +30,12 @@ sobre este archivo se reporta NO-AUDITABLE POR DISEÑO.
 
   [1] Partir la zona clínica `torso` en `chest` & `stomach` (pedido del autor,
       2026-07-21): el motor Source ya separa HITGROUP_CHEST/STOMACH y Caliber los usa
-      para NPCs — Coagulant hoy los funde en el mapa de Zones. Es cambio del contrato
-      COA-8, y del orden arquitectura → código → ronda en juego (cita COA-28) la
-      PRIMERA fase ya corrió: la enmienda quedó RATIFICADA el 2026-07-21 (cinco
-      decisiones en Coagulant_Architecture.md §3; CHANGELOG sesión «Enmienda de
-      zonas»). Falta la bajada a código y la ronda O de la planilla. Semilla:
+      para NPCs — Coagulant los fundía en el mapa de Zones (torso) hasta el
+      2026-07-21. Es cambio del contrato COA-8, y del orden arquitectura → código →
+      ronda en juego (cita COA-28) las TRES fases ya corrieron el 2026-07-21: la
+      enmienda quedó RATIFICADA (cinco decisiones en Coagulant_Architecture.md §3;
+      CHANGELOG sesión «Enmienda de zonas»), la bajada a código aterrizó (CHANGELOG
+      «Bajada a código», ronda O 6/6) y el tramo está COMPLETO. Semilla:
       dev/HANDOFF_coagulant_zonas.md.
 
   [2] Las dos decisiones de diseño que dejó la ronda 7 (se discuten con el autor y

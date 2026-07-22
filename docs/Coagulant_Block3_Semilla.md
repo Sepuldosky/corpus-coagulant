@@ -27,6 +27,13 @@
 - **Contratos ya congelados por el scaffold** (CHANGELOG sesión 2026-07-13):
   - IDs de zona: `head`, `torso`, `left_arm`, `right_arm`, `left_leg`, `right_leg`
     (6 zonas estilo ACE3, mapa hitgroup nativo como vía de degradación).
+    > **DEROGADO por la enmienda de zonas del 2026-07-21** (CHANGELOG
+    > `[APLICADO 2026-07-21]`, sesiones «Enmienda de zonas» y «Bajada de zonas a
+    > código»): `torso` se partió en `chest` y `stomach` (el Source ya separaba esos
+    > hitgroups). Las zonas clínicas hoy son **7** (`head`, `chest`, `stomach`,
+    > `left_arm`, `right_arm`, `left_leg`, `right_leg`); `torso` murió **sin alias** —
+    > `Zones.IsValid("torso")` es `false`. Sede vigente: **COA-8** (`CLAUDE.md`
+    > §Contratos #4 y `Coagulant_Architecture.md` §3).
   - `COAGULANT.ApplyBandage(ply) -> bool` como firma de `onUse` (§5 de la
     arquitectura de Corpus). El diseño puede generalizarla (p.ej.
     `ApplyTreatment(ply, kind, zone)`) manteniendo `ApplyBandage` como azúcar.

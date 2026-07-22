@@ -1183,3 +1183,37 @@ checker de IDs (§7.7) corre en cada commit que toca superficie normativa. **NO 
 disparó el gate de coherencia LLM (§7.8)**: tramo de un solo módulo — el autor lo dispara
 en un chat aparte. Espejo desktop-sync regenerado (PARCHE 4). Commiteado y pusheado con
 autorización expresa del autor (2026-07-21).
+
+---
+
+## PARCHES DE sesión Reparación del gate de coherencia (acta 2026-07-22) — 2026-07-22
+
+Tanda de reparación documental propuesta por el gate de coherencia en su corrida COMPLETO del
+2026-07-22 (`../../corpus/docs/auditorias/2026-07-22_coherencia_docs.md`; el gate propone, el
+autor dispone). Acá lo que toca a este repo. Los PARCHES 1-2 son solo prosa; el PARCHE 3 toca
+Lua (voto expreso del autor). **Ninguna norma cambió de contenido.**
+
+- PARCHE 1 — **Hallazgo 2.1 [ALTA] del acta:** `docs/Coagulant_Block3_Semilla.md` presentaba
+  las 6 zonas con `torso` como contrato vigente bajo «Contratos ya congelados», sin la nota de
+  derogación que sí lleva su bullet hermano (`onUse == ApplyBandage`). Se inserta la nota
+  «> DEROGADO por la enmienda de zonas del 2026-07-21»: hoy son **7** zonas, `torso` murió sin
+  alias (`Zones.IsValid("torso")` es false), sede **COA-8**. **[APLICADO 2026-07-22]**
+- PARCHE 2 — **Hallazgos 2.5 y 2.6 del acta (pase de valor):** `docs/coagulant_roadmap.txt`
+  bullet [1] afirmaba en presente que «Coagulant hoy los funde en el mapa de Zones» y que solo
+  «la PRIMERA fase ya corrió… falta la bajada a código y la ronda O». El árbol dice que las
+  TRES fases corrieron el 2026-07-21 (ronda O 6/6). Se pasa a pasado: la fusión valió «hasta el
+  2026-07-21» y el tramo está **COMPLETO**. **[APLICADO 2026-07-22]**
+- PARCHE 3 — fix(treatment): **Contrato-vs-árbol PARCIAL 2 del acta (COA-2)** — la re-validación
+  de consumo AL COMPLETAR en `server/corpus_coagulant_treatment.lua:148` usaba `CountItem`, la
+  función que COA-2 declara «nunca». No era bug (la rama está guardada por `tr.kind ~= "tourniquet"`,
+  así que solo tocaba stackables), pero derivaba el absoluto del contrato en una rama. Por voto del
+  autor se hace literal el «nunca»: `CountItem(ply, t.item) < 1` → `not HasItem(ply, t.item)`
+  (equivalente para stackables; misma forma que ya usa el arranque en `:98`). COA-2 y su CLAUDE.md
+  quedan **sin cambio**: el doc ya era correcto, se alinea el código. **[PENDIENTE]** (verificación
+  en juego del autor — flujo §1 PASO 4)
+
+Verificación: PARCHES 1-2 sin superficie de runtime (solo docs). PARCHE 3 toca `server/treatment`
+(realm server) — nace **[PENDIENTE]** hasta la pasada en juego; el selftest/harness siguen en verde
+por construcción (170 OK server / 132 client), pero el «nunca CountItem» solo se confirma probando
+un tratamiento con stackable en juego. Cambios trazables al acta (§7.1: el código manda). No
+commiteado ni pusheado (GIT-7).
