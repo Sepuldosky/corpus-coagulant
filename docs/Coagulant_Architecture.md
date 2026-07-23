@@ -193,7 +193,7 @@ Ni chest ni stomach tienen debuff propio en v1 (enmienda 2026-07-21, §3 — ant
 | id | Nombre | Clase | Peso | Tiempo | Efecto |
 |---|---|---|---|---|---|
 | `corpus_coagulant_bandage` | Bandage | stackable | 0.1 | 4 s | Cierra (`treated = true`) **una** herida sangrante leve/media de la zona. Sobre una grave: la baja a media sin cerrarla (una grave cuesta 2 vendas). |
-| `corpus_coagulant_tourniquet` | Tourniquet | unique | 0.2 | 2 s | Detiene todo el sangrado de **una extremidad** mientras esté puesto. A los 90 s puesto: isquemia — la zona pasa a score máximo de debuff hasta 60 s después de quitarlo. Quitar (2 s) reanuda el sangrado de lo no cerrado. **COA-20 — No se consume, y quitarlo no exige ni consume ítem** (el toggle opera sobre el torniquete ya puesto). |
+| `corpus_coagulant_tourniquet` | Tourniquet | unique | 0.2 | 2 s | Detiene todo el sangrado de **una extremidad** mientras esté puesto. A los 90 s puesto: isquemia — la zona pasa a score máximo de debuff hasta 60 s después de quitarlo. Quitar (2 s) reanuda el sangrado de lo no cerrado. **COA-20 — No se DESTRUYE pero se OCUPA: sale del inventario mientras está puesto (un torniquete ata una sola extremidad) y vuelve al quitarlo (`Inventory.TakeUnique`/`GiveItem` de Cargo); quitarlo no exige ítem** (el toggle opera sobre el ya puesto). |
 | `corpus_coagulant_medkit` | Medkit | stackable | 0.5 | 10 s | +50 HP (cap MaxHealth) **y cierra las heridas ya TRATADAS de una zona** — la única cura de la secuela (§6, enmienda 2026-07-14). No toca sangre ni heridas sin vendar. |
 | `corpus_coagulant_bloodbag` | Blood Bag | stackable | 0.3 | 8 s | +40 sangre (cap 100). |
 

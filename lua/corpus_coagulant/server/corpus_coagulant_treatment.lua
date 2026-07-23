@@ -89,10 +89,11 @@ function COAGULANT.ApplyTreatment(ply, kind, zone)
     end
 
     -- Ítems: con Cargo presente el tratamiento requiere la unidad (el torniquete
-    -- no se consume, pero sí debe estar en el inventario para ponerlo; quitarlo
-    -- no pide nada). Presencia vía HasItem, NUNCA CountItem: los `unique` (el
-    -- torniquete) se guardan como {id, uid} y CountItem solo cuenta stacks —
-    -- pagado en juego en la ronda 3 (G4). Sin Cargo: modo degradado con cooldown.
+    -- no se CONSUME pero se OCUPA al completar —sale del inventario mientras está
+    -- puesto y vuelve al quitarlo—; poner pide la unidad, quitar no). Presencia
+    -- vía HasItem, NUNCA CountItem: los `unique` (el torniquete) se guardan como
+    -- {id, uid} y CountItem solo cuenta stacks — pagado en juego (G4). Sin Cargo:
+    -- modo degradado con cooldown.
     local cargo = Corpus.GetModule("cargo")
     if cargo ~= nil then
         if not removing and not cargo.Inventory.HasItem(ply, t.item) then
@@ -140,11 +141,23 @@ local function Completar(ply, st)
     st.dirty = true
     local t = Config.TREATMENTS[tr.kind]
 
-    -- Consumo AL COMPLETAR: re-validar que la unidad siga ahí (pudo dropearse
-    -- durante la aplicación). El torniquete nunca se consume.
+    -- Consumo/ocupación AL COMPLETAR: re-validar que la unidad siga ahí (pudo
+    -- dropearse durante la aplicación). El torniquete NO se consume: se OCUPA
+    -- (sale del inventario mientras está puesto, vuelve al quitarlo), así un
+    -- torniquete ata UNA extremidad, no todas (cap = los que llevás).
     local cargo = Corpus.GetModule("cargo")
     if cargo ~= nil then
-        if tr.kind ~= "tourniquet" then
+        if tr.kind == "tourniquet" then
+            if tr.removing then
+                cargo.Inventory.GiveItem(ply, t.item) -- devolverlo al quitarlo
+            else
+                if not cargo.Inventory.HasItem(ply, t.item) then
+                    hook.Run("Coagulant_TreatmentCancel", ply, tr.kind, tr.zone, "item_gone")
+                    return
+                end
+                cargo.Inventory.TakeUnique(ply, t.item) -- ocuparlo (es `unique`)
+            end
+        else
             if not cargo.Inventory.HasItem(ply, t.item) then
                 hook.Run("Coagulant_TreatmentCancel", ply, tr.kind, tr.zone, "item_gone")
                 return

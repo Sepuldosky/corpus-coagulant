@@ -1209,11 +1209,49 @@ Lua (voto expreso del autor). **Ninguna norma cambió de contenido.**
   así que solo tocaba stackables), pero derivaba el absoluto del contrato en una rama. Por voto del
   autor se hace literal el «nunca»: `CountItem(ply, t.item) < 1` → `not HasItem(ply, t.item)`
   (equivalente para stackables; misma forma que ya usa el arranque en `:98`). COA-2 y su CLAUDE.md
-  quedan **sin cambio**: el doc ya era correcto, se alinea el código. **[PENDIENTE]** (verificación
-  en juego del autor — flujo §1 PASO 4)
+  quedan **sin cambio**: el doc ya era correcto, se alinea el código. **[APLICADO 2026-07-23]**
+  (pasada en juego del autor — planilla consolidada: V1 venda 3→2, V2 bloodbag 2→1, V3 el torniquete
+  `unique` no se consume; los tres ✓)
 
 Verificación: PARCHES 1-2 sin superficie de runtime (solo docs). PARCHE 3 toca `server/treatment`
-(realm server) — nace **[PENDIENTE]** hasta la pasada en juego; el selftest/harness siguen en verde
-por construcción (170 OK server / 132 client), pero el «nunca CountItem» solo se confirma probando
-un tratamiento con stackable en juego. Cambios trazables al acta (§7.1: el código manda). No
-commiteado ni pusheado (GIT-7).
+(realm server) — **[APLICADO 2026-07-23]** tras la pasada en juego (venda 3→2, bloodbag 2→1,
+torniquete no consumido); el selftest/harness estaban en verde por construcción (170 OK server /
+132 client) y el «nunca CountItem» quedó confirmado con stackable en juego. Cambios trazables al
+acta (§7.1: el código manda). Commiteado (`3ef6a46`) y pusheado a `origin/main` con autorización del
+autor — la nota «no commiteado» de la redacción original quedó superada por el push.
+
+---
+
+## PARCHES DE sesión Cap del torniquete: se OCUPA, no se reutiliza sin costo (COA-20 enmendada) — 2026-07-23
+
+Nota del check V3 de la pasada del 2026-07-23 (COA-2): el torniquete pasó ✓ (no se consume),
+pero el autor observó que **un torniquete `unique` se ponía en varias extremidades** (tenía 2 y
+ató las cuatro). Era la deuda de diseño anotada en el estado; por voto del autor se **capa**: el
+torniquete deja de ser reutilizable sin costo y pasa a **OCUPARSE** — sale del inventario
+mientras está puesto y vuelve al quitarlo —, así uno ata **una sola extremidad** (cap = los que
+llevás). Es cross-repo (**Cargo primero**, FLU-04): Cargo estrena `Inventory.TakeUnique` para
+consumir un `unique` (su CHANGELOG #29); Coagulant lo consume. **Enmienda COA-20** (sede en
+`Coagulant_Architecture.md §7` + `ids.yaml`): «nunca se consume» → «no se destruye pero se
+ocupa». Verificación offline: harness **171 OK server / 132 client, ALL GREEN** (checks nuevos:
+ponerlo descuenta la unidad, una 2.ª extremidad sin torniquete libre se rechaza, quitarlo lo
+devuelve).
+
+- PARCHE 1 — fix(treatment): el bloque de consumo de `Completar` ocupa/devuelve el torniquete —
+  al ponerlo (no `removing`) re-valida `HasItem` y hace `TakeUnique(ply, t.item)`; al quitarlo
+  (`removing`) hace `GiveItem(ply, t.item)`. El cap sale solo: sin torniquete libre, el arranque
+  ya falla por `HasItem` (:98). Comentarios de `:91-95` y del bloque actualizados. **[APLICADO
+  2026-07-23]** (pasada 2026-07-23, TQ ✓: ponerlo descuenta la unidad, la 2.ª pierna no alcanza,
+  quitarlo lo devuelve)
+- PARCHE 2 — test(dev): el selftest exige `isfunction(cargo.Inventory.TakeUnique)` con Cargo
+  montado (un Cargo sin la superficie reproduce el multi-extremidad en silencio) — server pasa de
+  170 a **171 OK**. **[APLICADO 2026-07-23]** (offline; el check corre en cada carga)
+- PARCHE 3 — docs(docs): **enmienda COA-20** en su sede (`Coagulant_Architecture.md §7`, fila del
+  torniquete) y en `corpus/docs/ids.yaml` (título + evidencia harness); el estado refleja el cap.
+  **[APLICADO 2026-07-23]**
+
+Nota de diseño (para la pasada): un torniquete **puesto al morir** se pierde con el cuerpo (queda
+ocupado y nunca vuelve). Aceptable v1, o deuda menor — lo decide el autor en juego.
+
+Verificación: PARCHE 1 toca `server/treatment` (realm server) — **[APLICADO 2026-07-23]** (TQ ✓
+en la pasada del autor). PARCHES 2-3 offline/docs. Harness 171/132 ALL GREEN. Cross-repo: Cargo
+`TakeUnique` (#29) va primero (FLU-04). No commiteado ni pusheado (GIT-7).

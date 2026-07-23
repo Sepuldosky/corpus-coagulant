@@ -356,6 +356,8 @@ function COAGULANT._SelfTest()
         if SERVER then
             check(istable(cargo.Inventory) and isfunction(cargo.Inventory.HasItem),
                 "Cargo montado sin Inventory.HasItem (desactualizado: el torniquete lo requiere)")
+            check(isfunction(cargo.Inventory.TakeUnique),
+                "Cargo montado sin Inventory.TakeUnique (desactualizado: ocupar el torniquete lo exige)")
         end
     end
 

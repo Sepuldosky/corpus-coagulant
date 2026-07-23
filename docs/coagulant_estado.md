@@ -5,7 +5,10 @@
 > secciones ni historial). El historial vive en `git` + [`CHANGELOG.md`](CHANGELOG.md).
 > Si crece de una pantalla, está mal redactado: recortar.
 
-**Última actualización:** 2026-07-21 (**barrido de drifts de docs**: el CLAUDE.md ya
+**Última actualización:** 2026-07-23 (**COA-2 confirmado en juego**: la re-validación de consumo
+al completar con `HasItem` —PARCHE 3 de la tanda del gate— pasó ✓ en la pasada del autor —venda
+3→2, bloodbag 2→1, torniquete no consumido—, CHANGELOG `[APLICADO 2026-07-23]`. Antes, 2026-07-21,
+**barrido de drifts de docs**: el CLAUDE.md ya
 no lista la mini-ronda 8 como pendiente —está 2/2, N1 ✓—, los comentarios «6 zonas»
 del HUD pasan a 7, y los ecos de estado de Coagulant en `corpus/`, `corpus-cargo/` y
 `corpus-craving/` quedan corregidos. CHANGELOG sesión «Barrido de drifts de docs»
@@ -41,14 +44,16 @@ check N1 ✓— y siguen las **dos decisiones de diseño abiertas**)
   fallback `chest` (COA-7), `ZONE_BLEED_MULT` neutra como eje de tuning, silueta 58/42.
 - **Verificación offline:** sintaxis (luaparser, 13 archivos) + harness versionado
   ([`../../dev/harness_coagulant.py`](../../dev/harness_coagulant.py), checks de la
-  partición incluidos + selftest en ambos realms): **170 OK server / 132 client,
+  partición incluidos + selftest en ambos realms): **171 OK server / 132 client,
   0 fallos, ALL GREEN**.
 - Mapa archivo → rol en [`../CLAUDE.md`](../CLAUDE.md). Comandos: `coagulant_selftest`,
   `coagulant_status`, `coagulant_setblood`, `coagulant_bandage`, `coagulant_dev_give`.
 
 ## Pendiente de verificar
 
-- Nada — el CHANGELOG está todo en `[APLICADO]` (la ronda O cerró 6/6 el 2026-07-21).
+- Nada — el cap del torniquete (COA-20 enmendada) quedó **confirmado en juego** el 2026-07-23
+  (TQ ✓: ponerlo descuenta, la 2.ª pierna no alcanza, quitarlo lo devuelve); CHANGELOG `[APLICADO]`.
+  Cross-repo cerrado con Cargo `TakeUnique` (#29).
 
 ## Remanentes / deuda conocida
 
@@ -59,8 +64,6 @@ check N1 ✓— y siguen las **dos decisiones de diseño abiertas**)
   implementar (COA-28).
 - **DECISIÓN ABIERTA (autor) — ¿la tecla del menú también cierra?** Hoy solo abre
   (cierre = X del frame). El poleo nuevo lo hace posible con el patrón de Cargo.
-- **Un torniquete `unique` puede atar varias extremidades** (no se consume y nada lo
-  impide). Si molesta, es decisión de diseño, no un bug.
 - **ARC9 fino, diferido** (§6): «apuntando» = clic derecho (`IN_ATTACK2`), agnóstico
   al arma; la API real de ARC9 se verifica contra `dev/other/`, nunca de memoria.
 - **Silueta y vignette: geometría propia** — nada se recicla de mods con licencia
