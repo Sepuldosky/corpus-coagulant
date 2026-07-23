@@ -197,6 +197,14 @@ Ni chest ni stomach tienen debuff propio en v1 (enmienda 2026-07-21, §3 — ant
 | `corpus_coagulant_medkit` | Medkit | stackable | 0.5 | 10 s | +50 HP (cap MaxHealth) **y cierra las heridas ya TRATADAS de una zona** — la única cura de la secuela (§6, enmienda 2026-07-14). No toca sangre ni heridas sin vendar. |
 | `corpus_coagulant_bloodbag` | Blood Bag | stackable | 0.3 | 8 s | +40 sangre (cap 100). |
 
+> **Modelos (decisión del autor 2026-07-23; mecanismo en Cargo, su entry 34).** Las cuatro defs
+> se registran **sin `model`** a propósito: dropean como la cajita de cartón de Cargo y su ícono
+> cae a la letra. Coagulant es genérico y no conoce ningún setting — un addon de **contenido**
+> las re-viste desde afuera vía `Cargo.Items.SetModel(id, model)` sin tocar este repo
+> (corpus-stalker ya lo hace: venda → `wick_bandage`, medkit → `medkit_low`; torniquete y blood
+> bag siguen en la cajita, sin modelo coherente identificado). No es deuda: no se les agrega
+> modelo acá.
+
 ### Mecánica de aplicación
 
 - **COA-19 — Server-authoritative**: `st.treatment = { kind, zone, endsAt }`. Un solo tratamiento a la vez.

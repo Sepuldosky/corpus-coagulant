@@ -5,7 +5,11 @@
 > secciones ni historial). El historial vive en `git` + [`CHANGELOG.md`](CHANGELOG.md).
 > Si crece de una pantalla, está mal redactado: recortar.
 
-**Última actualización:** 2026-07-23 (**COA-2 confirmado en juego**: la re-validación de consumo
+**Última actualización:** 2026-07-23 (noche: **decisión de modelos ratificada** — los ítems
+médicos quedan **sin `model` a propósito** (cajita de Cargo + ícono de letra); la sustitución es
+de los addons de contenido vía `Cargo.Items.SetModel` (Cargo #34; corpus-stalker ya re-viste
+venda y medkit). Nota en Architecture §7 + comentario en `items`; solo prosa acá. Antes en el
+día, **COA-2 confirmado en juego**: la re-validación de consumo
 al completar con `HasItem` —PARCHE 3 de la tanda del gate— pasó ✓ en la pasada del autor —venda
 3→2, bloodbag 2→1, torniquete no consumido—, CHANGELOG `[APLICADO 2026-07-23]`. Antes, 2026-07-21,
 **barrido de drifts de docs**: el CLAUDE.md ya

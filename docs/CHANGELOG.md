@@ -1255,3 +1255,26 @@ ocupado y nunca vuelve). Aceptable v1, o deuda menor — lo decide el autor en j
 Verificación: PARCHE 1 toca `server/treatment` (realm server) — **[APLICADO 2026-07-23]** (TQ ✓
 en la pasada del autor). PARCHES 2-3 offline/docs. Harness 171/132 ALL GREEN. Cross-repo: Cargo
 `TakeUnique` (#29) va primero (FLU-04). No commiteado ni pusheado (GIT-7).
+
+---
+
+## PARCHES DE sesión Modelos de los ítems médicos: la cajita es la decisión, no la deuda — 2026-07-23
+
+Decisión del autor (2026-07-23, misma tanda que el entry **34** de Cargo): los ítems médicos se
+quedan **sin `model`** — dropean como la cajita de cartón de Cargo y su ícono cae a la letra —,
+y la sustitución es asunto de los addons de CONTENIDO vía el punto de extensión nuevo de Cargo,
+`Items.SetModel(id, model)` (orden-independiente; los defs siguen siendo de Coagulant).
+`corpus-stalker` ya re-viste venda (`wick_bandage`) y medkit (`medkit_low`); torniquete y blood
+bag no tienen modelo coherente en los packs y quedan en la cajita. En este repo el cambio es
+**solo prosa/comentario** — el código ya no declaraba modelos; lo que cambia es que la ausencia
+pasa de accidente a contrato de diseño.
+
+- PARCHE 1 — docs(items): comentario en el bloque de registro de
+  `shared/corpus_coagulant_items.lua` («Sin `model` A PROPÓSITO… No agregues modelos acá») +
+  nota en `Coagulant_Architecture.md` §7 bajo la tabla del set v1. **[APLICADO 2026-07-23]**
+
+Verificación: sin superficie de runtime en este repo (harness/selftest intactos: 171 server /
+132 client). La verificación en juego de la sustitución vive en el checklist del entry 34 de
+Cargo — **confirmada por el autor el 2026-07-23** (venda → wick_bandage, medkit → medkit_low;
+torniquete y blood bag en la cajita, como se decidió). Commiteado y pusheado con autorización
+del autor.

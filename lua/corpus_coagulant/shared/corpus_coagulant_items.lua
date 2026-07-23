@@ -36,6 +36,13 @@ Corpus.OnReady(function()
         return
     end
 
+    -- Sin `model` A PROPÓSITO (decisión del autor 2026-07-23, Cargo #34): los
+    -- ítems médicos caen a la cajita de cartón del drop de Cargo y al ícono de
+    -- letra. Coagulant es genérico y no conoce ningún setting: un addon de
+    -- CONTENIDO (p.ej. corpus-stalker con los botiquines de la Zona) los
+    -- re-viste desde afuera vía cargo.Items.SetModel(id, model) — el def sigue
+    -- siendo de Coagulant, solo cambia la piel. No agregues modelos acá.
+
     cargo.Items.Register({
         id       = "corpus_coagulant_bandage",
         name     = "Bandage",
