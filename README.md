@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/coagulant_lockup_dark.svg">
+    <img src="assets/coagulant_lockup_light.svg" width="200" alt="Coagulant">
+  </picture>
+</p>
+
 # Coagulant
 
 Módulo **médico de jugador** del ecosistema [Corpus](https://github.com/Sepuldosky/corpus)
