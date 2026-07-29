@@ -5,7 +5,19 @@
 > secciones ni historial). El historial vive en `git` + [`CHANGELOG.md`](CHANGELOG.md).
 > Si crece de una pantalla, está mal redactado: recortar.
 
-**Última actualización:** 2026-07-23 (noche: **decisión de modelos ratificada** — los ítems
+**Última actualización:** 2026-07-29 (**COA-37 — la venda cubre el trauma cerrado**: hasta hoy una
+`contusion` (mult 0.0) era **invendable** y, como el medkit solo borra lo ya `treated`, **incurable**
+— pesaba entera en cojera/sway/visión hasta morir, y una caída dejaba cojera permanente. La venda
+deja de preguntar «¿sangra?» y pregunta «¿está abierta?»: es la salida (1) de las tres que ACE3 le
+da al trauma cerrado —dolor con analgésico y fractura con férula **siguen diferidos** por §1— y no
+cuesta mecánica nueva: la contusión entra al circuito venda → medkit que ya existe. Nace
+`Config.BandagePriority` y `WorstOpenZone`. Enmienda en Architecture §7 + alta de COA-37 en
+`ids.yaml`. **Pasada del autor 4/5**: la cura de la contusión quedó confirmada, pero el check 4
+destapó que el ORDEN estaba invertido —con un balazo mínimo y un moretón medio la venda atendía el
+moretón—, así que se corrigió el mismo día: **manda el sangrado**, la severidad ordena dentro de
+cada grupo (hemorragia primero; el peso se deriva de `SEVERITY_MAX`, COA-35). La re-pasada cerró el
+check 4 ✓ → **COA-37 5/5 en juego**, harness **192/142 ALL GREEN**, commiteado y pusheado. Antes,
+2026-07-23 noche: **decisión de modelos ratificada** — los ítems
 médicos quedan **sin `model` a propósito** (cajita de Cargo + ícono de letra); la sustitución es
 de los addons de contenido vía `Cargo.Items.SetModel` (Cargo #34; corpus-stalker ya re-viste
 venda y medkit). Nota en Architecture §7 + comentario en `items`; solo prosa acá. Antes en el
@@ -48,14 +60,17 @@ check N1 ✓— y siguen las **dos decisiones de diseño abiertas**)
   fallback `chest` (COA-7), `ZONE_BLEED_MULT` neutra como eje de tuning, silueta 58/42.
 - **Verificación offline:** sintaxis (luaparser, 13 archivos) + harness versionado
   ([`../../dev/harness_coagulant.py`](../../dev/harness_coagulant.py), checks de la
-  partición incluidos + selftest en ambos realms): **171 OK server / 132 client,
+  partición incluidos + selftest en ambos realms): **192 OK server / 142 client,
   0 fallos, ALL GREEN**.
 - Mapa archivo → rol en [`../CLAUDE.md`](../CLAUDE.md). Comandos: `coagulant_selftest`,
   `coagulant_status`, `coagulant_setblood`, `coagulant_bandage`, `coagulant_dev_give`.
 
 ## Pendiente de verificar
 
-- Nada — el cap del torniquete (COA-20 enmendada) quedó **confirmado en juego** el 2026-07-23
+- Nada — **COA-37 cerró 5/5 en juego** el 2026-07-29: los checks 1-3 y 5 en la primera pasada, y
+  el 4 en la re-pasada tras invertir el orden (balazo leve antes que moretón medio). Commiteado y
+  pusheado.
+- El cap del torniquete (COA-20 enmendada) quedó **confirmado en juego** el 2026-07-23
   (TQ ✓: ponerlo descuenta, la 2.ª pierna no alcanza, quitarlo lo devuelve); CHANGELOG `[APLICADO]`.
   Cross-repo cerrado con Cargo `TakeUnique` (#29).
 

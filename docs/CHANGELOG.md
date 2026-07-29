@@ -1278,3 +1278,117 @@ Verificación: sin superficie de runtime en este repo (harness/selftest intactos
 Cargo — **confirmada por el autor el 2026-07-23** (venda → wick_bandage, medkit → medkit_low;
 torniquete y blood bag en la cajita, como se decidió). Commiteado y pusheado con autorización
 del autor.
+
+---
+
+## PARCHES DE sesión La venda cubre el trauma cerrado (COA-37, alineación con ACE3) — 2026-07-29
+
+Sale de una pregunta del autor —«¿cómo se sana el daño Blunt/Trauma?»— cuya respuesta era **no se
+sana**. Cadena verificada en el árbol: `contusion` tiene mult **0.0** (`config:77`) → `BleedRate`
+siempre 0 → la venda, gateada por `BleedRate > 0` en el motor (`treatment:69-75`) *y* en el efecto
+(`core:161-165`), nunca la podía marcar `treated` → y `HealTreatedWounds` (el medkit) solo borra lo
+ya `treated` → la contusión pesaba **entera** en `GetZoneScore` hasta morir. Una caída dejaba
+cojera permanente, y el default conservador de §3 (`resto / sin clasificar` → `contusion`) convertía
+cualquier fuente de daño rara de un tercero en una marca incurable.
+
+**La causa fue un diferimiento a medias, no un olvido.** Segunda pregunta del autor: si el
+referente es ACE3/ACE-Reforger, ¿cómo lo atacan ellos? Con **tres** salidas — la venda aplica a
+toda herida abierta, el **dolor** decae solo y lo acelera un analgésico, y el efecto estructural es
+una **fractura** con su férula. §1 difirió las dos últimas (correcto para v1), pero `contusion` se
+quedó con la **entrada** al sistema y sin ninguna de las tres salidas. Por voto expreso del autor
+se adopta la primera, la única que **no cuesta mecánica nueva**: la venda deja de preguntar
+«¿sangra?» y pregunta «¿está abierta?». Con eso la contusión entra al circuito **venda → medkit**
+que ya existe y está verificado. **No** entra la tabla de efectividad por tipo de venda de ACE3
+(sería mecánica nueva, COA-28), y dolor/fractura **siguen diferidos**.
+
+- PARCHE 1 — docs(docs): **enmienda COA-37** en su sede (`Coagulant_Architecture.md §7`, bloque
+  nuevo al abrir la sección) + fila de la venda, fila `contusion` de la tabla de §3, la línea de
+  §1 que difiere dolor/férula y el bullet de zona automática de §7. Alta de **COA-37** en
+  `corpus/docs/ids.yaml` (INVARIANTE, evidencia `harness`). Va **antes** que el código (COA-28).
+  **[APLICADO 2026-07-29]**
+- PARCHE 2 — feat(config): nace `Config.BandagePriority(wound, zone)` — pura y compartida: 0 si
+  la herida ya está tratada, si no `severity × 2 + (sangra and 1 or 0)`. La severidad **domina** y
+  el sangrado **desempata**: sin eso, en una zona con un moretón y un balazo de la misma severidad
+  la venda podía irse al moretón mientras el balazo drena. Un solo criterio para el efecto, la
+  zona automática y el selftest — no tres. **[APLICADO 2026-07-29]** — pero **la jerarquía de esta
+  fórmula quedó REFUTADA por el check 4** de la misma pasada: el autor reportó que con un balazo
+  leve y un moretón medio la venda atendía el moretón. Se invierte en la sesión siguiente
+  («Hemorragia primero»); la función y su rol siguen en pie, cambia el orden.
+- PARCHE 3 — fix(core): `BandageEffect` selecciona por `BandagePriority` en vez de por
+  `BleedRate > 0` (la contusión ya se venda); nace `WorstOpenZone(ply)` como destino automático de
+  la venda. `WorstBleedingZone` **se conserva** —responde la pregunta de URGENCIA, no la de la
+  venda— con el comentario corregido: hoy solo la ejercita el selftest. **[APLICADO 2026-07-29]**
+  (pasada del autor: checks 1-3 ✓ — la contusión de caída se venda y el medkit la borra)
+- PARCHE 4 — fix(treatment): el gate de arranque de la venda pasa de «¿hay algo sangrando?» a
+  «¿hay una herida abierta?» (mismo `BandagePriority`), y la zona automática pasa a
+  `WorstOpenZone` — antes, con solo un moretón encima, el uso rápido no encontraba zona y
+  rechazaba con *"Nothing to bandage"*. **[APLICADO 2026-07-29]** (checks 1-3 y 5 ✓)
+- PARCHE 5 — fix(items): el debug `coagulant_bandage` usa la misma selección que el flujo real
+  (`WorstOpenZone`); si mirara solo el sangrado mentiría sobre lo que hace la venda de verdad.
+  **[APLICADO 2026-07-29]**
+- PARCHE 6 — test(dev): 14 checks nuevos. **5 puros** (ambos realms): la contusión no sangra pero
+  **sí** se venda, una tratada no se re-venda, el desempate a igual severidad va a la que sangra, y
+  la severidad domina sobre el sangrado. **9 de server**: el circuito completo de una contusión de
+  punta a punta (score entero → la venda la cierra → media → el medkit la borra → score 0), que
+  `WorstOpenZone` la ve, que una zona sin heridas abiertas no gasta venda, y el desempate en vivo
+  con balazo y moretón de la misma severidad en la misma zona. Server **171 → 185**, client
+  **132 → 137**. **[APLICADO 2026-07-29]** (offline; corren en cada carga)
+- PARCHE 7 — docs(docs): `CLAUDE.md` §Verificación decía **170 OK server** — quedó desactualizado
+  cuando el PARCHE 2 de la sesión «Cap del torniquete» lo subió a 171 (el `coagulant_estado.md` sí
+  lo tenía bien). Se corrige y se pasa a los conteos de hoy. **[APLICADO 2026-07-29]**
+
+Verificación: harness offline **ALL GREEN — 185 OK server / 137 client, 0 fallos** (línea base
+medida contra HEAD con `git stash`: 171/132, así que el delta son exactamente los 14 checks del
+PARCHE 6). Los PARCHES 2-5 tocan runtime (config shared, core/treatment server, items shared) y
+nacieron `[PENDIENTE]` hasta la pasada en juego del autor (flujo §1 PASO 4).
+
+**Resultado de la pasada (2026-07-29): 4/5.** ✓ **(1)** caer, herirse y vendarse la pierna — antes
+rechazaba, ahora entra y la cojera baja a la mitad; ✓ **(2)** medkit sobre esa pierna → cojera en
+cero; ✓ **(3)** golpe de melé vendable igual; ✗ **(4)** una zona con balazo y moretón: *«la zona
+con disparo mínimo y un moretón medio, se cura primero el moretón y luego los disparos sangrantes.
+La urgencia es en los disparos»* — el ORDEN de `BandagePriority` estaba al revés; se corrige en la
+sesión siguiente; ✓ **(5)** sin heridas abiertas la venda sigue rechazando y no se consume. La
+enmienda en sí (que la contusión se cure) queda **confirmada**: lo refutado es a cuál de dos
+heridas abiertas va la venda. No commiteado ni pusheado (GIT-7).
+
+---
+
+## PARCHES DE sesión Hemorragia primero: el orden de la venda, corregido (COA-37) — 2026-07-29
+
+Sale del **check 4 ✗** de la pasada anterior, en el mismo día. Yo había especificado —y el autor
+había aprobado sobre esa redacción— que en `BandagePriority` **la severidad domina y el sangrado
+desempata**. El caso del autor en juego lo desmiente: *balazo mínimo + moretón medio → se curaba
+el moretón*. Tiene razón y el error era **de diseño, no de implementación**: un moretón no mata
+nunca y un balazo leve drena hasta matar, así que ninguna severidad de contusión debería ganarle a
+un sangrado. La jerarquía correcta es la de la doctrina de trauma real —hemorragia primero— y es
+la que rige desde acá. Alcance mínimo: **cambia el orden, no la enmienda** — que la contusión se
+cure (lo que COA-37 compra) quedó confirmado en la pasada.
+
+- PARCHE 1 — docs(docs): el bloque COA-37 de `Coagulant_Architecture.md` §7 cambia su párrafo de
+  orden por **«el SANGRADO manda, la severidad ordena dentro de cada grupo»**, con la nota de por
+  qué se corrigió y el caso del autor citado textual; se alinean la fila de la venda del set v1 y
+  el bullet de zona automática. `ids.yaml` COA-37: título, evidencia y nota. **[APLICADO
+  2026-07-29]**
+- PARCHE 2 — fix(config): `BandagePriority` pasa a `urgencia + severity`, con
+  `urgencia = sangra and (SEVERITY_MAX + 1) or 0` — el sangrado domina y la severidad ordena
+  dentro de cada grupo. El peso sale de **`SEVERITY_MAX`, no de un literal** (COA-35): con una
+  severidad 4 futura el sangrado seguiría dominando sin tocar la función. **[APLICADO 2026-07-29]**
+  (re-pasada del autor: el check 4 ✓ — la venda va al balazo y la segunda al moretón)
+- PARCHE 3 — feat(config): nace `Config.SEVERITY_MAX = 3`, el techo que ya aplicaba `AddWound`
+  como literal. `core:131` pasa a `math.min(Config.SEVERITY_MAX, …)`: el 3 estaba escrito en dos
+  lugares y ahora en uno. **[APLICADO 2026-07-29]**
+- PARCHE 4 — test(dev): el check que afirmaba lo contrario (*«la severidad no domina sobre el
+  sangrado»*) se **invierte**, y entran los que faltaban: el caso exacto del autor (balazo sev 1 >
+  moretón sev 2), que ni una contusión en `SEVERITY_MAX` le gana a un sangrado, que dentro de cada
+  grupo la severidad sigue ordenando (dos sangrantes / dos contusiones), y que `BLEED_BASE` cubre
+  exactamente `SEVERITY_MAX` niveles — si creciera sin que crezca el techo, una herida muy grave
+  podría empatarle a un sangrado. En vivo, el caso del autor de punta a punta: balazo leve +
+  moretón medio → la 1.ª venda corta el sangrado (score 2.5) y la 2.ª atiende el moretón (1.5).
+  Server **185 → 192**, client **137 → 142**. **[APLICADO 2026-07-29]** (offline)
+
+Verificación: harness **ALL GREEN — 192 OK server / 142 client, 0 fallos**. Los PARCHES 2-3 tocan
+runtime (config shared) y nacieron `[PENDIENTE]`; la **re-pasada del autor (2026-07-29) cerró el
+check 4 ✓** — con balazo leve y moretón medio la venda va al balazo y la segunda al moretón. Con
+eso **COA-37 queda 5/5 verificado en juego** y el tramo cerrado: el trauma cerrado ya tiene cura y
+el orden es el correcto. Commiteado y pusheado con autorización expresa del autor (2026-07-29),
+junto con el alta de COA-37 en `corpus/docs/ids.yaml`.

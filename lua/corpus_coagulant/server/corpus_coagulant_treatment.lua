@@ -49,7 +49,9 @@ local function ZonaAuto(ply, kind)
         return nil
     end
 
-    return COAGULANT.WorstBleedingZone(ply)
+    -- Venda: la zona con la herida ABIERTA más grave, sangre o no (COA-37). Con
+    -- WorstBleedingZone —lo que había acá— una contusión no tenía destino.
+    return COAGULANT.WorstOpenZone(ply)
 end
 
 -- Valida y arranca un tratamiento. zone nil = automática. -> ok, err
@@ -67,12 +69,15 @@ function COAGULANT.ApplyTreatment(ply, kind, zone)
     local removing = false
 
     if kind == "bandage" then
+        -- COA-37: el gate es "¿hay una herida ABIERTA?", no "¿sangra?". Con el
+        -- criterio viejo una contusión (mult 0.0) era invendable, y como el medkit
+        -- solo borra lo ya tratado, incurable. Mismo criterio que BandageEffect.
         if zone == nil or st.zones[zone] == nil then return false, "Nothing to bandage" end
-        local sangra = false
+        local abierta = false
         for _, w in ipairs(st.zones[zone].wounds) do
-            if Config.BleedRate(w) > 0 then sangra = true break end
+            if Config.BandagePriority(w, zone) > 0 then abierta = true break end
         end
-        if not sangra then return false, "Nothing to bandage there" end
+        if not abierta then return false, "Nothing to bandage there" end
     elseif kind == "tourniquet" then
         if zone == nil or not Config.EXTREMITIES[zone] then
             return false, "Tourniquets only work on limbs"

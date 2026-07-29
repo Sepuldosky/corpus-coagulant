@@ -97,9 +97,12 @@ if SERVER then
             Corpus.Log("coagulant", "coagulant_bandage: no hay jugador objetivo")
             return
         end
-        local zona = COAGULANT.WorstBleedingZone(objetivo)
+        -- Misma selección que el flujo real (COA-37): herida ABIERTA, sangre o no —
+        -- si el debug siguiera mirando solo el sangrado, mentiría sobre lo que hace
+        -- la venda de verdad.
+        local zona = COAGULANT.WorstOpenZone(objetivo)
         if zona == nil then
-            Corpus.Log("coagulant", "coagulant_bandage: sin heridas sangrantes")
+            Corpus.Log("coagulant", "coagulant_bandage: sin heridas abiertas")
             return
         end
         COAGULANT.BandageEffect(objetivo, zona)

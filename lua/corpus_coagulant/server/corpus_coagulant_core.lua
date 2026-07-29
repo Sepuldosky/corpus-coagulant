@@ -128,7 +128,7 @@ function COAGULANT.AddWound(ply, zone, wtype, severity)
                 candidata = w
             end
         end
-        candidata.severity = math.min(3, candidata.severity + 1)
+        candidata.severity = math.min(Config.SEVERITY_MAX, candidata.severity + 1)
         candidata.treated = false
         wound = candidata
     else
@@ -151,17 +151,19 @@ end
 -- este efecto lo usan el motor de tratamiento y el debug coagulant_bandage.
 -- ============================================================
 
--- Efecto venda sobre una zona: cierra la peor herida sangrante leve/media; una
--- grave la reduce a media sin cerrarla (una grave cuesta 2 vendas).
+-- Efecto venda sobre una zona: cierra la peor herida ABIERTA leve/media; una grave
+-- la reduce a media sin cerrarla (una grave cuesta 2 vendas). COA-37: "abierta" es
+-- `not treated`, NO "sangrante" — la contusión (mult 0.0) también se venda, como en
+-- ACE3. El criterio de "peor" (sangrantes primero, la más grave dentro de cada grupo)
+-- vive en Config.BandagePriority, que comparten esta función y la zona automática.
 function COAGULANT.BandageEffect(ply, zone)
     local st = COAGULANT.GetState(ply)
     if st == nil or st.zones[zone] == nil then return false end
 
-    local objetivo
+    local objetivo, mejorPrio = nil, 0
     for _, w in ipairs(st.zones[zone].wounds) do
-        if Config.BleedRate(w, zone) > 0 and (objetivo == nil or w.severity > objetivo.severity) then
-            objetivo = w
-        end
+        local prio = Config.BandagePriority(w, zone)
+        if prio > mejorPrio then objetivo, mejorPrio = w, prio end
     end
     if objetivo == nil then return false end
 
@@ -211,8 +213,26 @@ function COAGULANT.WorstTreatedZone(ply)
     return mejorZona
 end
 
--- Zona con la herida sangrante más grave (para zona automática de tratamiento).
--- nil si no hay sangrado. La usan treatment y el debug.
+-- Zona con la herida ABIERTA más grave — destino automático de la VENDA (COA-37).
+-- nil si no hay ninguna herida sin tratar. Reemplaza a WorstBleedingZone en ese rol:
+-- aquella es ciega a la contusión (no sangra), así que con solo un moretón encima el
+-- uso rápido no encontraba zona y el tratamiento se rechazaba con "Nothing to bandage".
+function COAGULANT.WorstOpenZone(ply)
+    local st = COAGULANT.GetState(ply)
+    if st == nil then return nil end
+    local mejorZona, mejorPrio = nil, 0
+    for zona, zdata in pairs(st.zones) do
+        for _, w in ipairs(zdata.wounds) do
+            local prio = Config.BandagePriority(w, zona)
+            if prio > mejorPrio then mejorZona, mejorPrio = zona, prio end
+        end
+    end
+    return mejorZona
+end
+
+-- Zona con la herida sangrante más grave. nil si no hay sangrado. Responde la
+-- pregunta de URGENCIA (qué está drenando), no la de la venda: desde COA-37 la venda
+-- va por WorstOpenZone. Off-contract; hoy la ejercita el selftest.
 function COAGULANT.WorstBleedingZone(ply)
     local st = COAGULANT.GetState(ply)
     if st == nil then return nil end

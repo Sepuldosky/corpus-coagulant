@@ -48,6 +48,8 @@ Config.HP_DRAIN_EXTRA = 4     -- ...+ escala lineal hasta +4 con sangre 0
 
 Config.SEVERITY_MEDIUM_AT = 15  -- daño final >= 15 → severidad 2
 Config.SEVERITY_GRAVE_AT  = 40  -- daño final  > 40 → severidad 3
+Config.SEVERITY_MAX       = 3   -- techo: lo aplica AddWound al agravar, y del él sale
+                                -- el peso del sangrado en BandagePriority (COA-35)
 Config.MAX_WOUNDS_PER_ZONE = 5  -- al exceder: se agrava la más leve (§3)
 
 -- Drenaje base por severidad (unidades de sangre/s), × mult del tipo × mult de zona
@@ -170,6 +172,27 @@ function Config.BleedRate(wound, zone)
     if tipo == nil then return 0 end
     local multZona = (zone ~= nil and Config.ZONE_BLEED_MULT[zone]) or 1.0
     return Config.BLEED_BASE[wound.severity] * tipo.mult * multZona
+end
+
+-- Prioridad de la VENDA sobre una herida (COA-37, §7). 0 = no se puede vendar (ya
+-- está tratada). La pregunta es "¿está ABIERTA?", nunca "¿sangra?": una contusión
+-- tiene mult 0.0 y con el criterio viejo era invendable — y como el medkit solo borra
+-- lo ya tratado, quedaba incurable hasta morir. Es la salida (1) de ACE3 (§7).
+--
+-- El SANGRADO domina y la severidad ordena DENTRO de cada grupo: una herida que drena
+-- va antes que cualquier contusión, por grave que sea la contusión. Corregido tras la
+-- pasada del autor (2026-07-29, check 4 ✗): la primera versión hacía dominar la
+-- severidad, y en una zona con un balazo leve y un moretón medio la venda se iba al
+-- moretón mientras el balazo seguía drenando. Un moretón nunca mata; un sangrado sí —
+-- la urgencia es la hemorragia.
+--
+-- El peso del sangrado sale de SEVERITY_MAX, no de un literal (COA-35): si algún día
+-- hay severidad 4, el sangrado sigue dominando sin tocar esta función. Pura y
+-- compartida: la usan el efecto venda, la zona automática y el selftest.
+function Config.BandagePriority(wound, zone)
+    if wound.treated then return 0 end
+    local urgencia = Config.BleedRate(wound, zone) > 0 and (Config.SEVERITY_MAX + 1) or 0
+    return urgencia + wound.severity
 end
 
 -- Drenaje de HP por segundo dada la sangre actual (0 si no es crítica, §5)

@@ -36,7 +36,7 @@
 **No es.**
 - Incapacitación/revive (muerte directa en v1; bloque futuro).
 - Tratar a otros jugadores (bloque futuro; el diseño de tratamiento deja el hueco — `ApplyTreatment` recibe el paciente como primer argumento).
-- Dolor como stat, analgésicos, fracturas con férula (diferidos).
+- Dolor como stat, analgésicos, fracturas con férula (diferidos) — las otras dos salidas que ACE3 le da al trauma cerrado. Mientras no existan, la **venda** lo cubre: aplica a toda herida abierta, sangre o no (**COA-37**, §7).
 - Stamina/fatiga — **pese a que el contrato `OnEncumbrance` ya existe** (§12): v1 lo acepta y almacena, sin efecto.
 - Medicina de NPCs (frontera: jugador; limbs NPC es de Caliber).
 - Persistencia a disco (spawn = cuerpo nuevo; estado en memoria del server).
@@ -116,7 +116,7 @@ st = {
 | `SLASH` | `corte` | 0.8 | |
 | `BLAST` | `metralla` | 0.9 | una herida, no N fragmentos (v1) |
 | `BURN`, `SLOWBURN`, `ENERGYBEAM`, `SHOCK`, `PLASMA` | `quemadura` | 0.2 | sangra poco; la venda aplica igual (apósito) |
-| `FALL`, `CRUSH`, `CLUB` | `contusion` | 0.0 | no sangra; **sí** cuenta para el debuff zonal |
+| `FALL`, `CRUSH`, `CLUB` | `contusion` | 0.0 | no sangra; **sí** cuenta para el debuff zonal; **sí** se venda (COA-37, §7) |
 | `DROWN`, `POISON`, `NERVEGAS`, `RADIATION` | — | — | **no crean herida** (no son trauma localizable) |
 | resto / sin clasificar | `contusion` | 0.0 | default conservador |
 
@@ -188,11 +188,56 @@ Ni chest ni stomach tienen debuff propio en v1 (enmienda 2026-07-21, §3 — ant
 
 ## 7. Tratamiento
 
+> **COA-37 — Enmienda 2026-07-29 (ratificada por el autor): la venda aplica a TODA herida
+> ABIERTA, sangre o no.** Hasta esta enmienda la venda estaba gateada por `BleedRate > 0`,
+> en el motor (`ApplyTreatment`) *y* en el efecto (`BandageEffect`). Como `contusion` tiene
+> mult **0.0** (§3), una contusión no podía vendarse; y como el Medkit solo cierra heridas
+> ya `treated` (enmienda COA-21, §6), tampoco podía curarse. Resultado: entraba al score de
+> zona con severidad **entera** y pesaba en cojera/sway/visión **hasta morir** — una caída
+> dejaba cojera permanente, y el default conservador de §3 (`resto / sin clasificar` →
+> `contusion`) convertía cualquier fuente de daño rara de un tercero en una marca incurable.
+>
+> **La causa fue un diferimiento a medias, no un olvido.** En ACE3 el trauma cerrado tiene
+> **tres** salidas: (1) la venda aplica a toda herida abierta —una contusión es una entrada
+> más de la lista de open wounds—, (2) el **dolor** es un stat que decae solo y que un
+> analgésico acelera, y (3) el efecto estructural es una **fractura** con su férula. §1
+> difirió (2) y (3) —correcto para v1—, pero `contusion` se quedó con la **entrada** al
+> sistema (crea herida, suma al score) sin ninguna de las tres salidas. La semilla escribió
+> media frase de ACE.
+>
+> **Resolución: se adopta (1), la única que no cuesta mecánica nueva.** La venda deja de
+> preguntar *"¿sangra?"* y pregunta *"¿está abierta?"* (`not treated`). Con eso la contusión
+> entra al circuito **venda → medkit** que ya existe y está verificado: vendarla la cierra
+> (`treated`, media severidad) y el medkit borra la secuela. Nada más cambia — en particular
+> **no** entra la tabla de efectividad por tipo de venda que ACE3 sí tiene (sería mecánica
+> nueva, fuera de COA-28), y la regla de la grave (3 → 2, dos vendas) rige igual para todos
+> los tipos.
+>
+> **Orden de selección — el SANGRADO manda, la severidad ordena dentro de cada grupo.**
+> Con varias heridas abiertas la venda va **siempre** a una que sangre; solo cuando no queda
+> ninguna sangrante pasa a las cerradas-pero-abiertas (la contusión). Dentro de cada grupo
+> ordena la severidad. Vive como función pura (`Config.BandagePriority`) para que el efecto,
+> la zona automática y el selftest usen el mismo criterio.
+>
+> > **Corregido el 2026-07-29 tras la pasada en juego del autor (check 4 ✗).** La primera
+> > redacción de esta enmienda decía lo contrario —«la severidad domina, el sangrado
+> > desempata»— y el autor lo desmintió con el caso exacto: *«la zona con disparo mínimo y un
+> > moretón medio: se cura primero el moretón y luego los disparos sangrantes. La urgencia
+> > está en los disparos.»* Tenía razón, y el error era de diseño, no de implementación: un
+> > moretón **nunca** mata y un balazo leve drena hasta matar, así que ninguna severidad de
+> > contusión debería ganarle a un sangrado. La jerarquía correcta es la de la doctrina de
+> > trauma real —hemorragia primero—, y es la que rige desde esta corrección. El peso del
+> > sangrado se deriva de `SEVERITY_MAX`, no de un literal (COA-35): si algún día hay
+> > severidad 4, el sangrado sigue dominando solo.
+>
+> Dolor como stat, analgésicos y fracturas con férula **siguen diferidos** (§1): esta enmienda
+> no los adelanta — solo deja de haber una lesión incurable mientras no existan.
+
 ### Set de ítems v1 (defs contra Cargo, categoría `medical`)
 
 | id | Nombre | Clase | Peso | Tiempo | Efecto |
 |---|---|---|---|---|---|
-| `corpus_coagulant_bandage` | Bandage | stackable | 0.1 | 4 s | Cierra (`treated = true`) **una** herida sangrante leve/media de la zona. Sobre una grave: la baja a media sin cerrarla (una grave cuesta 2 vendas). |
+| `corpus_coagulant_bandage` | Bandage | stackable | 0.1 | 4 s | Cierra (`treated = true`) **una** herida **abierta** leve/media de la zona — sangrante o no (**COA-37**: la contusión también se venda). Sobre una grave: la baja a media sin cerrarla (una grave cuesta 2 vendas). **Va siempre a una herida que SANGRE** mientras quede alguna; la severidad ordena dentro de cada grupo. |
 | `corpus_coagulant_tourniquet` | Tourniquet | unique | 0.2 | 2 s | Detiene todo el sangrado de **una extremidad** mientras esté puesto. A los 90 s puesto: isquemia — la zona pasa a score máximo de debuff hasta 60 s después de quitarlo. Quitar (2 s) reanuda el sangrado de lo no cerrado. **COA-20 — No se DESTRUYE pero se OCUPA: sale del inventario mientras está puesto (un torniquete ata una sola extremidad) y vuelve al quitarlo (`Inventory.TakeUnique`/`GiveItem` de Cargo); quitarlo no exige ítem** (el toggle opera sobre el ya puesto). |
 | `corpus_coagulant_medkit` | Medkit | stackable | 0.5 | 10 s | +50 HP (cap MaxHealth) **y cierra las heridas ya TRATADAS de una zona** — la única cura de la secuela (§6, enmienda 2026-07-14). No toca sangre ni heridas sin vendar. |
 | `corpus_coagulant_bloodbag` | Blood Bag | stackable | 0.3 | 8 s | +40 sangre (cap 100). |
@@ -211,7 +256,7 @@ Ni chest ni stomach tienen debuff propio en v1 (enmienda 2026-07-21, §3 — ant
 - **COA-34 — Cancelación**: recibir daño, saltar, o superar velocidad de caminata → cancela sin efecto y **sin consumir**.
 - **COA-3 — El consumo ocurre al completar, no al iniciar.** Consecuencia de contrato con Cargo: el `onUse` de un ítem médico **devuelve `false`** (Cargo no consume) e inicia el tratamiento; al completarse, Coagulant consume explícitamente vía `CARGO.Inventory.TakeItem(ply, id, 1)` (re-validando que la unidad siga ahí). El tooltip del ítem lo dice ("applies over N seconds").
 - **Selección de zona**: desde el menú médico (§10), la zona la elige el jugador; desde el uso rápido (quick slot / onUse de Cargo), automática — la zona con la herida más grave **compatible con el ítem**:
-  - venda → la zona sangrante más grave.
+  - venda → la zona con la herida **abierta** de mayor prioridad: sangrantes antes que no-sangrantes, y la más grave dentro de cada grupo (**COA-37** — antes era "la zona sangrante más grave", ciega a la contusión: con solo un moretón encima el uso rápido no encontraba zona y rechazaba el tratamiento).
   - torniquete → **(1)** la extremidad sangrante más grave **sin** torniquete (ponerlo); **(2)** si no hay ninguna, la extremidad que **ya lo tiene puesto** (quitarlo). *Sin la rama (2) el torniquete es imposible de sacar en cuanto vendás la zona: la herida deja de sangrar y la búsqueda no encuentra nada — bug reportado en juego, ronda 5.*
   - medkit → la zona con más secuela **tratada** (la que va a curar); `chest` si no hay ninguna (sigue sirviendo como cura de HP pura; enmienda 2026-07-21 — era `torso`).
   - bloodbag → no usa zona.

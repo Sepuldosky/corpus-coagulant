@@ -89,6 +89,43 @@ function COAGULANT._SelfTest()
     check(Config.HPDrainRate(0) == Config.HP_DRAIN_BASE + Config.HP_DRAIN_EXTRA,
         "HP drain con sangre 0 no es el máximo")
 
+    -- La venda pregunta "¿está ABIERTA?", no "¿sangra?" (COA-37, §7): con el criterio
+    -- viejo la contusión era invendable y —como el medkit solo borra lo ya tratado—
+    -- incurable hasta morir. Todo derivado de la config, nunca de un literal (COA-35).
+    local moreton = { type = "contusion", severity = 2, treated = false }
+    check(Config.BleedRate(moreton) == 0, "la contusión de prueba sangra")
+    check(Config.BandagePriority(moreton) > 0,
+        "una contusión abierta no se puede vendar (volvería a ser incurable)")
+    check(Config.BandagePriority({ type = "contusion", severity = 2, treated = true }) == 0,
+        "una herida ya tratada se puede volver a vendar")
+    -- El SANGRADO domina, la severidad ordena DENTRO de cada grupo (corregido tras la
+    -- pasada del autor, check 4 ✗). El caso que lo destapó: balazo LEVE + moretón MEDIO
+    -- en la misma zona — la venda tiene que ir al balazo. Un moretón nunca mata.
+    check(Config.BandagePriority({ type = "bala", severity = 1, treated = false })
+        > Config.BandagePriority({ type = "contusion", severity = 2, treated = false }),
+        "la venda antepone un moretón medio a un balazo leve: la urgencia es el sangrado")
+    check(Config.BandagePriority({ type = "bala", severity = 1, treated = false })
+        > Config.BandagePriority({ type = "contusion", severity = Config.SEVERITY_MAX,
+            treated = false }),
+        "una contusión al máximo de severidad le gana a un sangrado (el peso no domina)")
+    check(Config.BandagePriority({ type = "bala", severity = 2, treated = false })
+        > Config.BandagePriority(moreton),
+        "a igual severidad la venda no prioriza la herida que sangra")
+    -- ...pero dentro de cada grupo la severidad sigue ordenando
+    check(Config.BandagePriority({ type = "bala", severity = 3, treated = false })
+        > Config.BandagePriority({ type = "bala", severity = 1, treated = false }),
+        "entre dos sangrantes la venda no prioriza la más grave")
+    check(Config.BandagePriority({ type = "contusion", severity = 3, treated = false })
+        > Config.BandagePriority(moreton),
+        "entre dos contusiones la venda no prioriza la más grave")
+    -- El peso del sangrado sale de SEVERITY_MAX (COA-35) y ese techo es el que aplica
+    -- AddWound al agravar: si BLEED_BASE creciera sin que crezca el techo, una herida
+    -- muy grave podría empatarle a un sangrado
+    local nSev = 0
+    for _ in pairs(Config.BLEED_BASE) do nSev = nSev + 1 end
+    check(nSev == Config.SEVERITY_MAX, "BLEED_BASE no cubre exactamente SEVERITY_MAX niveles")
+    check(Config.BLEED_BASE[Config.SEVERITY_MAX] ~= nil, "BLEED_BASE sin el nivel máximo")
+
     -- Tratamiento (slice 2, §7): tabla completa y consistente
     for _, kind in ipairs({ "bandage", "tourniquet", "medkit", "bloodbag" }) do
         local t = Config.TREATMENTS[kind]
@@ -312,6 +349,46 @@ function COAGULANT._SelfTest()
                 "el medkit cerró una herida SIN vendar")
             check(COAGULANT.IsBleeding(ply) == true,
                 "el medkit cortó un sangrado que nadie había tratado")
+
+            -- COA-37 — El circuito COMPLETO de una contusión, de punta a punta. Es el
+            -- invariante que compra la enmienda: NINGUNA herida es incurable en vida.
+            -- Antes, un moretón de caída pesaba entero en la cojera hasta morir.
+            COAGULANT.ResetState(ply)
+            COAGULANT.AddWound(ply, "left_leg", "contusion", 2)
+            check(COAGULANT.IsBleeding(ply) == false, "la contusión sangra")
+            check(COAGULANT.GetZoneScore(ply, "left_leg") == 2,
+                "la contusión no pesa entero en el score de zona")
+            check(COAGULANT.WorstOpenZone(ply) == "left_leg",
+                "la zona automática de la venda no ve una contusión (uso rápido roto)")
+            check(COAGULANT.BandageEffect(ply, "left_leg") == true,
+                "la venda no cierra una contusión")
+            check(COAGULANT.GetZoneScore(ply, "left_leg") == 1,
+                "la contusión vendada no cuenta la mitad")
+            check(COAGULANT.HealTreatedWounds(ply, "left_leg") == 1,
+                "el medkit no cierra la contusión ya vendada")
+            check(COAGULANT.GetZoneScore(ply, "left_leg") == 0,
+                "la contusión sobrevive al circuito venda→medkit: cojera permanente")
+            check(COAGULANT.BandageEffect(ply, "left_leg") == false,
+                "la venda se gasta en una zona sin heridas abiertas")
+
+            -- ...y el orden, en vivo, con EL CASO que el autor reportó en juego (check 4
+            -- ✗, 2026-07-29): balazo LEVE + moretón MEDIO en la misma zona. La venda
+            -- tiene que ir al balazo aunque el moretón sea más grave y entre primero en
+            -- la lista — la urgencia es la hemorragia, no la severidad.
+            COAGULANT.ResetState(ply)
+            COAGULANT.AddWound(ply, "chest", "contusion", 2)
+            COAGULANT.AddWound(ply, "chest", "bala", 1)
+            COAGULANT.BandageEffect(ply, "chest")
+            check(COAGULANT.IsBleeding(ply) == false,
+                "la venda se fue al moretón medio y dejó el balazo leve drenando")
+            check(COAGULANT.GetZoneScore(ply, "chest") == 2.5,
+                "la venda no cerró el balazo (score esperado: moretón 2 + balazo tratado 0.5)")
+
+            -- ...y la segunda venda ya sí va al moretón: cuando no queda nada sangrando,
+            -- la contusión es lo que sigue (sin esto volvería a ser incurable)
+            COAGULANT.BandageEffect(ply, "chest")
+            check(COAGULANT.GetZoneScore(ply, "chest") == 1.5,
+                "la segunda venda no atendió el moretón una vez cortado el sangrado")
 
             -- El torniquete se puede QUITAR aunque la zona ya no sangre. La zona
             -- automática solo miraba extremidades SANGRANTES, así que en cuanto
