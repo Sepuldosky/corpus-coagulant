@@ -246,7 +246,9 @@ Ni chest ni stomach tienen debuff propio en v1 (enmienda 2026-07-21, §3 — ant
 > se registran **sin `model`** a propósito: dropean como la cajita de cartón de Cargo y su ícono
 > cae a la letra. Coagulant es genérico y no conoce ningún setting — un addon de **contenido**
 > las re-viste desde afuera vía `Cargo.Items.SetModel(id, model)` sin tocar este repo
-> (corpus-stalker ya lo hace: venda → `wick_bandage`, medkit → `medkit_low`; torniquete y blood
+> (corpus-stalker lo hizo hasta el 2026-08-06 —venda → `wick_bandage`, medkit → `medkit_low`— y lo
+> RETIRÓ cuando este módulo trajo los suyos: sus botiquines de la Zona serán ítems propios, no una
+> piel del genérico. La puerta de sustitución sigue abierta. Torniquete y blood
 > bag siguen en la cajita, sin modelo coherente identificado). No es deuda: no se les agrega
 > modelo acá.
 

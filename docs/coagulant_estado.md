@@ -5,7 +5,24 @@
 > secciones ni historial). El historial vive en `git` + [`CHANGELOG.md`](CHANGELOG.md).
 > Si crece de una pantalla, está mal redactado: recortar.
 
-**Última actualización:** 2026-07-29 (**COA-37 — la venda cubre el trauma cerrado**: hasta hoy una
+**Última actualización:** 2026-08-06 (**el botiquín grande son dos `.mdl`** —`medkit_large` abierto
+con `$bodygroup state` de dos opciones y `medkit_large_closed` aparte con colisión propia, porque
+Source tiene un `$collisionmodel` por modelo y no por bodygroup: el alto del casco del cerrado bajó
+de 11,81 u a 3,52—; y **corpus-stalker dejó de sustituir la venda y el medkit** — sus botiquines de
+la Zona serán ítems propios, no una piel del genérico, así que ahora se ven los modelos de este
+módulo. La puerta de `Items.SetModel` sigue abierta. Antes, 2026-08-05: **los ítems médicos traen
+su modelo** — enmienda del autor a
+la decisión del 2026-07-23, que los dejaba sin `model` a propósito. El motivo de aquélla era que un
+addon de contenido pudiera vestirlos, y **sigue cubierto**: `Cargo.Items.SetModel` pisa el modelo
+declarado y se re-aplica en cada `Register`, así que declarar un default no cierra ninguna puerta —
+sólo cambia qué se ve cuando nadie sustituye, que hasta hoy era una cajita de cartón. **18 `.mdl`
+nuevos** portados de tres packs de Sketchfab **CC BY 4.0** (créditos obligatorios en
+[`CREDITOS.md`](CREDITOS.md)); tres se cablean a las defs — venda, medkit (`firstaidkit`, 16 cm) y
+bolsa de sangre — y **el torniquete queda sin modelo porque en los packs no hay ninguno**: el
+candidato resultó ser carretes de sutura al renderizarlo. Harness **192/142 ALL GREEN** sin cambios,
+y 17 de los 18 `.mdl` dan 7/7 en `verify_model.py`; el 18.º (`sutures`) marca C1 por medir 1,97 u
+contra un umbral de 2 — es un carrete de 5 cm y el tamaño es correcto. **Falta la pasada en juego.**
+Antes, 2026-07-29: **COA-37 — la venda cubre el trauma cerrado**: hasta hoy una
 `contusion` (mult 0.0) era **invendable** y, como el medkit solo borra lo ya `treated`, **incurable**
 — pesaba entera en cojera/sway/visión hasta morir, y una caída dejaba cojera permanente. La venda
 deja de preguntar «¿sangra?» y pregunta «¿está abierta?»: es la salida (1) de las tres que ACE3 le
@@ -19,8 +36,8 @@ cada grupo (hemorragia primero; el peso se deriva de `SEVERITY_MAX`, COA-35). La
 check 4 ✓ → **COA-37 5/5 en juego**, harness **192/142 ALL GREEN**, commiteado y pusheado. Antes,
 2026-07-23 noche: **decisión de modelos ratificada** — los ítems
 médicos quedan **sin `model` a propósito** (cajita de Cargo + ícono de letra); la sustitución es
-de los addons de contenido vía `Cargo.Items.SetModel` (Cargo #34; corpus-stalker ya re-viste
-venda y medkit). Nota en Architecture §7 + comentario en `items`; solo prosa acá. Antes en el
+de los addons de contenido vía `Cargo.Items.SetModel` (Cargo #34; corpus-stalker re-vestía
+venda y medkit — **retirado el 2026-08-06**). Nota en Architecture §7 + comentario en `items`; solo prosa acá. Antes en el
 día, **COA-2 confirmado en juego**: la re-validación de consumo
 al completar con `HasItem` —PARCHE 3 de la tanda del gate— pasó ✓ en la pasada del autor —venda
 3→2, bloodbag 2→1, torniquete no consumido—, CHANGELOG `[APLICADO 2026-07-23]`. Antes, 2026-07-21,
@@ -67,7 +84,17 @@ check N1 ✓— y siguen las **dos decisiones de diseño abiertas**)
 
 ## Pendiente de verificar
 
-- Nada — **COA-37 cerró 5/5 en juego** el 2026-07-29: los checks 1-3 y 5 en la primera pasada, y
+- **El botiquín grande, ahora en DOS modelos** (2026-08-06): `medkit_large` con `$bodygroup state`
+  de dos opciones (0 `open_full` default, 1 `open_empty`) y `medkit_large_closed` aparte, con casco
+  propio — el alto de su colisión bajó de 11,81 u a 3,52 u. Qué mirar: que el cerrado ya no tenga
+  colisión invisible por encima, y que el bodygroup del abierto no salte al cambiar de opción.
+  Detalle en [`ASSETS.md`](ASSETS.md).
+- **Los 18 modelos, en juego** (2026-08-05, PARCHES 1-3 de su sesión en el CHANGELOG). Qué mirar:
+  que venda / medkit / bolsa de sangre dropeen con su modelo y no con la cajita; que el ícono del
+  grid se re-renderice con el modelo nuevo; que los **cuatro `$translucent`** (`bloodbag`,
+  `pill_bottles`, `test_tubes`, `vials`) se vean translúcidos y **sin artefactos de ordenamiento**;
+  y que `sutures` —1,97 u, el único que marca C1— sea agarrable con la physgun o se decida subirlo.
+- Nada más — **COA-37 cerró 5/5 en juego** el 2026-07-29: los checks 1-3 y 5 en la primera pasada, y
   el 4 en la re-pasada tras invertir el orden (balazo leve antes que moretón medio). Commiteado y
   pusheado.
 - El cap del torniquete (COA-20 enmendada) quedó **confirmado en juego** el 2026-07-23

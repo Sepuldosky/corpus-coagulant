@@ -1392,3 +1392,152 @@ check 4 ✓** — con balazo leve y moretón medio la venda va al balazo y la se
 eso **COA-37 queda 5/5 verificado en juego** y el tramo cerrado: el trauma cerrado ya tiene cura y
 el orden es el correcto. Commiteado y pusheado con autorización expresa del autor (2026-07-29),
 junto con el alta de COA-37 en `corpus/docs/ids.yaml`.
+
+---
+
+## PARCHES DE sesión Los ítems médicos traen su modelo (enmienda a la sesión del 2026-07-23) — 2026-08-05
+
+**Enmienda del autor** a la decisión del 2026-07-23 (entry 34 de Cargo). Aquella dejaba los ítems
+médicos **sin `model`** para que un addon de contenido pudiera vestirlos; el motivo era bueno pero
+el efecto no: sin nadie que sustituya, el mod se ve con cajitas de cartón. Textual del autor: *"mi
+idea de no agregar directamente era para que otros usuarios pudieran sustituir sus propios modelos,
+pero para mí, prefiero que se vea lindo el mod con sus respectivos modelos por defecto"*.
+
+**La razón por la que no los tenían NO se pierde.** `Cargo.Items.SetModel` pisa el modelo declarado
+**y se re-aplica en cada `Register`** (bloque `_modelOverrides`, verificado en el código de Cargo,
+no asumido): declarar un default no cierra la puerta a la sustitución, sólo cambia qué se ve
+cuando nadie sustituye. `corpus-stalker` sigue vistiendo venda y medkit con los de la Zona sin
+tocar una línea de este repo.
+
+**18 modelos nuevos**, portados de tres packs de Sketchfab **CC BY 4.0** con el pipeline de
+`dev/phastools/`. Créditos y obligaciones de la licencia en [`CREDITOS.md`](CREDITOS.md).
+
+- PARCHE 1 — feat(items): `models/corpus_coagulant/` (18 `.mdl`, 10,5 MB) +
+  `materials/models/corpus_coagulant/` (18 VMT + 31 VTF, 16,5 MB). Los `.qc` con el comando exacto
+  que los regenera viven en `dev/phastools/compile/src/`. **[PENDIENTE]**
+
+- PARCHE 2 — feat(items): `model` en tres de las cuatro defs de
+  `shared/corpus_coagulant_items.lua` — `bandage` → `bandage.mdl`, `medkit` → `firstaidkit.mdl`
+  (el de 16 cm; `medkit_large` de 30 cm queda como prop de escenario), `bloodbag` →
+  `bloodbag.mdl`. **[PENDIENTE]**
+
+- PARCHE 3 — docs(items): el comentario «No agregues modelos acá» se reemplaza por el que ahora es
+  cierto, **conservando la razón original** y explicando por qué sigue cubierta. El torniquete
+  lleva su propio comentario de por qué queda sin modelo. **[PENDIENTE]**
+
+- PARCHE 4 — docs: alta de [`CREDITOS.md`](CREDITOS.md) — autores, licencia CC BY 4.0, enlace a la
+  licencia y declaración de que los modelos están modificados (las tres cosas son **obligación**
+  de CC BY, no cortesía). **[APLICADO 2026-08-05]**
+
+**El torniquete queda sin modelo, y no por olvido: en los tres packs no hay ninguno.** El candidato
+que lo parecía (`Lines`) resultó, al renderizarlo, ser dos carretes de sutura con aguja —
+`corpus-stalker` había llegado a la misma conclusión con sus propios packs el 2026-07-23. Cae a la
+cajita hasta que aparezca uno.
+
+- PARCHE 5 — docs: alta de [`ASSETS.md`](ASSETS.md) — catálogo de los 18 `.mdl` con qué es cada uno,
+  tris, tamaño, cuáles son translúcidos y **cuáles no tienen def (quince)**. Enlazado desde el
+  `CLAUDE.md` (jerarquía de lectura + mapa de archivos) y desde el roadmap (tramo [5]).
+  **Lo motivó una pregunta del autor:** el inventario existía sólo dentro de `CREDITOS.md`, que es
+  una página de licencias — nadie la abre buscando un asset — y ni el `CLAUDE.md` ni el roadmap la
+  nombraban. Un inventario guardado donde nadie lo busca no existe para la sesión siguiente.
+  El tramo [5] del roadmap además deja escrito el orden correcto: **que exista el modelo no crea el
+  ítem** (COA-28); el catálogo sirve cuando un tramo YA decidido necesita un modelo.
+  **[APLICADO 2026-08-05]**
+
+Verificación offline: harness **ALL GREEN — 192 OK server / 142 client, 0 fallos** (idéntico a la
+línea base: los defs sumaron un campo, no lógica). Los 18 `.mdl` pasan `verify_model.py` con
+controles conocidos-buenos, **17 con 7/7**; el 18.º (`sutures`) falla C1 con 1,97 unidades contra
+un umbral de 2 — es un carrete de sutura de 5 cm y **el tamaño es el correcto**: el check marca
+props chicos, y se deja constar en vez de forzarle una escala que rompería la del resto del set.
+Los PARCHES 1-3 tocan runtime y nacen `[PENDIENTE]`: falta la pasada en juego del autor.
+
+---
+
+## PARCHES DE sesión El botiquín grande abre, se vacía y se cierra (bodygroup) — 2026-08-05
+
+Pedido del autor tras confirmar Coagulant en juego: que el botiquín pueda estar **cerrado** y
+**vacío**, tipo bodygroup. El modelo se prestaba: los 43 objetos separan solo en **carcasa** (8
+piezas, 3.590 tris) y **contenido** (35 piezas, 44.688 tris), así que «vacío» es un bodygroup
+literal y quita el **92,6 %** de los triángulos.
+
+«Cerrado» no lo es —hay que **rotar** la tapa, no ocultarla—, y ahí el nombre volvió a mentir: el
+modelo trae dos objetos llamados `Spinle` que parecían los pasadores de la bisagra y **no lo son**
+(centros sin relación, uno adentro de la caja, vector diagonal). La bisagra salió de la geometría:
+`MetalBox` es una bandeja plana cuyo borde está en z=+0,0073 y `MetalCover` una losa parada de
+0,113 de espesor apoyada contra el fondo — un giro de **+90° sobre X** por la esquina superior
+trasera. La separación tapa/caja tampoco es por nombre: hay un **hueco medido de 3,3 cm** entre el
+objeto más alto de la caja (y=0,2215) y el más bajo de la tapa (y=0,2542), y el umbral va en el
+medio.
+
+- PARCHE 1 — feat(items): `dev/phastools/medkit_states.py` — genera los tres SMD. Comprueba el
+  cierre **antes** de escribir, y no contra un rango escrito a mano (el primer intento falló por un
+  rango mal derivado, sacado de `MetalCover` solo e ignorando los herrajes) sino contra dos
+  propiedades medidas de la caja: que la tapa **apoye** (su cara inferior al ras del borde, da 1,55
+  cm de solape) y que **cubra** la huella. **[APLICADO 2026-08-05]**
+
+- PARCHE 2 — feat(items): `medkit_large.qc` pasa a `$bodygroup state` con tres opciones
+  (`open_full` / `open_empty` / `closed`). Un bodygroup de tres y no dos de dos: dos darían cuatro
+  combinaciones y una no existe físicamente. **[PENDIENTE]**
+
+- PARCHE 3 — fix(items): `$illumposition 0 0 0` explícito en `medkit_large.qc`. **Lo destapó C2 de
+  `verify_model.py`, no la vista.** Los otros 17 modelos no lo declaran y sale (0,0,0) solo porque
+  su geometría está centrada; acá también lo está, pero studiomdl mide la **unión** de las tres
+  opciones —que no es simétrica, porque el cerrado ocupa sólo la mitad inferior— y le aplica
+  `$scale` otra vez. Quedaba en (11.33, 0, 0) sobre un bbox que llega a 5.85: **el error 15 de la
+  referencia de ripping**, o sea un prop que se va a negro según el ángulo. Sin la batería esto se
+  ve recién en juego y parece un problema de material. **[PENDIENTE]**
+
+**Lo que NO se hizo y hay que saber:** la colisión es **una sola para los tres estados** (Source
+tiene un `$collisionmodel` por modelo, no por bodygroup). Se usa la del estado 0 porque contiene a
+los tres. Medido: con `closed` quedan **8,29 u (~21 cm) de colisión invisible arriba** de la caja.
+La base coincide en los tres, así que apoya bien en el piso; lo que molesta es no poder pasar por
+encima. Y **`firstaidkit` sigue sin estados**: el trabajo de bisagra hay que rehacerlo para él.
+
+Verificación offline: compila con **0 errores y 0 warnings**; `verify_model.py` da **7/7** con dos
+controles que discriminan (spiritbox sigue fallando C7). El bodygroup se comprobó **leyendo el
+binario instalado**, no la salida de studiomdl: 1 bodypart `state` con 3 opciones de 39.224 / 3.809
+/ 3.809 vértices. Harness sin tocar (no hay cambio de Lua). Los PARCHES 2-3 nacen `[PENDIENTE]`:
+falta la pasada en juego.
+
+---
+
+## PARCHES DE sesión El botiquín cerrado se va a su propio modelo — 2026-08-06
+
+Decisión del autor tras ver los bodygroups en juego: *"deberíamos separar el closed con su propia
+colisión y sacar ese bodygroup"*. Es exactamente la salida que el comentario del `.qc` de ayer
+anotaba como única — **Source tiene un `$collisionmodel` por modelo, no por bodygroup**, así que
+mientras el cerrado fue la tercera opción tuvo que usar el casco del abierto: 8,29 unidades
+(~21 cm) de colisión invisible por encima de la caja.
+
+- PARCHE 1 — feat(items): `medkit_large_closed.mdl`, modelo aparte con **casco propio**. Alto del
+  casco **11,81 u → 3,52 u**, y ajusta a su malla con **0,000 u de holgura**. De paso pesa lo que
+  dibuja: `.vvd` de 244 KB contra 2,75 MB. Comparte el VMT con el abierto — es el mismo objeto.
+  **[PENDIENTE]**
+
+- PARCHE 2 — refactor(items): `medkit_large.qc` baja a `$bodygroup state` de **dos** opciones
+  (`open_full` / `open_empty`). Las dos que quedan **sí** comparten casco legítimamente:
+  `open_empty` es un subconjunto de `open_full`. **[PENDIENTE]**
+
+- PARCHE 3 — refactor: `dev/phastools/medkit_states.py` genera los cuatro SMD de los dos modelos y
+  **también los dos cascos**, con el mismo offset y factor que su malla visible cada uno. El header
+  de `bl_collision.py` pide que el centrado de la malla y el de la colisión coincidan; acá no pueden
+  divergir porque se pasan el mismo valor. **La escala se HEREDA y el centrado NO**: el factor sale
+  del modelo abierto (30 cm) y el cerrado lo toma prestado — si se normalizara a 30 cm por su cuenta
+  saldría ~3,4× más grande, porque cerrado es mucho más bajo. El script lo comprueba comparando el
+  ancho de la caja en los dos modelos y **aborta** si no coincide. **[APLICADO 2026-08-06]**
+
+- PARCHE 4 — fix(items): **se SACA** el `$illumposition 0 0 0` que el parche de ayer había puesto en
+  `medkit_large.qc`, y se sacó **midiendo, no por prolijidad**. Hacía falta cuando la unión de las
+  tres opciones era asimétrica (el cerrado ocupaba sólo la mitad inferior); con el cerrado afuera,
+  `open_empty` es subconjunto de `open_full`, la unión vuelve a estar centrada y C2 pasa con
+  (0,0,0) sin la línea — C7 además pasó de 2,5 % de desvío a 0,0 %. Arrastrarla «por las dudas»
+  habría dejado una línea cuya razón ya no existía. **[APLICADO 2026-08-06]**
+
+- PARCHE 5 — chore: se borra `medkit_large_closed.smd`, el SMD huérfano de la versión de tres
+  estados. Lo reemplaza `medkit_large_closed_ref.smd`. **[APLICADO 2026-08-06]**
+
+Verificación offline: los dos `.qc` compilan con **0 errores y 0 warnings**, y **los dos dan 7/7**
+en `verify_model.py` contra control. Comprobado leyendo el binario instalado y no la salida de
+studiomdl: `medkit_large` tiene el bodygroup `state` con **2** opciones (39.224 / 3.809 vértices) y
+`medkit_large_closed` tiene **1** bodypart. Harness sin tocar (no hay cambio de Lua). Los PARCHES
+1-2 tocan runtime y nacen `[PENDIENTE]`: falta la pasada en juego.

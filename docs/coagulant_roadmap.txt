@@ -67,9 +67,29 @@ sobre este archivo se reporta NO-AUDITABLE POR DISEÑO.
       Coagulant_Architecture.md §8 (o negociarla) es parte de este tramo.
 
 
+  [5] HAY 16 MODELOS SIN DEF, Y NO SON DEUDA — son inventario.
+      Desde el 2026-08-05 el repo trae 19 .mdl propios (models/corpus_coagulant/).
+      Las defs usan TRES: bandage, firstaidkit y bloodbag. Los otros dieciseis
+      existen y están catalogados en docs/ASSETS.md con qué es cada uno.
+
+      Se anota acá para que el orden no se invierta. COA-28 manda: el diseño se
+      discute con el autor y se anota en la arquitectura ANTES de bajarlo a
+      código — que exista `syringes.mdl` no crea un ítem "jeringa". La utilidad
+      del inventario es la contraria: cuando un tramo YA decidido necesite un
+      modelo, mirar ASSETS.md antes de salir a buscar uno.
+
+      Los dos diferidos de §1/§7 de la arquitectura que ya tendrían con qué:
+      ANALGÉSICO (pain_pills, pill_bottles) y FÉRULA (nada apropiado todavía).
+
+      HUECO CONOCIDO: el TORNIQUETE no tiene modelo en ninguno de los tres packs
+      —el candidato resultó ser carretes de sutura al renderizarlo— y cae a la
+      cajita de Cargo. Si aparece uno, es una línea en items.lua.
+
 =====================================================
 Documentos complementarios:
   docs/coagulant_estado.md                  → foto de HOY (dónde estamos)
+  docs/ASSETS.md                            → qué modelos EXISTEN (19) y cuáles no tienen def (16)
+  docs/CREDITOS.md                          → autores y licencia CC BY 4.0 (atribución obligatoria)
   docs/CHANGELOG.md                         → historial de parches de este repo
   ../corpus/docs/CORPUS_Architecture.md     → frontera del módulo (§2, §4-§5) y rollout (§9)
   ../corpus/docs/corpus_flujo_trabajo.txt   → cómo ejecutar cada tramo
