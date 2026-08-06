@@ -36,16 +36,28 @@ Corpus.OnReady(function()
         return
     end
 
-    -- Sin `model` A PROPÓSITO (decisión del autor 2026-07-23, Cargo #34): los
-    -- ítems médicos caen a la cajita de cartón del drop de Cargo y al ícono de
-    -- letra. Coagulant es genérico y no conoce ningún setting: un addon de
-    -- CONTENIDO (p.ej. corpus-stalker con los botiquines de la Zona) los
-    -- re-viste desde afuera vía cargo.Items.SetModel(id, model) — el def sigue
-    -- siendo de Coagulant, solo cambia la piel. No agregues modelos acá.
+    -- MODELO POR DEFECTO propio (enmienda del autor 2026-08-05, revierte la
+    -- decisión del 2026-07-23 que los dejaba sin `model`). Antes caían a la
+    -- cajita de cartón del drop de Cargo; ahora traen su modelo.
+    --
+    -- La razón por la que NO lo tenían sigue siendo válida y sigue cubierta:
+    -- que un addon de contenido pueda vestirlos a su setting. Eso NO se pierde
+    -- al declarar un default, porque `Cargo.Items.SetModel` **pisa el modelo
+    -- declarado y se re-aplica en cada registro** (corpus_cargo_items.lua, el
+    -- bloque `_modelOverrides` de `Register`) — o sea que corpus-stalker les
+    -- sigue poniendo los botiquines de la Zona sin tocar una línea de acá.
+    -- Lo que cambia es solo qué se ve cuando NADIE sustituye: antes una caja
+    -- de cartón, ahora el ítem.
+    --
+    -- Los .mdl son ports propios de assets CC BY 4.0 de Sketchfab
+    -- (`Medical Supplies Collection` de Miguel Adão / @theauditor). El crédito
+    -- es obligación de la licencia y vive en docs/CREDITOS.md; hay 18 modelos
+    -- en `models/corpus_coagulant/` y estas defs usan tres.
 
     cargo.Items.Register({
         id       = "corpus_coagulant_bandage",
         name     = "Bandage",
+        model    = "models/corpus_coagulant/bandage.mdl",
         weight   = 0.1,
         class    = "stackable",
         category = "medical",
@@ -55,6 +67,11 @@ Corpus.OnReady(function()
 
     cargo.Items.Register({
         id       = "corpus_coagulant_tourniquet",
+        -- SIN modelo, y no por olvido: en los 18 portados NO HAY un torniquete.
+        -- El candidato que parecía serlo (`Lines`) resultó, al renderizarlo,
+        -- ser dos carretes de sutura con aguja. corpus-stalker llegó a la misma
+        -- conclusión con sus propios packs el 2026-07-23 ("sin modelo coherente
+        -- identificado"). Cae a la cajita hasta que aparezca uno.
         name     = "Tourniquet",
         weight   = 0.2,
         class    = "unique",
@@ -66,6 +83,9 @@ Corpus.OnReady(function()
     cargo.Items.Register({
         id       = "corpus_coagulant_medkit",
         name     = "Medkit",
+        -- `firstaidkit` (16 cm) y no `medkit_large` (30 cm): este es un ítem
+        -- que se lleva encima. El grande queda como prop de escenario.
+        model    = "models/corpus_coagulant/firstaidkit.mdl",
         weight   = 0.5,
         class    = "stackable",
         category = "medical",
@@ -76,6 +96,7 @@ Corpus.OnReady(function()
     cargo.Items.Register({
         id       = "corpus_coagulant_bloodbag",
         name     = "Blood Bag",
+        model    = "models/corpus_coagulant/bloodbag.mdl",
         weight   = 0.3,
         class    = "stackable",
         category = "medical",

@@ -1,0 +1,9 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "models/corpus_coagulant/tray"
+	"$bumpmap" "models/corpus_coagulant/tray_normal"
+	"$phong" "1"
+	"$phongexponent" "12"
+	"$phongboost" "2"
+	"$phongfresnelranges" "[0.5 1 4]"
+}

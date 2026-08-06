@@ -1,0 +1,5 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "models/corpus_coagulant/patches"
+	"$bumpmap" "models/corpus_coagulant/patches_normal"
+}

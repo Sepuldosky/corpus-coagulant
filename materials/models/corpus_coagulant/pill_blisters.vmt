@@ -1,0 +1,9 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "models/corpus_coagulant/pill_blisters"
+	"$bumpmap" "models/corpus_coagulant/pill_blisters_normal"
+	"$phong" "1"
+	"$phongexponent" "12"
+	"$phongboost" "2"
+	"$phongfresnelranges" "[0.5 1 4]"
+}
