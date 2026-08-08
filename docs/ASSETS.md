@@ -18,16 +18,17 @@ solos; no hay nada que montar.
 
 ## Los 19 modelos
 
-`models/corpus_coagulant/` — 10,8 MB. Materiales en `materials/models/corpus_coagulant/`
-(18 VMT + 31 VTF, 16,5 MB). El **tamaño** es la dimensión mayor del modelo terminado.
+`models/corpus_coagulant/` — 11,1 MB (medido el 2026-08-08). Materiales en
+`materials/models/corpus_coagulant/` (18 VMT + 31 VTF, 16,5 MB). El **tamaño** es la dimensión
+mayor del modelo terminado.
 
 | `.mdl` | Qué es | Tris | Tamaño | Translúcido | Usado por |
 |---|---|---:|---|---|---|
-| `bandage` | tres rollos de gasa | 1.926 | 9,0 cm | — | **`corpus_coagulant_bandage`** |
-| `firstaidkit` | botiquín blanco con cruz | 8.860 | 17,9 cm | — | **`corpus_coagulant_medkit`** |
+| `bandage` | **un** rollo de gasa | 642 | 9,0 cm | — | **`corpus_coagulant_bandage`** |
+| `medkit_large_closed` | botiquín naranja **cerrado** (modelo aparte) | 3.590 | 29,7 cm | — | **`corpus_coagulant_medkit`** |
 | `bloodbag` | bolsa de sangre / suero | 3.732 | 26,4 cm | sí | **`corpus_coagulant_bloodbag`** |
-| `medkit_large` | botiquín naranja abierto — **bodygroup, ver abajo** | 48.278 | 30,0 cm | — | — |
-| `medkit_large_closed` | el mismo, **cerrado** (modelo aparte) | 3.590 | 29,7 cm | — | — |
+| `medkit_large` | el mismo, **abierto** — **bodygroup, ver abajo** | 48.278 | 30,0 cm | — | — |
+| `firstaidkit` | botiquín blanco con **cruz roja** — ver los huecos | 8.860 | 17,9 cm | — | — |
 | `pill_bottles` | dos frascos de pastillas + sueltas | 20.376 | 9,0 cm | sí | — |
 | `pill_blisters` | blísteres de pastillas | 13.632 | 7,1 cm | — | — |
 | `vials` | cinco frascos de medicación | 8.360 | 12,1 cm | sí | — |
@@ -43,8 +44,13 @@ solos; no hay nada que montar.
 | `tray` | bandeja de instrumental | 380 | 21,5 cm | — | — |
 | `thermometer` | termómetro digital | 232 | 12,9 cm | — | — |
 
-**140.056 tris en total** (19 modelos). El `medkit_large` solo es el 35 % de eso; si alguna vez hay que recortar,
+**138.772 tris en total** (19 modelos). El `medkit_large` solo es el 35 % de eso; si alguna vez hay que recortar,
 ése es el número a mirar.
+
+> **Enmienda del autor, 2026-08-08 — dos defs cambiaron de modelo.** La venda pasó de tres rollos a
+> **uno** (1.926 → 642 tris, mismo tamaño) y el Medkit dejó el `firstaidkit` blanco por el
+> `medkit_large_closed` naranja (8.860 → 3.590 tris). Detalle abajo, en *La venda es un rollo* y en
+> *Los huecos conocidos*.
 
 ## El botiquín grande son DOS modelos
 
@@ -82,7 +88,35 @@ la caja en los dos y aborta si no coincide.
 
 > **`firstaidkit` (el blanco) también está abierto y NO tiene variantes.** El naranja se prestó
 > porque trae la tapa como objeto propio (`MetalCover`) con la bisagra deducible de la geometría;
-> para el otro ese trabajo hay que rehacerlo desde cero. Se puede; no está hecho.
+> para el otro ese trabajo hay que rehacerlo desde cero. Se puede; no está hecho. **Desde el
+> 2026-08-08 ya no hace falta:** el Medkit usa el naranja cerrado y el blanco quedó sin def.
+
+## La venda es UN rollo, y su escala es la excepción del set
+
+La rama `Bandages` del pack son **tres rollos sueltos** —tres objetos separados que se cortan
+limpio— y el primer port se los llevó los tres, así que el ítem se veía como «tres vendas juntas».
+Por enmienda del autor (2026-08-08) se queda con **uno**.
+
+| | antes | ahora |
+|---|---:|---:|
+| tris | 1.926 | **642** |
+| dims | 3,33 × 8,95 × 5,16 cm | **7,87 × 8,99 × 9,00 cm** |
+| en unidades Source | 1,31 × 3,52 × 2,03 u | **3,10 × 3,54 × 3,54 u** |
+| `.vvd` | 71.488 B | **23.872 B** |
+
+**Cuál de los tres, y por qué se agranda.** Se elige `Bandage2` por medida y no por nombre: su
+rollo mide 3,00 × 3,67 × 3,68 cm contra 3,00 × 3,00 × 3,09 de los otros dos, o sea que es el más
+grande y al normalizar se estira menos — eso es lo que conserva densidad de textura. Y se normaliza
+a 9 cm con **factor propio**, rompiendo a propósito el factor único ×2 que comparten los otros 18:
+con el factor del set un rollo solo mide **3,0 cm = 1,18 u** y **C1 de `verify_model.py` reprueba**
+(pide 2..40 u). A 9 cm ocupa el mismo porte que ocupaban los tres, así que en pantalla el ítem no
+se achicó: dejó de ser tres cosas.
+
+Si una sesión futura lee «el pack comparte un factor único» y viene a arreglar esto: **no es un
+descuido, está votado**. La razón completa vive en el encabezado de `dev/phastools/compile/src/bandage.qc`.
+
+`fbx2smd.py` ganó `--object <malla>` para poder hacer este corte: `--branch` se queda con una rama
+entera y una rama puede ser un conjunto, no una pieza.
 
 ## Los 16 sin def
 
@@ -109,7 +143,9 @@ sobras. Lo que hay que saber antes de usarlos:
   ése solo — a costa de romper la del resto del set, que comparte un único factor.
 - **`firstaidkit` lleva una cruz roja** y su pack no trae variante alternativa. El emblema está
   protegido por los Convenios de Ginebra. El `medkit_large` sí tenía variante y se usa la segura
-  (ver [`CREDITOS.md`](CREDITOS.md)). **Decisión pendiente si esto se publica al Workshop.**
+  (ver [`CREDITOS.md`](CREDITOS.md)). **Desde el 2026-08-08 ya no está cableado a ningún ítem** —el
+  Medkit pasó al naranja cerrado— pero **el `.mdl` sigue en el repo**, así que la decisión sobre
+  publicar al Workshop **sigue abierta**: lo que cambió es que ya no se ve en una partida normal.
 
 ## El modelo declarado es un default, no un candado
 

@@ -30,7 +30,7 @@ detalle.
 
 | `.mdl` | Qué es | Tamaño |
 |---|---|---|
-| `bandage` | tres rollos de gasa | 9,0 cm |
+| `bandage` | un rollo de gasa | 9,0 cm |
 | `bloodbag` | bolsa de sangre / suero | 26,4 cm |
 | `bust_stethoscope` | busto de maniquí con estetoscopio | 19,7 cm |
 | `firstaidkit` | botiquín blanco con cruz | 17,9 cm |
@@ -50,6 +50,12 @@ detalle.
 Los 16 comparten **un solo factor de escala** (×2 sobre el original). El archivo trae proporciones
 correctas **entre sus ítems** y sólo está a media escala real; normalizar cada uno por separado
 habría dejado la venda del tamaño de la bandeja.
+
+**`bandage` es la excepción desde el 2026-08-08, y a propósito.** La rama `Bandages` son tres
+rollos sueltos y el port se los llevó los tres; por enmienda del autor ahora se queda con **uno**
+(`Bandage2`, el más grande de los tres: 3,00 × 3,67 × 3,68 cm contra 3,00 × 3,00 × 3,09). Un rollo
+solo con el factor del set mide 3,0 cm = **1,18 u**, y C1 de `verify_model.py` pide 2..40 — o sea
+que reprobaba. Se normaliza a **9 cm** con factor propio, que es el porte que ocupaban los tres.
 
 ### Medical First Aid Emergency Kit
 
@@ -83,13 +89,20 @@ para defs futuras.
 | Ítem | Modelo |
 |---|---|
 | `corpus_coagulant_bandage` | `bandage.mdl` |
-| `corpus_coagulant_medkit` | `firstaidkit.mdl` |
+| `corpus_coagulant_medkit` | `medkit_large_closed.mdl` |
 | `corpus_coagulant_bloodbag` | `bloodbag.mdl` |
 | `corpus_coagulant_tourniquet` | **ninguno** — no hay torniquete en los packs |
 
 **El modelo declarado es un DEFAULT, no un candado.** `Cargo.Items.SetModel` pisa el modelo del def
-y se re-aplica en cada registro, así que un addon de contenido —`corpus-stalker` ya lo hace con la
-venda y el medkit de la Zona— los sigue vistiendo a su setting sin tocar este repo.
+y se re-aplica en cada registro, así que un addon de contenido lo puede vestir a su setting sin
+tocar este repo. Hoy nadie lo hace: `corpus-stalker` re-vestía venda y medkit hasta el 2026-08-06
+y lo retiró.
+
+**Efecto secundario de la enmienda del 2026-08-08:** al pasar el Medkit de `firstaidkit` a
+`medkit_large_closed`, el único modelo con la **cruz roja de Ginebra** dejó de estar cableado a un
+ítem. El `.mdl` **sigue en el repo** —está en `models/corpus_coagulant/` y cualquiera puede
+`SetModel`earlo— así que la decisión sobre publicar al Workshop sigue abierta; lo que cambió es que
+ya no se ve en una partida normal.
 
 ---
 

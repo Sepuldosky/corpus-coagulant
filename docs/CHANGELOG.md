@@ -1541,3 +1541,94 @@ en `verify_model.py` contra control. Comprobado leyendo el binario instalado y n
 studiomdl: `medkit_large` tiene el bodygroup `state` con **2** opciones (39.224 / 3.809 vértices) y
 `medkit_large_closed` tiene **1** bodypart. Harness sin tocar (no hay cambio de Lua). Los PARCHES
 1-2 tocan runtime y nacen `[PENDIENTE]`: falta la pasada en juego.
+
+---
+
+## PARCHES DE sesión La venda es UNA y el Medkit es el naranja — 2026-08-08
+
+Reporte del autor mirando los modelos ya cableados: *«medkit_large debería cambiar el
+first_aid_kit que está actual como modelo de medikit porque first_aid_kit (modelo chiquito de una
+caja blanca) es muy feo. Las vendas también se ven feas, son 3 vendas juntas cuando debería ser un
+solo modelo de una venda grande, la bolsa de sangre se ve bien.»* Los dos son cambios de **asset**,
+no de mecánica: ninguna def cambia de peso, de clase, de `onUse` ni de categoría.
+
+**La venda eran tres porque la rama del pack son tres.** Medido con Blender sobre el FBX de origen:
+`Bandages` tiene **tres objetos separados** de 642 tris cada uno (un rollo de 302 caras + su punta
+de gasa de 3), que se cortan limpio. `fbx2smd.py` sólo sabía filtrar por **rama**, y una rama puede
+ser un conjunto y no una pieza — por eso el port se llevó los tres.
+
+**Y un rollo solo NO es «una venda grande»: es más chico que `sutures`.** Con el factor 2.0 que
+comparte el set, un rollo mide **3,0 cm = 1,18 u**, y C1 de `verify_model.py` pide 2..40 u:
+reprobaba. Se normaliza a **9 cm con factor propio**, que es el porte que ocupaban los tres juntos
+— o sea que en pantalla el ítem **no se achicó**, dejó de ser tres cosas. La excepción al factor
+único del pack está votada por el autor y escrita en tres lugares para que nadie la «arregle»
+(`bandage.qc`, `ASSETS.md`, `CREDITOS.md`).
+
+**De los tres rollos se elige `Bandage2` por medida y no por nombre:** su rollo es 3,00 × 3,67 ×
+3,68 cm contra 3,00 × 3,00 × 3,09 de los otros dos, o sea el más grande, y al normalizar se estira
+menos — eso conserva densidad de textura.
+
+- PARCHE 1 — feat: `fbx2smd.py` gana `--object <malla>`, que se queda con UNA malla de la rama por
+  nombre exacto. Falla ruidoso si el nombre no existe, por la misma razón que `--mat`: un filtro
+  que no filtra produce un `.mdl` que compila, pasa los checks y se ve bien — sólo que no es el que
+  se pidió, y **no tiene síntoma propio**. Vive en `dev/`, fuera de los repos.
+  **[APLICADO 2026-08-08]**
+
+- PARCHE 2 — feat(items): `bandage.mdl` regenerado de UN rollo a 9 cm. 1.926 → **642 tris**,
+  `.vvd` 71.488 → **23.872 B**, dims 3,33 × 8,95 × 5,16 → **7,87 × 8,99 × 9,00 cm**. El `.qc` lleva
+  el comando exacto y el porqué de la excepción de escala. **[APLICADO 2026-08-08]**
+
+- PARCHE 3 — feat(items): la def `corpus_coagulant_medkit` pasa de `firstaidkit.mdl` a
+  `medkit_large_closed.mdl`. 8.860 → **3.590 tris**. El **cerrado** y no el abierto: es un ítem que
+  se lleva encima, y el abierto son 48.278 tris (el 35 % de todo el set). **[APLICADO 2026-08-08]**
+
+- PARCHE 4 — docs(items): comentarios de `corpus_coagulant_items.lua` — el del medkit justificaba
+  el `firstaidkit` y quedó falso; se reescribe con las dos razones. De paso el bloque decía «18
+  modelos» y «`Medical Supplies Collection`» como único pack: son **19** y son **tres** packs, y
+  ahora una def usa uno de los otros dos. **[APLICADO 2026-08-08]**
+
+- PARCHE 5 — docs: `ASSETS.md` (tabla, total de tris 140.056 → **138.772**, sección nueva *La venda
+  es UN rollo*) y `CREDITOS.md` (*Qué usa cada def* + la excepción de escala). **[APLICADO
+  2026-08-08]**
+
+**LO QUE HAY QUE HACER ANTES DE MIRAR ESTO EN JUEGO, o la pasada informa lo contrario de lo que
+pasó.** El grid de Cargo no dibuja el modelo: dibuja un **ícono cacheado en disco** cuyo nombre ES
+la clave de invalidación — `<defid>_<CRC(recipe|modelo|cámara|footprint)>.png`
+(`corpus_cargo_icons.lua:396-410`). Consecuencia asimétrica, y medida leyendo ese código:
+
+- el **Medkit** cambió de RUTA de modelo, así que el CRC cambia, el nombre cambia y **se
+  re-renderiza solo**;
+- la **venda** conserva la ruta `bandage.mdl` y sólo cambió la malla de adentro → **mismo CRC,
+  mismo archivo, y el ícono viejo de tres rollos sobrevive**. Además `mesh_bounds.json` cachea las
+  medidas **por ruta de modelo** («computed once per model path EVER»), así que el encuadre también
+  saldría del bbox viejo.
+
+O sea que sin borrar la caché, el ítem en el mundo se vería con la venda nueva y el ícono del
+inventario seguiría mostrando tres — y el reporte natural sería «el modelo no cambió». **Borrar
+`garrysmod/data/corpus/cargo/icons/` antes de la pasada** (es caché pura: se reconstruye sola).
+
+Verificación offline: `bandage.qc` compila con **0 errores y 0 warnings**; `verify_model.py` da
+**7/7** sobre el `.mdl` instalado (C1 = 3,54 u, C2 illumposition en (0,0,0), C7 desvío 0,0 %).
+Harness **192 OK server / 142 client, 0 fallos, ALL GREEN** y `glua_check.py` OK sobre el archivo
+tocado.
+
+**Sobre el control de `verify_model.py`, que esta vez hubo que fabricar.** Los conocidos-buenos que
+había a mano —`bloodbag`, `medkit_large_closed` y los tres `spiritbox`— **pasan los siete checks**,
+así que una corrida donde nada falla no probaba que la batería pudiera fallar; el control que la
+sesión del 2026-08-06 citaba como discriminante («spiritbox sigue fallando C7») **ya no falla**, se
+arregló en el medio y la nota envejeció sin que nadie la tocara. Se compiló un control negativo
+—la misma venda con `$scale` DESPUÉS de `$body`, el defecto que C1 existe para atajar— y **reprobó
+C1 con 0,09 u** mientras el sujeto pasaba con 3,54. Recién ahí el 7/7 dice algo. El control se
+borró después de medir.
+
+**Pasada del autor: CONFIRMADA el mismo 2026-08-08, los dos ítems.** Textual: *«ya revisé ambas
+ingame, está bien ahora. Tanto medkit como venda.»* Los PARCHES 2-3 pasan a `[APLICADO]`. Es el
+único veredicto que importa acá: los siete checks de `verify_model.py` dicen que el `.mdl` está
+sano, no que el modelo se vea bien — eso no lo puede decir ninguna batería.
+
+**Y lo que esta pasada NO cubre, para que nadie lea «assets cerrados».** El autor miró los dos
+ítems que cambiaron. Siguen pendientes de la sesión del 2026-08-05/06: los **cuatro
+`$translucent`** (`bloodbag`, `pill_bottles`, `test_tubes`, `vials`) y sus artefactos de
+ordenamiento, si `sutures` —1,97 u, el único que marca C1— se agarra con la physgun, y el
+**bodygroup del `medkit_large` ABIERTO** (el autor vio el cerrado, que es el que quedó cableado a
+la def; el abierto sigue siendo prop de escenario y nadie lo miró).
