@@ -49,14 +49,21 @@ Corpus.OnReady(function()
     -- Lo que cambia es solo qué se ve cuando NADIE sustituye: antes una caja
     -- de cartón, ahora el ítem.
     --
-    -- Los .mdl son ports propios de assets CC BY 4.0 de Sketchfab
-    -- (`Medical Supplies Collection` de Miguel Adão / @theauditor). El crédito
-    -- es obligación de la licencia y vive en docs/CREDITOS.md; hay 18 modelos
-    -- en `models/corpus_coagulant/` y estas defs usan tres.
+    -- Los .mdl son ports propios de assets CC BY 4.0 de Sketchfab, de tres
+    -- packs: `Medical Supplies Collection` de Miguel Adão (@theauditor),
+    -- `Medical First Aid Emergency Kit` de RayznGames y `Simple Pain Pills` de
+    -- Blender3D. El crédito es obligación de la licencia y vive en
+    -- docs/CREDITOS.md; hay 19 modelos en `models/corpus_coagulant/` y estas
+    -- defs usan tres. Inventario completo en docs/ASSETS.md.
 
     cargo.Items.Register({
         id       = "corpus_coagulant_bandage",
         name     = "Bandage",
+        -- UN rollo de gasa, no tres (enmienda del autor, 2026-08-08). La rama
+        -- `Bandages` del pack son tres rollos sueltos y el primer port se los
+        -- llevó los tres: el ítem se veía como «tres vendas juntas». El .qc
+        -- ahora corta con `--object Bandage2` y normaliza a 9 cm — el porte que
+        -- ocupaban los tres, así que en pantalla no se achicó nada.
         model    = "models/corpus_coagulant/bandage.mdl",
         weight   = 0.1,
         class    = "stackable",
@@ -67,7 +74,7 @@ Corpus.OnReady(function()
 
     cargo.Items.Register({
         id       = "corpus_coagulant_tourniquet",
-        -- SIN modelo, y no por olvido: en los 18 portados NO HAY un torniquete.
+        -- SIN modelo, y no por olvido: en los 19 portados NO HAY un torniquete.
         -- El candidato que parecía serlo (`Lines`) resultó, al renderizarlo,
         -- ser dos carretes de sutura con aguja. corpus-stalker llegó a la misma
         -- conclusión con sus propios packs el 2026-07-23 ("sin modelo coherente
@@ -83,9 +90,18 @@ Corpus.OnReady(function()
     cargo.Items.Register({
         id       = "corpus_coagulant_medkit",
         name     = "Medkit",
-        -- `firstaidkit` (16 cm) y no `medkit_large` (30 cm): este es un ítem
-        -- que se lleva encima. El grande queda como prop de escenario.
-        model    = "models/corpus_coagulant/firstaidkit.mdl",
+        -- `medkit_large_closed` y no `firstaidkit` (enmienda del autor,
+        -- 2026-08-08: «first_aid_kit es muy feo»). El blanco se descartó por
+        -- estética, pero de paso se va con él un problema anotado: lleva la
+        -- CRUZ ROJA, emblema protegido por los Convenios de Ginebra, y su pack
+        -- no traía variante — era una decisión pendiente si esto se publica al
+        -- Workshop. El naranja sí tenía variante y este .mdl usa la segura.
+        --
+        -- El CERRADO y no `medkit_large` (el abierto): es un ítem que se lleva
+        -- encima, así que se ve cerrado, y además el abierto son 48.278 tris
+        -- contra 3.590 — 13×, el 35 % de todo el set de 19 modelos. El abierto
+        -- queda como prop de escenario, que es para lo que se portó.
+        model    = "models/corpus_coagulant/medkit_large_closed.mdl",
         weight   = 0.5,
         class    = "stackable",
         category = "medical",
