@@ -79,6 +79,41 @@ sobre este archivo se reporta NO-AUDITABLE POR DISEÑO.
       METABOLIC explica POR QUÉ el techo está bajo, y no agrega barras.
 
 
+  [6] Capa sistémica y niebla diagnóstica. EL DISEÑO ESTÁ HECHO (2026-08-08b, voto del
+      autor en tres puntos; Architecture §17, COA-41…COA-48). FALTA TODO EL CÓDIGO.
+
+      Nace del alcance, no del daño ambiental: el autor preguntó si el catálogo del menú
+      alcanza para roleplay de médico de HOSPITAL y no sólo de campo. Las dos preguntas
+      resultaron una — tres de los 24 ítems del spec v4 (toda la categoría AIRWAY) tratan
+      condiciones que nada produce, y el daño que §3 ignora es el paciente que les falta.
+
+      Lo votado: COA-41 la muerte se alimenta de PERFUSIÓN (blood × sat/100) y no del
+      volumen — el dueño no cambia (HP 0, COA-11 intacto) y con sat sano = 100 no se
+      retunea nada; COA-42 la saturación NO es la stamina (se encuentran en el techo, no
+      se fusionan) ; COA-44 niebla diagnóstica en tres capas, detrás de convar y APAGADA
+      por default; COA-45 los dispositivos siguen siendo casos especiales como z.tq.
+
+      ORDEN OBLIGADO, y es la trampa de este tramo: la niebla necesita el DOLOR como stat,
+      que §1 sigue listando como diferido. Bajar la niebla antes que el dolor deja la
+      silueta sin qué pintar — la niebla apagaría la pantalla en vez de complicarla.
+
+      LOS DOS EJES QUE §17 dejo abiertos se votaron el 2026-08-09: COA-49 (la herida
+      tratada tiene TIEMPO — se resuelve sola por reloj o se infecta; el Medkit no cambia
+      una linea y esa resolucion automatica es lo que impide reintroducir el bug de COA-21)
+      y COA-50/COA-51 (el area hospital: UNA entidad con modelo opcional, capacidad y
+      suministro como gates independientes, y se compra UNA sola cosa — la camilla).
+
+      BLOQUEANTE del area hospital, y es de otro repo: necesita AreaHas/AreaCount/AreaTake
+      de Cargo, que NO las ratifico. Pedido escrito el mismo dia en su roadmap #60. Hasta
+      que Cargo conteste, ese tramo no baja a codigo — leer _byId seria la SEGUNDA deuda
+      silenciosa del mismo tipo, y la primera ya esta declarada en §12.
+
+      Tres correcciones de CÓDIGO VIVO que no esperan a nada de esto (COA-46): DMG_ACID no
+      está en DMG_QUEMA y produce una contusión; DMG_SHOCK pierde la arritmia; DMG_BLAST no
+      produce nada torácico. Y una omisión del catálogo (COA-47): no hay RCP ni desfibrilador
+      en un menú cuyo ECG puede decir ASYSTOLE.
+
+
   [5] HAY 16 MODELOS SIN DEF, Y NO SON DEUDA — son inventario.
       Desde el 2026-08-05 el repo trae 19 .mdl propios (models/corpus_coagulant/).
       Las defs usan TRES: bandage, firstaidkit y bloodbag. Los otros dieciseis

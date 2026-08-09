@@ -26,6 +26,7 @@
 14. [Degradación honesta](#14-degradación-honesta)
 15. [Orden de bajada a código — vertical slices](#15-orden-de-bajada-a-código--vertical-slices)
 16. [Checklist de cierre de bloque](#16-checklist-de-cierre-de-bloque)
+17. [Perfusión, oxígeno y daño ambiental](#17-perfusión-oxígeno-y-daño-ambiental-enmienda-2026-08-08b)
 
 ---
 
@@ -36,8 +37,8 @@
 **No es.**
 - Incapacitación/revive (muerte directa en v1; bloque futuro).
 - Tratar a otros jugadores (bloque futuro; el diseño de tratamiento deja el hueco — `ApplyTreatment` recibe el paciente como primer argumento).
-- Dolor como stat, analgésicos, fracturas con férula (diferidos) — las otras dos salidas que ACE3 le da al trauma cerrado. Mientras no existan, la **venda** lo cubre: aplica a toda herida abierta, sangre o no (**COA-37**, §7).
-- Stamina/fatiga — **pese a que el contrato `OnEncumbrance` ya existe** (§12): v1 lo acepta y almacena, sin efecto.
+- Dolor como stat, analgésicos, fracturas con férula (diferidos) — las otras dos salidas que ACE3 le da al trauma cerrado. Mientras no existan, la **venda** lo cubre: aplica a toda herida abierta, sangre o no (**COA-37**, §7). **Enmendado el 2026-08-08 (COA-44, §17):** el dolor deja de ser diferido y pasa a ser **requisito** de la niebla diagnóstica — es el único canal que la niebla no tapa, así que sin él la niebla apaga la pantalla en vez de complicarla.
+- Stamina/fatiga — **pese a que el contrato `OnEncumbrance` ya existe** (§12): v1 lo acepta y almacena, sin efecto. Su relación con el oxígeno la fija **COA-42** (§17): son vitales distintos, se encuentran en el techo y no se fusionan.
 - Medicina de NPCs (frontera: jugador; limbs NPC es de Caliber).
 - Persistencia a disco (spawn = cuerpo nuevo; estado en memoria del server).
 - Integración fina con ARC9 para la precisión (v1 usa un mecanismo agnóstico, §6).
@@ -50,7 +51,7 @@ Cada jugador tiene un **volumen de sangre** propio de Coagulant, además del HP 
 
 - `blood ∈ [0, 100]` (unidades abstractas; el HUD lo muestra como %). Spawn: 100.
 - El HP nativo sigue siendo el **trauma directo** del engine y lo que leen/escriben los demás mods. Coagulant **nunca** re-escala daño (eso será de Caliber): solo observa impactos y drena/recupera.
-- La sangre **no mata por sí misma**: mata a través del drenaje de HP (§5). La muerte es siempre por HP 0 — compatible con killfeed, respawn y mods que setean HP.
+- La sangre **no mata por sí misma**: mata a través del drenaje de HP (§5). La muerte es siempre por HP 0 — compatible con killfeed, respawn y mods que setean HP. **Enmienda 2026-08-08 (COA-41, §17):** lo que alimenta ese drenaje pasa a ser la **perfusión** (`blood × sat/100`), no el volumen solo. El dueño de la muerte no cambia — cambia su insumo.
 - Los medkits HL2 curan HP pero no sangre: con sangre crítica el HP curado se vuelve a drenar. El tratamiento real pasa por Coagulant — consecuencia deliberada, no bug.
 
 Estado por jugador (crece sobre la forma del scaffold; sigue en memoria, keyed por SteamID64):
@@ -115,9 +116,9 @@ st = {
 | `BULLET`, `BUCKSHOT`, `SNIPER`, `AIRBOAT` | `bala` | 1.0 | |
 | `SLASH` | `corte` | 0.8 | |
 | `BLAST` | `metralla` | 0.9 | una herida, no N fragmentos (v1) |
-| `BURN`, `SLOWBURN`, `ENERGYBEAM`, `SHOCK`, `PLASMA` | `quemadura` | 0.2 | sangra poco; la venda aplica igual (apósito) |
+| `BURN`, `SLOWBURN`, `ENERGYBEAM`, `SHOCK`, `PLASMA`, `ACID` | `quemadura` | 0.2 | sangra poco; la venda aplica igual (apósito). **`ACID` lo agrega COA-46 (§17)**: hoy no está en el bitfield y cae al default, o sea que una quemadura química produce una *contusión* |
 | `FALL`, `CRUSH`, `CLUB` | `contusion` | 0.0 | no sangra; **sí** cuenta para el debuff zonal; **sí** se venda (COA-37, §7) |
-| `DROWN`, `POISON`, `NERVEGAS`, `RADIATION` | — | — | **no crean herida** (no son trauma localizable) |
+| `DROWN`, `POISON`, `NERVEGAS`, `RADIATION` | — | — | **no crean herida** (no son trauma localizable). **Enmendado por COA-43 (§17):** siguen sin crear herida —tienen razón en no crearla— pero dejan de ser invisibles: entran como **condiciones sistémicas** |
 | resto / sin clasificar | `contusion` | 0.0 | default conservador |
 
 ### Severidad
@@ -143,6 +144,8 @@ Referencias de letalidad con los números propuestos: una herida de bala grave s
 ---
 
 ## 5. Sangre ↔ HP — el drenaje crítico
+
+> **Enmienda 2026-08-08 — COA-41 (§17).** Las dos líneas de abajo se leen con **perfusión** (`blood × sat/100`) donde dicen `blood`. Con `sat` sano = 100 la sustitución es exacta: ningún número de balance de §4-§6 se mueve, y **COA-11 queda intacto** — la muerte sigue saliendo por el mismo `DMG_GENERIC`.
 
 - `blood ≥ 40`: sin efecto sobre HP.
 - `blood < 40` (**crítico**): el mismo tick drena HP: `hpDrain = (1 + 4 × (40 − blood) / 40) × coagulant_hpdrain_scale` HP/s — de 1 HP/s al entrar en crítico a 5 HP/s con sangre 0.
@@ -410,6 +413,10 @@ El tab Q existente crece: convars de server (admin) + cliente, y el **binder** d
 | `coagulant_debuff_legs` | sv | 1 | on/off cojera |
 | `coagulant_debuff_arms` | sv | 1 | on/off sway de brazos |
 | `coagulant_debuff_head` | sv | 1 | on/off efectos de visión |
+| `coagulant_env_conditions` | sv | 1 | on/off de la capa sistémica: radiación, agente nervioso, toxina (**COA-43**, §17) |
+| `coagulant_o2_scale` | sv | 1.0 | multiplicador de la caída de saturación (**COA-42**, §17) |
+| `coagulant_rad_scale` | sv | 1.0 | multiplicador de acumulación de dosis de radiación |
+| `coagulant_diagnostic_fog` | sv | **0** | niebla diagnóstica: lo no conocido deja de viajar en el snapshot (**COA-44**, §17). Nace apagada: le pega de frente al flujo de campo |
 | `coagulant_hud` | cl | 1 | on/off HUD silueta (**COA-25**: el crítico visual no se apaga: es información vital) |
 | `coagulant_key_menu` | cl | `KEY_M` | tecla que abre el menú médico (0 = sin bind; se ajusta desde el tab Q) |
 
@@ -424,6 +431,7 @@ El tab Q existente crece: convars de server (admin) + cliente, y el **binder** d
 ### Cargo (presente hoy — nombres verificados contra el código real)
 
 - **Consume:** `Items.Register(def)` (4 defs §7); `Inventory.HasItem(ply, id)` (**presencia al validar el arranque de un tratamiento — la única superficie que ve los `unique`**: `CountItem` cuenta solo stacks, así que el torniquete siempre daba 0 — pagado en juego el 2026-07-13, fallo G4; Cargo la agregó como su entry 18); `Inventory.CountItem(ply, id)` + `Inventory.TakeItem(ply, id, 1)` (**server, al completar**: re-validar y consumir la unidad stackable); `StatusPanel.RegisterBar` (client); y **`CARGO.ClientState.items` (client, superficie OFF-CONTRACT de Cargo)** — el menú médico cuenta con ella las DOS clases de ítem (los stacks por `count`, los `unique` por `uid`) porque `CountItem` no existe en el cliente. **Deuda asumida:** si Cargo cambia la forma de su snapshot, el conteo de los botones se rompe **en silencio**; el candidato natural es que Cargo exponga un contador de cliente en su contrato.
+- **PEDIDO ABIERTO a Cargo (2026-08-09, COA-51 en §17):** `Containers.AreaHas` / `AreaCount` / `AreaTake` para el área de suministro del hospital. **Cargo NO lo ratificó** — vive en su roadmap #60 y hasta entonces ese tramo no baja a código. Se anota acá para que quien lea esta sección no crea que la superficie existe.
 - **Expone hacia Cargo:** `OnEncumbrance(ply, fraction)` — Cargo ya lo llama con pcall en cada cambio de peso (`corpus_cargo_movement.lua`). v1: almacenar en `st.encumbrance`, cero efecto. `Inventory.GetWeightFraction(ply)` queda disponible para cuando la stamina exista.
 
 ### Caliber (mock-first — su pipeline de jugador no existe)
@@ -435,6 +443,13 @@ El tab Q existente crece: convars de server (admin) + cliente, y el **binder** d
 
 - Consume los eventos de §8 y `GetBlood`/`IsBleeding`, y empuja `ApplyExternalCondition` (§8, **COA-39**).
 - **COA-31 — ENMENDADA el 2026-08-08 (voto del autor).** La dirección dejó de ser única en un solo sentido: Coagulant **sí** detecta a Craving, pero **solo para leer** los cinco valores metabólicos vía `GetMetabolic`. La sede del permiso, con su alcance exacto y la razón, es **COA-38** en §8. Lo que la enmienda **no** toca: Coagulant no escribe estado de Craving, y la detección sigue siendo por capacidad (`isfunction`), nunca por presencia.
+
+### Stalker (emisor de condiciones ambientales — **COA-48**, §17)
+
+- **Consume de Coagulant:** nada. Stalker **empuja** y no lee — no toca estado clínico, no registra acciones, no dibuja nada del menú.
+- **Empuja:** `ApplyExternalCondition(ply, id, severity)` con los ids de **COA-43** (`radiation`, `nerve_agent`, `toxin`) desde zonas de radiación, artefactos equipados y anomalías químicas. Es la vía de lo que **no tiene evento de daño**; lo que llega como `DMG_*` lo mapea Coagulant solo, en el `PostEntityTakeDamage` donde ya nacen las heridas (**COA-9**).
+- **Sin Stalker montado:** las condiciones ambientales no llegan y el daño de ese origen cae al HP nativo (§14). Detección por **capacidad**, nunca por presencia — la regla de siempre.
+- La contraparte vive en [`../../corpus-stalker/docs/STALKER_Arquitectura.md`](../../corpus-stalker/docs/STALKER_Arquitectura.md) §2, que ya declaraba este pacto desde el otro lado mientras esta sección no lo listaba.
 
 ---
 
@@ -493,3 +508,306 @@ Al cerrar cada slice: CHANGELOG (`[PENDIENTE]` → verificación del autor) y `c
 3. `coagulant_estado.md` y `coagulant_roadmap.txt` refrescados; la semilla queda como registro histórico.
 4. CLAUDE.md de este repo: mapa de archivos y contratos al día con el árbol real. **Hecho durante la bajada por slices**: los contratos del scaffold ya fueron reemplazados por los de este doc (el CLAUDE.md de hoy lleva los 9 contratos del módulo real, ninguno es el viejo "sin gameplay antes del diseño"). Al cerrar solo queda el repaso final de que el mapa siga coincidiendo con el árbol.
 5. Anotar en `corpus/docs/corpus_estado.md` que Coagulant tiene módulo real (deja de ser scaffold).
+
+---
+
+## 17. Perfusión, oxígeno y daño ambiental (enmienda 2026-08-08b)
+
+> Votada por el autor en **tres puntos** antes de escribir una línea (**COA-28**), en la sesión de diseño siguiente a la que dejó el spec v4 del menú (`dev/coagulant-v4-spec.html`). **Nada de esto está en código**: entra al registro con evidencia `INTENCION`. Mientras no exista, el comportamiento de hoy —el daño ambiental cae al HP nativo— es el correcto y no un bug: es §14 aplicada a un dominio que todavía no nació.
+>
+> **El disparador no fue el daño ambiental sino una pregunta de alcance:** si el catálogo del menú alcanza para un jugador que hace roleplay de **médico de hospital** y no solo de médico de campo estilo ACE3. Las dos preguntas resultaron ser **una sola**, y esa es la única razón por la que esta enmienda es una y no dos.
+
+### El agujero, que ya estaba abierto y no se veía
+
+Ningún ítem del catálogo v4 sobra: los 24 se usan en un ER real. Lo que faltaba no eran ítems, era **causa**.
+
+- **Tres de los 24 tratan condiciones que nada en el simulador produce.** El `Needle thoracostomy` descomprime un neumotórax y no hay neumotórax en el modelo (§3 tiene seis tipos de herida; los estados de zona son `tq`, `isch` y `frac`). La `Cricothyrotomy` y la cánula nasofaríngea abren una vía aérea que nunca se obstruye. Su gate en el spec es puramente **geométrico** —*chest only*, *head only*— porque no había condición que gatear. La categoría AIRWAY entera es decorado.
+- **`Atropine` está en el catálogo sin gate y sin razón de existir.** Es el antídoto del agente nervioso.
+- **Los cuatro damage types de §3 marcados «no crean herida»** (`DROWN`, `POISON`, `NERVEGAS`, `RADIATION`) son, hoy, el único daño del juego que el médico **no puede ver ni tratar**.
+- Y `../../corpus-stalker/docs/STALKER_Arquitectura.md` §2 ya le había **prometido** a Coagulant «los efectos clínicos de la radiación y de las anomalías químicas», por `ApplyExternalCondition` — mientras §12 de este doc ni siquiera listaba a Stalker como peer. Dos docs apuntaban al mismo hueco desde lados opuestos y ninguno lo llenaba.
+
+La conclusión que ordena todo lo demás: **la capa sistémica no es contenido extra para el hospital, es el paciente que le falta a media UI que ya está escrita.**
+
+---
+
+### COA-41 — La muerte cambia de INSUMO, no de dueño: perfusión en vez de volumen
+
+**El dueño de la muerte no se toca.** §2 ya lo fijó y sigue palabra por palabra: el HP nativo es el trauma directo del engine, la sangre no mata por sí misma, y **la muerte es siempre por HP 0** vía el drenaje de §5 con `DMG_GENERIC` sin atacante (**COA-11**). El voto del autor —*«health es el dato de HL2, podría traducirse como qué tan estresado y dañado está el cuerpo»*— es exactamente esa lectura, y esta enmienda la conserva entera.
+
+Lo que cambia es **qué alimenta el drenaje**. Hoy lo alimenta el volumen de sangre solo; pasa a alimentarlo la **perfusión**, que es lo médicamente cierto: el tejido no muere por falta de litros, muere por falta de oxígeno entregado, y el volumen es *una* de las dos entradas.
+
+```lua
+-- 0..100, misma escala que blood, mismo umbral de 40 de §5
+function COAGULANT.Perfusion(ply)
+    return st.blood * (st.sat / 100)
+end
+```
+
+§5 se reescribe sustituyendo `blood` por `Perfusion(ply)` en las dos líneas —el umbral y la curva— y **nada más**:
+
+- `perf ≥ 40`: sin efecto sobre HP.
+- `perf < 40`: `hpDrain = (1 + 4 × (40 − perf) / 40) × coagulant_hpdrain_scale`.
+
+**Retro-compatibilidad exacta, y es deliberada:** `sat` sano vale **100**, no 97-99. Un humano real en reposo lee 97-99 y mostrar 100 es una simplificación votada, por la misma regla que el spec v4 aplica al metabolismo (*un cuerpo alimentado no es una alarma*): el estado sano tiene que ser **neutro**, no un número que invite a tratarlo. Con `sat = 100`, `Perfusion == blood` y **ningún número de balance de §4-§6 se mueve**. Esta enmienda no obliga a retunear nada.
+
+**El evento `Coagulant_BloodCritical` conserva su nombre** aunque ahora cruce por perfusión. Renombrarlo rompería a Craving, que lo consume (§12), y el evento siempre significó *el paciente entró en la zona donde se muere* — el nombre es histórico, la semántica no cambió. Se anota acá para que nadie lo «arregle».
+
+**Lo que esto habilita, y es todo el punto:** la asfixia, el agente nervioso, el neumotórax a tensión y el ahogo dejan de necesitar una segunda ruta de muerte. Convergen en el número que el jugador **ya está mirando** — la amplitud del trazado del ECG, que el spec v4 deriva de `blood` y pasa a derivar de la perfusión. La traza se aplana igual, por una causa nueva.
+
+---
+
+### COA-42 — `sat` es un vital de primera clase, y NO es la stamina
+
+El autor preguntó si el oxígeno podía **ser** la stamina, para simplificar. La respuesta es no, y las tres razones importan porque cada una es un modo de falla concreto:
+
+1. **Escala de tiempo y agencia opuestas.** La stamina es un presupuesto que el jugador gasta y recupera en segundos por decisión propia; la saturación solo baja cuando algo está roto y su recuperación no depende de él. Fusionadas, **correr = asfixiarse**.
+2. **Destruye la única discriminación que la categoría AIRWAY existe para hacer.** Con un número solo, un jugador que acaba de esprintar y uno con neumotórax a tensión se le presentan **idénticos** al médico. Ese diagnóstico diferencial *es* el juego médico.
+3. **Las superficies de tratamiento son disjuntas.** La stamina baja se trata descansando. Si son el mismo número, **descansar cura un neumotórax.**
+
+Pero el acoplamiento que el autor estaba viendo es real, y ya hay dónde ponerlo: **se encuentran en el techo de stamina**, la fórmula del spec v4 que ya recibe sangre, dolor, torniquete, fractura, hambre y energía. Un término más:
+
+```lua
+-- dentro de COAGULANT.StaminaCap(ply), junto a los seis que ya están
+-- MISMA FAMILIA DE CURVA que los dos términos metabólicos: umbral + rampa.
+function COAGULANT.HypoxiaDeficit(sat)
+    return math.Clamp((94 - sat) / 34, 0, 1)   -- 0 en 94 o más, 1 en 60
+end
+
+c = c - 30 * COAGULANT.HypoxiaDeficit(ply:CoaSat())   -- la hipoxia techa la stamina
+```
+
+> **Corrección 2026-08-09, y el defecto era de esta misma sección.** La primera redacción decía `c = c - 60 * (1 - sat/100)`, y estaba mal por dos motivos que aparecieron al bajarla al mock. **(1) Familia de curva equivocada:** era el **único término lineal crudo** de una fórmula donde todo lo demás es o una constante plana (12/15/6) o una rampa con umbral (`Deficit`, 20 y 25) — y «un valor que solo importa por debajo de un umbral» ya tenía forma en este doc. **(2) Resolución tirada:** repartida sobre 0..100, la rampa gastaba casi todo su rango en `sat < 80`, donde el paciente ya está inconsciente, y en la banda útil (100→90) aportaba entre −0 y −6, o sea nada; el coeficiente además era 2,4× el mayor término existente. Los dos números —**94** y **30**— son balance de **COA-27** y viven en `Config`. Lo que **no** es balance es la forma: umbral más rampa, como los otros dos.
+
+**Y sale más barato que fusionarlas, no más caro.** `sat` no tiene lógica de drenaje por frame: nace en 100, se queda ahí el 99 % de la partida y solo se mueve cuando hay causa. Costo total: una variable, un término en una fórmula que ya tiene seis, y una multiplicación en la amplitud del ECG. Fusionarlas, en cambio, obligaría a desenredar toda la lógica de esfuerzo del `bpm` (`COAGULANT.Exertion`), que ya está escrita.
+
+**En pantalla no gana barra.** Va como cifra al lado del pulso —el bloque tiene lugar— y su déficit mueve la **marca de techo que ya se dibuja** sobre stamina. **Un renglón por vital, y no dos vitales en un renglón** (resuelto 2026-08-09 contra el mock): el punto medio de `bpm · +13 ex` separa *un vital de su modificador*, y reusarlo para unir `SpO₂` con `RR` —que son dos vitales distintos— es un error de lenguaje, no un problema de ancho. La **frecuencia respiratoria no se inventa**: ya está calculada por el ondulado del ECG, `RR = round(60 × (0.22 + 0.42 × ex))` con `ex = 1 − stamina/100`, que da exactamente los 13 rpm en reposo y 38 agotado que este doc ya declaraba. **No entra en la escalera de etiquetas de ritmo del ECG**: la saturación no es un ritmo, y meterla ahí sería el mismo error de lenguaje que el spec v4 evitó a propósito con el metabolismo.
+
+**Hallazgo lateral, y es un caso de las «señales mudas» que el propio spec prohíbe:** el ECG **ya calcula** una frecuencia respiratoria —el ondulado de línea de base, 13 rpm en reposo a 38 agotado— y no la imprime en ningún lado. Es un signo vital ya computado, sin lectura. Imprimirlo cuesta una línea, y con la saturación al lado convierte la respiración en un eje legible en vez de un adorno del trazado.
+
+---
+
+### COA-43 — Las condiciones sistémicas entran por el canal que ya existe
+
+Ninguna de estas es trauma localizable —§3 tiene razón en no crearles herida—. Son **condiciones sistémicas**, y el canal ya está construido y ya prometido: `ApplyExternalCondition(ply, id, severity)` (**COA-39**). Su regla de admisión no cambia y no hace falta que cambie: *un id nuevo entra solo si su condición **puede matar***. Radiación, agente nervioso y toxina califican; por COA-41, matan por la vía de siempre.
+
+**Quién empuja qué, que es donde se rompen estas cosas.** Dos vías, y la distinción es mecánica, no de gusto:
+
+- Lo que llega como **evento de daño** (`DMG_*` del engine) lo mapea Coagulant **internamente**, en el mismo `PostEntityTakeDamage` donde ya nacen las heridas (**COA-9**). No necesita canal externo: Coagulant ya ve ese evento.
+- Lo que **no tiene evento de daño** —una zona de radiación que solo emite dosis, un artefacto equipado, una anomalía química— entra por `ApplyExternalCondition`. Esa es la vía de Stalker (**COA-48**).
+
+| id | Qué es | Palancas (todas ya existen) | Qué lo trata |
+|---|---|---|---|
+| `radiation` | dosis acumulada, no quemadura | `REGEN_PER_S ×0` · `BleedRate ×N` · vómito → hidratación (Craving) | antiemético, quelante, **transfusión**, tiempo |
+| `nerve_agent` | crisis colinérgica | `bpm ↓` (bradicardia) · `sat ↓` · techo de stamina · consciencia | **atropina** (ya en catálogo) + pralidoxima |
+| `toxin` | veneno/ponzoña | igual que arriba, más suave y reversible | antídoto |
+
+**La radiación NO es una quemadura, y esa es la corrección de fondo.** La quemadura por radiación necesita una dosis local enorme; lo que mata en el síndrome agudo es la médula ósea — dejás de fabricar plaquetas y glóbulos. Traducido a palancas de Coagulant: **la regeneración se va a cero y el sangrado se multiplica**, que son exactamente las dos palancas que **COA-38** ya le había asignado a `protein` y `micro`. La radiación no necesita mecánica nueva: necesita un **acumulador de dosis** —sube con la exposición, baja lentísimo— que alimente multiplicadores que ya están escritos. Y como su único tratamiento verdadero es transfusión, antibiótico y tiempo, es **la condición que le da razón de existir al hospital**: es el paciente que no se arregla con una venda.
+
+**El agente nervioso tampoco es una quemadura de pecho.** Es bradicardia, secreciones, parálisis respiratoria y convulsión: le pega a la vía aérea y a la saturación, no a la piel. Y le da su `can()` a la atropina que ya estaba escrita sin gate.
+
+**`DROWN` no gana id de condición**: es una entrada directa a `sat`, y COA-41 hace el resto. Un id para él sería una condición que no agrega nada que la saturación no diga ya.
+
+> **Sin verificar — no apoyarse en esto hasta medirlo en juego.** El veneno del headcrab venenoso de HL2, canónicamente, deja al jugador en 1 HP y después regenera: nunca mata. Si se sostiene al medirlo, es un caso donde el juego original ya implementó *techa y frena, nunca mata* y conviene copiarle en vez de inventar. **El engine también es un tercero** — la lección la pagó Cargo tres veces con APIs asumidas.
+
+---
+
+### COA-44 — Tres capas de conocimiento: síntoma, signo, diagnóstico
+
+Voto del autor: **la niebla diagnóstica entra**, con su matiz — *«eso amerita a que el jugador deba diagnosticar; lo más obvio de que ocurre es dolor y efectos que sufre el jugador»*. Esa frase es la que define las capas, y hay que leerla como el límite de la niebla y no solo como su permiso: **el síntoma nunca se oculta**.
+
+| Capa | Cuesta | Qué muestra |
+|---|---|---|
+| **Síntoma** | nada, siempre visible | lo que el cuerpo *hace*: dolor por zona, cojera, sway de la mira, vignette, disnea, el trazado del ECG. El paciente los **sufre** y el médico los **observa**; ninguna acción los revela porque ya están pasando |
+| **Signo** | examen, segundos | qué tipo de herida, cuántas, si hay sangrado activo. `Examine zone`, palpación |
+| **Diagnóstico** | instrumento | severidad exacta, fractura contra contusión, hemorragia interna, dosis de radiación, la cifra de saturación. Rayos X, ecografía, oxímetro, Geiger |
+
+**Consecuencia sobre el paperdoll, y es la decisión concreta: bajo niebla la rampa de la silueta pinta DOLOR, no score.** El dolor es el síntoma; el score es el diagnóstico. Correlacionan, pero el dolor **no discrimina** —una zona a 6 puede ser tres balas o un fémur roto— y esa indeterminación es justamente el juego. Los glifos de tipo aparecen recién tras el examen; el zigzag de fractura, recién tras la imagen. La isquemia sí se ve sin instrumento: el frío y la palidez de un miembro ocluido son síntoma.
+
+**La niebla es un filtro de RED, no de dibujo.** Si el server manda el estado completo y el cliente decide qué tapar, la niebla la derrota un cliente modificado y deja de ser una regla del mundo para ser una decoración. Lo que no se conoce **no viaja** en el snapshot de §9. Esto tiene un costo real —el snapshot deja de ser un volcado y pasa a filtrarse por observador— y se anota acá para que no se descubra a mitad de la bajada.
+
+**Y promueve al dolor de diferido a REQUISITO.** §1 lista el dolor como stat entre los diferidos. Bajo niebla, el dolor pasa a ser **el único canal gratis**: si no existe, la silueta no tiene qué pintar y la niebla apaga la pantalla en vez de complicarla. El spec v4 ya lo dibuja como barra y ya gatea la morfina con `CoaPain() > 10`; esta enmienda lo vuelve **bloqueante** para la niebla, no opcional.
+
+**Va detrás de convar y nace apagada** (`coagulant_diagnostic_fog`, default `0`): le pega de frente al flujo de campo, donde ver el estado de un vistazo es la mecánica. Servidor de guerra apagado, servidor de hospital encendido. Es también lo que le da sentido a DIAGNOSTICS, que hoy son tres acciones que no consumen nada y no desbloquean nada.
+
+---
+
+### COA-45 — Los dispositivos persistentes siguen siendo casos especiales
+
+Se propuso generalizar `z.tq` a un `z.dev = {}` que alojara vía IV, tubo torácico, tubo endotraqueal, sonda y mascarilla. **El autor votó que no:** cada dispositivo persistente sigue siendo un caso especial con su propio campo en la zona, como el torniquete.
+
+**Lo que la decisión cuesta, escrito para que la cuenta esté a la vista y no aparezca como sorpresa tres rondas después.** Cada dispositivo nuevo paga tres veces: su campo en `st.zones[zona]`, su render propio sobre el eje de la zona (§10) y su línea en el snapshot (§9) — y ninguna de las tres se amortiza con la siguiente. `z.tq` es hoy la única instancia, y funciona; el precio se paga recién a partir de la segunda.
+
+**Consecuencia sobre el catálogo, que reordena lo de abajo:** todo lo que necesita persistencia queda **diferido y nombrado**, no descartado — tubo torácico, ventilador, vía IV como prerequisito de fluidos. Y los fluidos **siguen siendo autocontenidos**: no ganan acceso venoso previo. Criterio para admitir un dispositivo nuevo el día que se pida: que su estado sea observable en el paperdoll y que su ausencia cambie la simulación, como el torniquete. Si solo decora, es un ítem consumible, no un dispositivo.
+
+**Nota de assets (autor, 2026-08-08):** hay compra en curso de modelos de equipamiento médico e ítems médicos en FAB (marketplace de Unreal). Cuando lleguen, el orden sigue siendo el de COA-28 y el del roadmap §5: **que exista un modelo no crea un ítem**. `docs/ASSETS.md` es para mirar cuando un tramo ya decidido necesita con qué, no al revés.
+
+---
+
+### COA-46 — La tabla de §3 se corrige en tres filas
+
+Hallazgos leyendo `corpus_coagulant_config.lua:139-155` contra la tabla de §3. Los tres son de código vivo, no de diseño:
+
+1. **`DMG_ACID` no está en `DMG_QUEMA`.** Cae al default conservador y produce una **contusión**. Una quemadura química se venda igual pero sangra distinto (mult 0.2 contra 0.0) y, sobre todo, la contusión miente sobre qué pasó. Va a `DMG_QUEMA`.
+2. **`DMG_SHOCK` está bien como quemadura** —el daño tisular es ese— pero **pierde la arritmia**, que es lo característico de la electrocución y lo único que el ECG podría dibujar y una acción podría revertir (COA-47).
+3. **`DMG_BLAST` produce metralla y nada torácico.** La lesión pulmonar por onda expansiva es la causa clásica del neumotórax — o sea, **la fuente que le faltaba al `Needle thoracostomy`**. Entra como caída de `sat` acompañando a la herida de metralla del torso, no como herida nueva.
+
+---
+
+### COA-47 — Parada cardíaca: RCP y desfibrilador
+
+**No hay RCP ni desfibrilador en un menú médico cuyo ECG puede decir `ASYSTOLE`.** La etiqueta existe en la escalera de ritmos del spec v4 y no hay una sola acción que responda a ella. Esto no es una carencia de hospital: ACE3 tiene RCP, y es la omisión más visible del catálogo tal como está. Con COA-41 además gana causa —la perfusión puede colapsar por saturación, no solo por sangrado— y con COA-46 gana la suya el desfibrilador.
+
+Las dos entran por el registro abierto de acciones, sin cambio de UI, en `CIRCULATION`.
+
+---
+
+### COA-48 — Stalker entra a §12 como peer emisor
+
+`../../corpus-stalker/docs/STALKER_Arquitectura.md` §2 ya declaraba a Coagulant como destino de «los efectos clínicos de la radiación y de las anomalías químicas» vía `ApplyExternalCondition` — la firma que **CRV-4** congeló y **COA-39** ratificó. §12 de este doc no lo listaba. Se agrega, con el mismo régimen que los otros tres: detección **por capacidad**, nunca por presencia, y degradación honesta si Stalker no está montado (las condiciones ambientales simplemente no llegan; el daño cae al HP nativo, §14).
+
+Alcance exacto, y no se estira: Stalker **empuja** condiciones. No lee estado clínico, no registra acciones, no dibuja nada del menú.
+
+---
+
+---
+
+### COA-49 — La herida tratada tiene TIEMPO: se cura sola, o se infecta
+
+Voto del autor el **2026-08-09**, continuación de la sesión que dejó §17: es el primero de los dos ejes que la sección había anotado **sin votar**. Hasta acá `zone.w[tipo] = { a, t, s }` no tenía tiempo: una herida tratada era tratada **para siempre**, y el herido nunca se convertía en un paciente que *se queda*.
+
+**Tres contadores y dos relojes, sobre la forma que ya existe.** Los estados NO son un enum por herida: son contadores por tipo, como `a` y `t`, porque el cupo ya es por tipo y por estado y romper esa forma obligaría a rehacer el reparto de glifos entero.
+
+```
+zone.w[tipo] = { a = <activas>, t = <tratadas>, i = <infectadas>, s = <severidad> }
+
+  a  --tratar (limpia)-->  t  --reloj de curación-->  desaparece
+     \--tratar (sucia)-->  i  --antibiótico-------->  t
+                            \--reloj de sepsis----->  condición sistémica
+```
+
+- **`t` lleva reloj de curación.** Cada `HEAL_S` se resuelve **una** herida tratada de la zona (`t -= 1`). Es un acumulador por zona sobre el **tick de 1 s que ya existe** (§4), no una estructura nueva ni un timer por herida.
+- **`i` no se cura sola** y su reloj corre en la dirección contraria.
+- **`i` pesa entero en el score de zona**, no la mitad como `t`: no está resuelta.
+
+**El Medkit no cambia una línea, y eso es el punto.** Hoy cierra las heridas ya `treated` de una zona (**COA-21**); con esta enmienda sigue haciendo exactamente eso — sólo que ahora es el **atajo** de una resolución que además ocurre sola. Es la comprobación que esta enmienda tenía que pasar: **COA-21 nació porque una herida tratada pesaba para siempre y dejaba cojera permanente**, y agregar tiempo sin resolución automática habría reintroducido ese bug con otro nombre. La curación automática es lo que lo impide; el Medkit es comodidad, no la única salida.
+
+**Qué decide si una herida sale limpia o sucia**, en el momento de tratarla:
+
+| Entrada | Efecto |
+|---|---|
+| tipo de herida | `punzante` y `metralla` son sucias por naturaleza (cuerpo extraño retenido); `quemadura` casi nunca; `contusion` nunca — no hay puerta de entrada |
+| `Debridement` previo | limpia la herida: es **profilaxis**, no cura. Le da al ítem un motivo que hoy no tiene |
+| déficit de `micro` | sube el riesgo — misma palanca que **COA-38** ya le había asignado |
+| zona | `stomach` peor que un brazo |
+
+**Y le da su `can()` al antibiótico**, que estaba en el catálogo v4 sin gate — el segundo caso del mismo hallazgo que ordenó §17 (acciones sin condición), después de la atropina.
+
+**La sepsis mata por donde matan todos: la perfusión.** Cuando el reloj de `i` vence, la zona aporta severidad a una condición sistémica que baja el **techo de sangre**, suprime la regeneración y sube los bpm — las tres palancas que ya existen (la de techo la estrenó `dehydration` en **COA-38**). Si el techo cae por debajo del umbral de §5, el paciente muere por **COA-41** y por nada más: **un solo dueño**, sin ruta nueva. No es id del canal externo de **COA-39** porque no viene de afuera: nace dentro de Coagulant, del estado de sus propias heridas.
+
+**Bajo niebla diagnóstica (COA-44) las tres capas caen solas, sin inventar señal:**
+
+| Capa | Qué delata la infección |
+|---|---|
+| **Síntoma** (gratis) | el dolor de una zona tratada **deja de bajar, o vuelve a subir**. El jugador lo siente sin que nadie se lo diga |
+| **Signo** (examen) | fiebre — y ahí el termómetro deja de ser adorno de hospital |
+| **Diagnóstico** (instrumento) | cuál de las heridas tratadas es la infectada |
+
+**Glifo:** el tercer estado que la ficha `foundations/wound-glyphs.html` del design system marcaba como *propuesto* queda **votado** — contorno en `--urgent` con núcleo, distinto por forma y no sólo por color, como manda §7.
+
+Los tiempos (`HEAL_S`, el retardo de sepsis, los pesos de riesgo) son balance de **COA-27**: viven en `corpus_coagulant_config.lua` y se tunean sin tocar lógica.
+
+---
+
+### COA-50 — El área hospital es UNA entidad: la estación, con modelo opcional
+
+Voto del autor el **2026-08-09**, cerrando el segundo de los dos ejes que §17 había anotado sin votar — y con él, la pregunta de si compran modelos de equipamiento. La respuesta salió de la forma del diseño y no de una lista de compras.
+
+**Lo que la estación separa, y que la pregunta original juntaba:**
+
+| Gate | Pregunta que contesta | De dónde sale |
+|---|---|---|
+| **suministro** | ¿tengo el consumible? | contenedores de Cargo dentro del radio |
+| **capacidad** | ¿es posible *acá*? | la estación misma |
+
+Son **independientes** en el `can()` de cada acción. Juntarlos hace que tener morfina en un armario te habilite una cirugía, y que un quirófano sin gasas no sirva para nada aunque el armario esté a un metro.
+
+```lua
+-- UNA entidad. El modelo es la PIEL, no la entidad.
+COAGULANT.RegisterStation(ent, {
+  caps   = { "imaging", "surgery" },   -- enum abierto, como el registro de acciones
+  radius = 3 * 160,                    -- múltiplo declarado de CARGO USE_RANGE
+})
+```
+
+**Dos pieles, un solo código:** la **camilla** —el único modelo que se compra— y `SetNoDraw` para los mapas de roleplay que ya traen un hospital construido, donde alcanza con colocar un punto invisible donde estaría cada cama. Que las dos sean la misma entidad es lo que hace la **compra opcional por construcción**: si el modelo no llega nunca, el sistema funciona igual.
+
+**Por qué se compra la camilla y no el resto.** Es el único con papel **mecánico**: un paciente sobre una camilla es un *estado*, y es la superficie de «el paciente se queda», que es todo el sentido del hospital. Un escáner, un monitor y un pie de suero no cambian nada mecánicamente — un punto invisible en un rincón hace su trabajo hoy, a costo cero. Y hay una segunda razón que no es estética: **la camilla es la marca visible de un radio que de otro modo es invisible**, y un radio invisible es una trampa — el jugador ve cancelarse una acción sin saber por qué. Eso es función, no decoración.
+
+**«El paciente se queda» no cuesta mecánica nueva.** Las acciones de hospital son de canalización larga (20-40 s) y exigen que paciente y médico estén dentro del radio; salirse **cancela**, por la vía que ya existe (`Coagulant_TreatmentCancel` con su `reason`, §8). Ocupar físicamente la camilla —animación, vista, entrar y salir— queda **diferido**: es la parte cara y no compra nada que el radio más la canalización no den ya.
+
+**Capacidades al arranque: dos.** `imaging` (rayos X, ecografía — lo que revela el diagnóstico bajo **COA-44**) y `surgery` (cirugía con anestesia, reducción, hemostasia quirúrgica, amputación). El enum queda abierto como el registro de acciones, pero **arranca con dos a propósito**: cada capacidad nueva es una pregunta más en cada `can()`, y la lista larga es la que después nadie recuerda por qué existe.
+
+**Coste, y dónde se paga.** El área **no se resuelve por `can()`**: se resuelve una vez al abrir el menú, más un refresco lento mientras está abierto, en el **server**, y el resultado viaja en el snapshot. Misma disciplina que la niebla de **COA-44** y por la misma razón — el cliente no escanea el mundo.
+
+> **Consecuencia de permisos, declarada y no disimulada.** `CARGO.Containers.OpenFor` **no comprueba dueño**: hoy cualquier jugador a menos de `USE_RANGE` (160) abre cualquier contenedor. El área hospital **no crea** ese hecho, pero **le ensancha el radio** — de 160 unidades a lo que mida la sala. No se arregla acá: el dueño de los permisos de contenedor es Cargo (su roadmap #12 ya tiene los permisos de admin abiertos). Se escribe para que el día que aparezca el reporte «un tipo me vació el botiquín desde la puerta» nadie lo investigue como bug de Coagulant.
+
+#### La superficie que hay que pedirle a Cargo — PEDIDO, no pacto
+
+Coagulant necesita **contar y consumir contra un conjunto de contenedores cercanos**, y el contrato público de Cargo hoy expone **solo `CARGO.Containers.Attach(ent, opts)`**: el contenido vive en `_byId`/`Snapshot`, que es off-contract. Coagulant **ya carga una deuda de ese tipo** —cuenta los ítems de los botones con `CARGO.ClientState.items`, con la nota escrita de que si Cargo cambia su snapshot el conteo se rompe **en silencio** (§12)— y firmar la segunda por comodidad sería convertir un accidente en un método.
+
+La forma pedida es el **espejo exacto de las tres que Coagulant ya usa**, para que no haya que aprender un modelo nuevo:
+
+```lua
+CARGO.Containers.AreaHas(pos, radius, id)        -> bool   -- espejo de Inventory.HasItem
+CARGO.Containers.AreaCount(pos, radius, id)      -> n      -- espejo de Inventory.CountItem
+CARGO.Containers.AreaTake(pos, radius, id, n)    -> ok     -- espejo de Inventory.TakeItem
+```
+
+**Las tres, no dos, y por una lección ya pagada:** `CountItem` cuenta **solo stacks** — los `unique` le son invisibles, que es por qué el torniquete daba siempre 0 (fallo **G4**, 2026-07-13) hasta que Cargo agregó `HasItem`. Un `AreaCount` sin su `AreaHas` reproduce el mismo defecto en el área, con el mismo síntoma: la acción existe, el ítem está, y el botón dice que no hay.
+
+**Esto NO está ratificado por Cargo.** Se anota como **pedido** y se escribe el mismo día en el roadmap de Cargo (#60), en los dos lados. Es la conducta que **D-5** dejó como lección: `ApplyExternalCondition` estuvo un mes congelada por el consumidor y sin ratificar por el dueño, y lo que faltaba no era la firma sino saber si el dueño la aceptaba. Hasta que Cargo la ratifique, el área hospital **no baja a código**; y si Cargo la rechaza o la devuelve con otra forma, manda Cargo — la superficie es suya.
+
+### Lo que el catálogo gana, por orden de costo
+
+`C` = sirve también en campo · `H` = solo tiene sentido con hospital · **diferido** = necesita un dispositivo persistente, o sea COA-45.
+
+| Categoría | Ítem | | Por qué entra |
+|---|---|---|---|
+| CIRCULATION | RCP (no consume) | C | COA-47 — hoy `ASYSTOLE` no tiene respuesta |
+| CIRCULATION | Desfibrilador | C | COA-47, y le da destino a la arritmia de `DMG_SHOCK` |
+| DIAGNOSTICS | Oxímetro | C | la cifra de `sat` bajo niebla (COA-42, COA-44) |
+| DIAGNOSTICS | Contador Geiger | C | la dosis de `radiation`; Stalker ya lo tiene inventariado |
+| PHARMACOLOGY | Antiemético | C | radiación y opioides |
+| PHARMACOLOGY | Naloxona | C | revierte la morfina: sobredosificar pasa a costar |
+| PHARMACOLOGY | Analgésico oral | C | ya tiene modelo — `pain_pills` en `ASSETS.md` |
+| PHARMACOLOGY | Yoduro de potasio / quelante | C/H | profilaxis y decorporación de radiación |
+| PHARMACOLOGY | Pralidoxima (2-PAM) | H | con la atropina, el par real del agente nervioso |
+| PHARMACOLOGY | Antibiótico IV | H | el escalón de la infección |
+| PHARMACOLOGY | Sedante / anestesia | H | habilita la cirugía que no es de campo |
+| DIAGNOSTICS | Rayos X portátil | H | lo que revela `frac` bajo niebla |
+| DIAGNOSTICS | Ecografía (FAST) | H | hemorragia interna |
+| DIAGNOSTICS | Termómetro | H | señal temprana de infección |
+| FIELD SURGERY | Reducción de fractura | H | paso previo al yeso |
+| FIELD SURGERY | Amputación | H | la salida de una isquemia vencida |
+| AIRWAY | Oxígeno (mascarilla) | C | **diferido** — palanca directa de `sat`, pero es dispositivo |
+| AIRWAY | Intubación + ventilador | H | **diferido** — definitivo de la cricotirotomía |
+| AIRWAY | Tubo torácico | H | **diferido** — definitivo de la aguja |
+| CIRCULATION | Vía IV / intraósea | C | **diferido** — COA-45 dejó los fluidos autocontenidos |
+
+**Dos ejes de hospital que §17 anotó SIN votar. Los DOS se votaron el 2026-08-09** y sus sedes son **COA-49** y **COA-50**, arriba. La lista queda tachada y se conserva por lo que dice el registro de decisiones: eran preguntas antes de ser normas.
+
+1. ~~**Trayectoria de la herida tratada.**~~ **VOTADO 2026-08-09 → COA-49.** Era el eje más barato de los que faltaban y el que más cambia el juego; la sede es la subsección de arriba.
+2. ~~**De dónde sale el stock.**~~ **VOTADO 2026-08-09 → COA-50.** No resultó ser «una línea en el `can()`»: son DOS gates independientes —suministro y capacidad— y una superficie nueva que hay que pedirle a Cargo. La estimación de esta línea estaba mal, y se deja escrita en vez de corregirla.
+
+### Pares campo → hospital, para cuando los diferidos se descongelen
+
+| Campo (ya está) | Hospital (falta) |
+|---|---|
+| CAT tourniquet | reparación vascular — **`z.isch` ya es su reloj** |
+| Needle thoracostomy | tubo torácico + drenaje |
+| Cricothyrotomy | intubación orotraqueal + ventilador |
+| SAM splint / fijador externo | reducción → yeso |
+| Wound packing | hemostasia quirúrgica |
+| Suture | cirugía con anestesia |
+
+El torniquete ya tiene el gancho puesto: `z.isch` a los 90 s con score mínimo 6, y hoy la única salida es sacarlo. **Un torniquete que solo un hospital puede convertir en algo definitivo es la mejor razón de diseño para que el hospital exista.**
