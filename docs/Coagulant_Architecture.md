@@ -305,6 +305,67 @@ COAGULANT.Zones.*            -- mapa de degradación; 7 zonas (COA-8, enmienda 2
 
 **COA-32 —** No hay evento por cada punto de sangre (spam); el estado continuo se lee por `GetBlood`/NW2.
 
+### Condiciones externas y estado metabólico (enmienda 2026-08-08)
+
+> Votada por el autor en cinco puntos antes de escribir una línea (**COA-28**). La contraparte vive en `../../corpus-craving/docs/Craving_Architecture.md` §4 y §5.2. **Nada de esto está en código**: las normas entran al registro con evidencia `INTENCION`, y hasta que existan, el puente de Craving cae a su fallback de HP — que es el comportamiento correcto, no un bug.
+
+**COA-39 — `ApplyExternalCondition(ply, id, severity)` queda RATIFICADA, con la firma que Craving congeló desde el consumidor.** Cierra la deuda **D-5**: la firma llevaba un mes viva en un solo lado del pacto.
+
+```lua
+COAGULANT.ApplyExternalCondition(ply, id, severity)
+-- id       : "starvation" | "dehydration"  (el namespace del emisor va implícito
+--            en el id; Coagulant NO pregunta quién llama)
+-- severity : 0..1, y 0 LIMPIA la condición
+```
+
+Lo que ratificar significa acá, que es lo que faltaba: **la semántica clínica de cada id**.
+
+| id | Qué hace Coagulant | Quién mata |
+|---|---|---|
+| `starvation` | suprime la regeneración natural de sangre proporcionalmente a `severity`; con `severity == 1` la anula | **Coagulant.** La muerte por inanición pasa a ser un desangrado que no regenera, no un chip de HP |
+| `dehydration` | además de lo anterior, baja el **techo** de sangre (volumen de plasma) y sube los bpm | **Coagulant**, por la misma vía |
+
+**El canal es de UNA sola dirección y no lleva gauges.** `ApplyExternalCondition` existe para contestar *quién es dueño de la muerte* — Craving necesita esa respuesta para apagar su propio daño de HP, y solo empujando se sabe si hay quién reciba. Todo lo demás se lee (abajo). Un id nuevo se agrega solo si su condición **puede matar**; si solo modula, no es una condición, es un gauge.
+
+**COA-38 — Coagulant PUEDE leer a Craving, read-only y por capacidad.** Es la enmienda del autor a la dirección única que este doc fijaba en §12, y **acá está su sede** (la mitad de Craving, CRV-13, solo la acepta):
+
+```lua
+-- lazy-check + capability check, nunca en file-scope, jamás asumido
+local crav = Corpus.GetModule("craving")
+if crav and isfunction(crav.GetMetabolic) then
+    local m = crav.GetMetabolic(ply)   -- { hunger, hydration, energy, protein, micro }
+end
+```
+
+*Alcance exacto, y no se estira:* Coagulant **lee**. No escribe estado de Craving, no le registra ítems, no le publica nada. Sin Craving montado —o con un Craving viejo sin `GetMetabolic`— la fila `METABOLIC` **no existe** y las cinco palancas de abajo quedan en su valor neutro: degradación honesta, **COA-7** aplicado a un peer nuevo.
+
+*Por qué se relajó* (razón del autor, se anota para que la decisión sea falsable): Cargo puede ser autónomo, pero Coagulant ya depende de Cargo para almacenar los medicamentos y Craving ya depende de Coagulant para que la inanición sea clínica. La dirección única describía un desacople que en estos dos módulos ya no existía.
+
+**COA-40 — El metabolismo TECHA y FRENA; nunca mata.** Ninguno de los cinco valores toca HP ni mata por sí solo. La muerte sigue teniendo **un solo dueño** y llega por la vía de siempre: sangre en 0. Es la misma regla que CRV-3 leída desde este lado, y es la que impide que "más realismo" se convierta en cinco causas de muerte compitiendo.
+
+Los cinco entran por palancas que **ya existen** — no se crea un sistema nuevo:
+
+| Valor leído | Palanca | Efecto con déficit máximo |
+|---|---|---|
+| `hunger` | techo de stamina | −20 |
+| `hydration` | techo de sangre (plasma) · bpm | −25 % de techo · +12 bpm |
+| `energy` | techo de stamina · velocidad de recuperación | −25 · ×0.5 |
+| `protein` | `REGEN_PER_S` · curación de heridas tratadas | ×0.3 · más lenta |
+| `micro` | `BleedRate` | ×1.6 — coagulás peor |
+
+**El umbral de déficit es de Coagulant, no de Craving** (contraparte de CRV-24: Craving publica números crudos y no sabe qué es un déficit). Uno solo para los cinco, tunable como todo el balance de §11:
+
+```lua
+Config.METABOLIC_DEFICIT_AT = 40          -- rampa desde acá hacia abajo
+-- deficit(v) = math.Clamp((40 - v) / 40, 0, 1)   -- 0 en 40 o más, 1 en 0
+```
+
+**En pantalla: la fila `METABOLIC`, y los cinco entran por el techo que ya se dibuja.** El menú médico **no** gana cinco barras de tamaño completo — los déficits mueven la *marca de techo* que ya existe sobre stamina, y la nueva sobre sangre. La fila existe para contestar **por qué** el techo está bajo: un techo caído sin causa visible es exactamente la señal muda que el sistema de color prohíbe.
+
+**Son CINCO filas compactas, no tres.** La tentación es mostrar solo los nutrientes —"hambre y sed ya se ven en el inventario"—, pero acá no se muestra el *stat*: se muestra **la causa de un techo**, y hambre e hidratación son dos de las cinco causas. Un médico que ve el techo de sangre al 78 % y solo tres chips de nutriente no tiene cómo saber que el paciente está deshidratado. La barra de Cargo y esta fila responden preguntas distintas: *"¿me queda comida?"* contra *"¿por qué este cuerpo no se recupera?"*.
+
+Regla de tinte, que sale del sistema de color sin excepción nueva: un valor **sin déficit es cromo** (se lee tenue, no compite), y solo el déficit enciende señal fija (`warn` → `urgent` → `critical`). Un cuerpo alimentado no es un aviso, igual que una silueta sana no lo es.
+
 ---
 
 ## 9. Net y estado replicado
@@ -370,9 +431,10 @@ El tab Q existente crece: convars de server (admin) + cliente, y el **binder** d
 - Punto único de integración: la creación de herida (§3) ocurre en `PostEntityTakeDamage` con el daño final — cuando Caliber Block 3 mitigue daño de jugador, las heridas nacerán automáticamente post-armadura, **sin tocar código de Coagulant**. Si Caliber además expone hit-location enriquecido (placa golpeada, penetración), el enriquecimiento entra como refinamiento del `wound.type/severity` en ese único punto, con lazy-check.
 - La rama vacía del scaffold en `ScalePlayerDamage` se reduce a capturar hitgroup (ya no necesita más).
 
-### Craving (futuro consumidor)
+### Craving (consumidor, y desde el 2026-08-08 también peer leído)
 
-- Consume los eventos de §8 y `GetBlood`/`IsBleeding`. **COA-31 —** Coagulant **no** detecta a Craving (dirección única de la soft-dep).
+- Consume los eventos de §8 y `GetBlood`/`IsBleeding`, y empuja `ApplyExternalCondition` (§8, **COA-39**).
+- **COA-31 — ENMENDADA el 2026-08-08 (voto del autor).** La dirección dejó de ser única en un solo sentido: Coagulant **sí** detecta a Craving, pero **solo para leer** los cinco valores metabólicos vía `GetMetabolic`. La sede del permiso, con su alcance exacto y la razón, es **COA-38** en §8. Lo que la enmienda **no** toca: Coagulant no escribe estado de Craving, y la detección sigue siendo por capacidad (`isfunction`), nunca por presencia.
 
 ---
 

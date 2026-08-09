@@ -5,7 +5,20 @@
 > secciones ni historial). El historial vive en `git` + [`CHANGELOG.md`](CHANGELOG.md).
 > Si crece de una pantalla, está mal redactado: recortar.
 
-**Última actualización:** 2026-08-06 (**el botiquín grande son dos `.mdl`** —`medkit_large` abierto
+**Última actualización:** 2026-08-08 (**dos defs cambiaron de modelo por reporte del autor**: la
+**venda es UNA** —la rama `Bandages` del pack son tres rollos sueltos y el port se los llevó los
+tres, así que el ítem se veía como «tres vendas juntas»; ahora corta con `--object Bandage2`, 1.926
+→ **642 tris**— y el **Medkit es el naranja cerrado** en vez del `firstaidkit` blanco (8.860 →
+**3.590 tris**). Un rollo solo con el factor del set mide 3,0 cm = 1,18 u y **reprobaba C1**, así
+que se normaliza a **9 cm con factor propio**: excepción votada, escrita en tres lugares. De paso
+se va de la vista el único modelo con la **cruz roja de Ginebra** —aunque el `.mdl` sigue en el
+repo, así que esa decisión sigue abierta—. **`fbx2smd.py` ganó `--object`.** Harness **192/142 ALL
+GREEN**, `verify_model.py` 7/7 contra un control negativo **fabricado** (los cinco conocidos-buenos
+pasaban todo, y el que la doc citaba como discriminante ya no falla). **CONFIRMADOS en juego por el
+autor el mismo día, los dos.** Ojo con la trampa que casi cuesta la pasada: el ícono del grid se
+cachea con el CRC de la **RUTA** del modelo, y la de la venda no cambió — hay que borrar
+`garrysmod/data/corpus/cargo/icons/` o el ícono viejo de tres rollos sobrevive. Antes, 2026-08-06:
+**el botiquín grande son dos `.mdl`** —`medkit_large` abierto
 con `$bodygroup state` de dos opciones y `medkit_large_closed` aparte con colisión propia, porque
 Source tiene un `$collisionmodel` por modelo y no por bodygroup: el alto del casco del cerrado bajó
 de 11,81 u a 3,52—; y **corpus-stalker dejó de sustituir la venda y el medkit** — sus botiquines de
@@ -84,14 +97,20 @@ check N1 ✓— y siguen las **dos decisiones de diseño abiertas**)
 
 ## Pendiente de verificar
 
-- **El botiquín grande, ahora en DOS modelos** (2026-08-06): `medkit_large` con `$bodygroup state`
-  de dos opciones (0 `open_full` default, 1 `open_empty`) y `medkit_large_closed` aparte, con casco
-  propio — el alto de su colisión bajó de 11,81 u a 3,52 u. Qué mirar: que el cerrado ya no tenga
-  colisión invisible por encima, y que el bodygroup del abierto no salte al cambiar de opción.
-  Detalle en [`ASSETS.md`](ASSETS.md).
-- **Los 18 modelos, en juego** (2026-08-05, PARCHES 1-3 de su sesión en el CHANGELOG). Qué mirar:
-  que venda / medkit / bolsa de sangre dropeen con su modelo y no con la cajita; que el ícono del
-  grid se re-renderice con el modelo nuevo; que los **cuatro `$translucent`** (`bloodbag`,
+> **Si volvés a regenerar un `.mdl` EN LA MISMA RUTA, borrá `garrysmod/data/corpus/cargo/icons/`
+> antes de mirarlo.** El nombre del PNG cacheado ES la clave de invalidación —
+> `<defid>_<CRC(recipe|modelo|cámara|footprint)>.png` — así que un cambio de **contenido** con la
+> misma **ruta** no la mueve, y el ícono viejo sobrevive. Pasó con la venda el 2026-08-08: el
+> Medkit se re-renderizó solo porque cambió de ruta y la venda no. Sin borrar, el reporte natural
+> habría sido «la venda no cambió», que era falso.
+
+- **El botiquín grande abierto** (2026-08-06): el `medkit_large` con `$bodygroup state` de dos
+  opciones (0 `open_full` default, 1 `open_empty`). Qué mirar: que el bodygroup no salte al cambiar
+  de opción. **El cerrado ya está confirmado** — es el que quedó cableado al Medkit el 2026-08-08 y
+  el autor lo vio en juego. Detalle en [`ASSETS.md`](ASSETS.md).
+- **Los 18 modelos, en juego** (2026-08-05, PARCHES 1-3 de su sesión en el CHANGELOG). **Venda,
+  medkit y bolsa de sangre ya están CONFIRMADOS** (los dos primeros el 2026-08-08, la bolsa antes);
+  queda lo demás. Qué mirar: que los **cuatro `$translucent`** (`bloodbag`,
   `pill_bottles`, `test_tubes`, `vials`) se vean translúcidos y **sin artefactos de ordenamiento**;
   y que `sutures` —1,97 u, el único que marca C1— sea agarrable con la physgun o se decida subirlo.
 - Nada más — **COA-37 cerró 5/5 en juego** el 2026-07-29: los checks 1-3 y 5 en la primera pasada, y
@@ -125,12 +144,18 @@ check N1 ✓— y siguen las **dos decisiones de diseño abiertas**)
    `corpus/`, `corpus-cargo/` y `corpus-craving/` corregidos). Quedan **(2) las dos
    decisiones de diseño abiertas** de arriba y **(3) la mejora a la UI que el autor
    tiene diseñada en Claude** (la trae él).
-2. Cross-repo: ratificar `ApplyExternalCondition(ply, id, severity)` con **Craving**
-   (deuda D-5). **Ojo con el 2.º argumento**: es el **id de condición clínica**
-   `{"starvation", "dehydration"}`, NO el stat de Craving — implementarlo switcheando
-   sobre el stat pasaría el gate de CAPACIDAD sin aplicar nada y la inanición quedaría
-   inofensiva en silencio. Después, el wiring real con Caliber cuando su Block 3
-   exponga el hit-location de jugador (roadmap [3]).
+2. Cross-repo: **la ratificación de `ApplyExternalCondition(ply, id, severity)` está
+   HECHA en diseño** (2026-08-08, voto del autor → §8, **COA-39**; **D-5 cerrada**),
+   junto con la enmienda que deja a Coagulant **leer** a Craving (**COA-38**, enmienda
+   COA-31) y las cinco palancas metabólicas (**COA-40**). **Nada de eso está en código**:
+   `ApplyExternalCondition` sigue con 0 hits en el `lua/`, así que el puente de Craving
+   sigue —correctamente— en su fallback por capacidad. Lo que falta es la bajada, y el
+   orden de COA-28 ya está satisfecho: el diseño está escrito antes.
+   **Ojo con el 2.º argumento** al implementarlo: es el **id de condición clínica**
+   `{"starvation", "dehydration"}`, NO el stat de Craving — switchear sobre el stat
+   pasaría el gate de CAPACIDAD sin aplicar nada y la inanición quedaría inofensiva en
+   silencio. Después, el wiring real con Caliber cuando su Block 3 exponga el
+   hit-location de jugador (roadmap [3]).
 
 ---
 

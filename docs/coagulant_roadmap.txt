@@ -56,15 +56,27 @@ sobre este archivo se reporta NO-AUDITABLE POR DISEÑO.
       práctica, así que este tramo no puede darse por servido hasta que su Block 3
       cierre de verdad.
 
-  [4] Superficie para Craving: eventos de estado clínico consumibles (soft-dep
-      inversa — Craving detecta a Coagulant, nunca al revés). Concretamente, la
-      firma que ya se negocia con su Block 4 (cerrado, hoy en puente mock-first):
-      ApplyExternalCondition(ply, id, severity) — el 2.º argumento es el ID DE
-      CONDICIÓN CLÍNICA {"starvation","dehydration"}, NO el stat de Craving
-      (hunger/hydration): así lo emite ya el puente (corpus_craving_coagulant.lua).
-      Es la firma que CRV-4 congeló desde el CONSUMIDOR y que este módulo —el
-      dueño— todavía no ratificó: deuda D-5 del registro. Ratificarla en
-      Coagulant_Architecture.md §8 (o negociarla) es parte de este tramo.
+  [4] Superficie para Craving. EL DISEÑO ESTÁ HECHO (2026-08-08, voto del autor en
+      cinco puntos; Architecture §8 y §12). FALTA LA BAJADA A CÓDIGO — que es todo
+      lo que queda de este tramo.
+
+      Lo ratificado: ApplyExternalCondition(ply, id, severity) —COA-39, cierra la
+      deuda D-5— con la misma firma que CRV-4 había congelado desde el consumidor.
+      El 2.º argumento es el ID DE CONDICIÓN CLÍNICA {"starvation","dehydration"},
+      NO el stat de Craving (hunger/hydration): así lo emite ya el puente
+      (corpus_craving_coagulant.lua). Lo que agrega la ratificación no es la firma
+      sino la SEMÁNTICA: qué hace Coagulant con cada id y quién mata.
+
+      Lo enmendado: la dirección dejó de ser única. Coagulant PUEDE leer a Craving,
+      read-only y por capacidad (COA-38, que enmienda COA-31 y CRV-13) — los cinco
+      valores metabólicos por CRAVING.GetMetabolic. Con eso, los tres nutrientes
+      NO tienen id de condición: se leen, no se empujan. El canal de push lleva
+      solo lo que puede matar.
+
+      Lo acotado: COA-40 — el metabolismo techa y frena, nunca mata. Los cinco
+      entran por palancas que ya existen (techo de stamina, techo de sangre y bpm,
+      REGEN_PER_S, BleedRate); ninguno crea sistema nuevo. En pantalla, la fila
+      METABOLIC explica POR QUÉ el techo está bajo, y no agrega barras.
 
 
   [5] HAY 16 MODELOS SIN DEF, Y NO SON DEUDA — son inventario.
