@@ -98,6 +98,8 @@ st = {
 > 4. **Tope de heridas 5+5, aceptado**: el tope es cota de ESTADO (la lista no crece sin
 >    límite; la 6.ª herida agrava a la más leve), no número de balance — más zonas son
 >    más fuentes de drenaje simultáneas, no menos castigo.
+> **Nota 2026-08-09 — el 58/42 describe el RECTÁNGULO, y la tabla de polígonos del v5 no lo conserva.** Medido: los polígonos del spec v5 dan chest 0.15→0.35 y stomach 0.35→0.555, o sea **49,4/50,6** contra el 58,3/41,7 que hoy produce `Config.SILHOUETTE` (`config.lua:293-294`). **Parte de esa diferencia no es que el pecho crezca**: la partición del v5 es CONTIGUA (0 → 0.15 → 0.35 → 0.555 → 1) y absorbe las tres bandas que hoy no son de ninguna zona —0.16→0.18, el gap deliberado 0.39→0.40, y 0.55→0.57—. Se anota como hecho, **no como enmienda**: el 58/42 sigue siendo lo que el código hace y lo que esta enmienda ratificó, y moverlo es voto del autor, pendiente al 2026-08-09 (`dev/PROMPT_coagulant_menu_v5.txt` §2/V2). Y ojo con lo que el cambio de forma trae gratis: donde el rect tenía un hueco de 0.01, el polígono tiene un **solape** de 0.01 en la costura de las piernas (`left_leg` llega a 0.505, `right_leg` arranca en 0.495, en los dos sexos) — un hueco no tiene dueño y un solape tiene dos, así que el ORDEN de evaluación pasa a ser contrato.
+>
 > 5. **Silueta 58/42** — el rect del torso se parte en la proporción del browser de
 >    Caliber; geometría en §10.
 >
