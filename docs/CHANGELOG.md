@@ -1632,3 +1632,138 @@ sano, no que el modelo se vea bien — eso no lo puede decir ninguna batería.
 ordenamiento, si `sutures` —1,97 u, el único que marca C1— se agarra con la physgun, y el
 **bodygroup del `medkit_large` ABIERTO** (el autor vio el cerrado, que es el que quedó cableado a
 la def; el abierto sigue siendo prop de escenario y nadie lo miró).
+
+---
+
+## PARCHES DE sesión El dolor como stat (COA-52) — DISEÑO, cero código — 2026-08-17
+
+**Sesión de diseño. No se escribió una línea de Lua** — el no-negociable de su prompt
+(`dev/PROMPT_coagulant_dolor.txt` §0, citando **COA-28**). El harness queda en **192 OK server /
+142 client, ALL GREEN**, idéntico, porque no había nada que pudiera moverlo.
+
+> **Por qué esta entrada existe y las dos anteriores no.** Las sesiones de diseño del 2026-08-08b
+> (§17, COA-41…COA-48) y del 2026-08-09 (COA-49, COA-50/COA-51) **no dejaron entrada acá**:
+> quedaron sólo en la arquitectura, en `ids.yaml` y en el estado. Pero el estado es **volátil y se
+> reescribe en sitio**, así que el único rastro durable de esas dos es git más las subsecciones
+> fechadas de §17. Pedido del autor el 2026-08-17: que las sesiones de diseño dejen rastro acá
+> también. **Esta entrada abre esa práctica; no se retro-escriben las dos anteriores** (nunca se
+> inventa un parche con fecha vieja) — se nombran en este recuadro, que es lo que se puede hacer
+> sin falsear el registro.
+
+**El disparador: el dolor ya se consumía sin haberse escrito.** Cinco consumidores con número
+exacto —`bpm += pain × 0.22`, `StaminaCap -= pain × 0.35`, `pain > 80 → DAZED`, `pain > 85 → 0.10`
+de irregularidad del ECG, y la puerta de la morfina `pain > 10`— y **cero productores**. Medido en
+la sesión: **0 apariciones de `pain`** en los 13 archivos del `lua/`, con `blood` en **64** como
+control positivo de la misma corrida. Y **COA-44** lo había promovido de diferido a **requisito**
+de la niebla, así que el tramo no era opcional.
+
+- PARCHE 1 — docs(arquitectura): subsección **COA-52** en `Coagulant_Architecture.md` §17 — la
+  **sede**. Las seis decisiones votadas por el autor con la cuenta hecha, las **seis** colisiones
+  contestadas, la **tabla de balance propuesta** (no escrita en `config.lua`, lista para que el
+  tramo de código la copie) y lo que el tramo explícitamente **no** decide. **[APLICADO
+  2026-08-17]**
+
+  **Lo votado, en una línea cada uno:**
+  1. **Agregación = suma con clamp** a `0..100`, peso de zona neutro ×1.0. Es lo que **salva las
+     cuatro fórmulas**: la suma cruda da rango `0..700` ⇒ `bpm +154` y `StaminaCap −245`, y los
+     umbrales 80 y 85 pierden sentido. El máximo no acumula (tres balazos en tres zonas duelen
+     igual que uno) y el promedio ponderado vuelve `DAZED` **inalcanzable por trauma localizado**,
+     que es el único trauma que este módulo modela.
+  2. **La zona vive en la misma escala `0..100`** que el global; `PAIN_FULL_AT = 60` satura la
+     **rampa** y no el estado (espejo de `ZONE_FULL_AT = 6`, que satura en dos heridas graves).
+     Con eso una zona con dolor 7 pinta `t = 0.12`, no roja del todo.
+  3. **Producción de tres ejes con UNA constante absoluta:** `PAIN_PER_WOUND 40 × PAIN_TYPE ×
+     PAIN_SEVERITY`. `PAIN_TYPE` son los valores de **ACE3 literales** (Avulsion 1.0, VelocityWound
+     0.9, ThermalBurn 0.7, Puncture 0.4, Contusion 0.3, Laceration 0.2), **citados como referente**;
+     el eje de **severidad es NUESTRO** porque la tabla de ACE **no tiene ninguno** — ésa es la
+     mitad que §1.4 del prompt advertía que no se podía copiar. Menos convexo que `BLEED_BASE`
+     (1 : 1.9 : 2.9 contra 1 : 2.7 : 6.7) a propósito: la nocicepción satura y la hemorragia no.
+  4. **El dolor NO se almacena y NO tiene reloj propio:** se deriva de las heridas con el mismo
+     reparto que el score de §6 (activa 1.00 · tratada 0.35 · infectada **entera**). **El
+     decaimiento del dolor ES el reloj `HEAL_S` de COA-49** — cero constantes de tasa, cero
+     timers, cero acumuladores— y el síntoma gratis de COA-49 sale exacto **en sus dos mitades**:
+     al pasar `t → i` el dolor **vuelve a subir** (0.35 → 1.00) y además **deja de bajar**.
+  5. **Los analgésicos ponen techo, no restan**, y el modelo lo obliga: a un derivado no se le
+     resta sin **almacenar la resta**. La única variable de estado nueva es `painSuppress` (el par
+     `pain`/`painSuppress` de ACE3, recomendación de su D10); los cinco consumidores leen el
+     **percibido**. `AddPainSuppression(ply, puntos)` reemplaza al inexistente
+     `CoaAddDrug("morphine", 10)` — cuyo `10` eran **miligramos**, no puntos de dolor.
+     Efecto de segundo orden que justifica la elección: **bajo niebla la morfina te CIEGA el
+     diagnóstico**, porque el síntoma de COA-44 es el percibido ⇒ deja de ser un buff y pasa a ser
+     un **costo de información**, y le da razón de existir a la naloxona de COA-50. La puerta
+     `pain > 10` **se auto-limita** porque lee el percibido: el apilamiento no necesita regla nueva.
+  6. **Isquemia y fractura generan dolor (como PISO); el torniquete NO.** Los dos con la misma
+     forma que las cláusulas `max()` de `ZoneScore` (isquemia 60, espejo de `max(score, 6)`; `fx`
+     30 y férula 12, espejo de `max(score, 3)`). El torniquete no duele porque **a los 90 s ya se
+     vuelve isquemia**: un reloj, no dos. Conserva su −12 plano (oclusión mecánica) y la fractura
+     **pierde** sus −15/−6 cuando la fórmula exista: un canal por causa, cero doble cobro.
+
+  **La SEXTA colisión, que la sesión encontró y no estaba en la lista del prompt:** un `NW2` se
+  replica a **todos** los clientes y **no tiene filtro por observador**, así que **un vital que la
+  niebla puede ocultar no puede viajar por NW2**. Por eso el dolor va en el snapshot (owner-only) y
+  no gana `NW2Float`, y por eso el server manda `p` por zona **siempre** y el cliente **nunca** lo
+  deriva — dos ramas de la misma magnitud divergirían justo al cambiar la convar.
+
+- PARCHE 2 — docs(arquitectura): §1 **deja de listar el dolor y los analgésicos entre los
+  diferidos** (la **fractura con férula** se queda). Más §2 (`painSuppress` en el `st`, con el
+  comentario de por qué el dolor **no** está ahí), §7 (nota sobre COA-37: el analgésico **no**
+  entra a competir en `BandagePriority` porque no trata una herida, enmascara un síntoma), §9 (el
+  dolor en el snapshot + la regla del NW2 + el cambio de predicado del emisor) y el preámbulo de
+  §17, que ya no nombraba las cuatro enmiendas que la sección fue acumulando. **[APLICADO
+  2026-08-17]**
+
+- PARCHE 3 — docs: alta de **COA-52** en `corpus/docs/ids.yaml` con evidencia **`INTENCION`** — es
+  diseño y no hay código que lo ejerza. **UNA norma con partes y no seis IDs** (§5 del prompt):
+  ninguna de sus partes rige a otro módulo. Bloque `salud` **copiado de la corrida del checker**,
+  no escrito a mano: **244 IDs / 76 INTENCION (31 %)**. `check-ids OK`. **[APLICADO 2026-08-17]**
+
+- PARCHE 4 — docs: `coagulant_estado.md` (en sitio) y `coagulant_roadmap.txt`. En el estado se
+  corrigió además la línea del «Próximo paso» §3, que **esta sesión volvió falsa** («la niebla
+  depende del dolor como stat, que hoy sigue diferido por §1»). En el roadmap, la **trampa de orden**
+  de [6] se reescribe: el orden obligado sigue vigente para la **bajada** (dolor → niebla) pero ya
+  no bloquea el **diseño**. **[APLICADO 2026-08-17]**
+
+- PARCHE 5 — docs: barrido de drift con `rg --no-ignore` sobre **3.473 archivos** de las siete
+  raíces más `dev/`, buscando los ecos de «el dolor sigue diferido». Corregidos los **dos vivos**:
+  `CLAUDE.md` (el «Estado actual») y `Coagulant_Architecture.md:650` (el cuerpo de COA-44, que
+  decía «§1 lista el dolor entre los diferidos»). **Los del CHANGELOG y de
+  `Coagulant_Block3_Semilla.md` NO se tocaron**: son registro histórico y eran ciertos cuando se
+  escribieron — la semilla es explícitamente registro por §16.3. **[APLICADO 2026-08-17]**
+
+**TRES CORRECCIONES AL PROPIO PROMPT, medidas antes de apoyarse en ellas.** Se escriben porque las
+tres cambiaban el alcance del tramo, no porque sean anécdotas:
+
+1. **La matriz son 15 celdas, no 18.** El prompt dice «6 tipos × 3 severidades = **15** celdas» y
+   las dos cifras no cierran. Las 15 son las reales: `Config.WOUND_TYPES` tiene **CINCO** tipos. El
+   sexto es **`punzante`**, que **COA-49 ya nombra** (*«`punzante` y `metralla` son sucias por
+   naturaleza»*) y que **no existe en ninguna parte del árbol**. Su fila entra igual en `PAIN_TYPE`
+   con el valor de ACE y queda **inerte** hasta que el tipo exista. Es por esto que la **forma** se
+   votó antes que los valores.
+2. **El doble cobro de §4.3 cuesta CERO migrar.** `StaminaCap`, `frac` y `splint` tienen **0 hits**
+   en el `lua/`: los −12/−15/−6 viven **sólo en la fórmula del spec v5**, que no está implementada.
+   Elegir hoy no toca un número vivo; elegir en tres rondas sí.
+3. **§4.5 está sobredimensionada para el código de HOY.** Una herida `treated` **sigue en
+   `zdata.wounds`** hasta que el Medkit la borra (`core.lua:185-192`) y su `tr` viaja en el
+   snapshot, así que **hoy la zona tratada SÍ viaja**. La colisión es real y grave, pero **muerde
+   recién con la forma `w[tipo] = {a,t,i,s}` de COA-49**. Anotado así para que nadie la busque hoy,
+   no la encuentre, y concluya que no existe.
+
+**Y UNA DEPENDENCIA QUE ESTABA ESCRITA AL REVÉS.** `dev/PROMPT_coagulant_menu_v5.txt` §4.3 dice que
+COA-49 está bloqueada por el dolor. Es al revés: **el dolor CONSUME el reloj de COA-49**. Con la
+forma de lista de hoy su término `i` lee 0 y es **exactamente neutro**, así que el dolor puede bajar
+antes o junto con COA-49 — pero nunca la espera.
+
+**DEUDA DECLARADA que esta sesión destapó y NO arregló**, para que el día que la niebla baje sea una
+fila de su planilla y no un hallazgo: `NW2Float "coagulant_blood"` **ya** viaja a todos los clientes
+y la **cifra** de sangre es capa de **diagnóstico** en la tabla de COA-44 — o sea que la niebla, tal
+como está escrita, tiene un agujero **anterior** al dolor. No se toca acá porque mover ese NW2 rompe
+la barra del StatusPanel de Cargo (§10) y la mini-barra del modo degradado.
+
+**Lo que NO entró, y no es olvido:** una convar `coagulant_pain_scale` por simetría con
+`bleed_scale`/`regen_scale` — nadie la pidió y el tuning ya lo permite la tabla (**COA-27**). Y la
+**sobredosis** con naloxona como antídoto real, que es del tramo del catálogo; la puerta `pain > 10`
+ya impide el apilamiento trivial.
+
+**Verificación de esta sesión** (es de docs, así que no hay pasada en juego que correr): harness
+**192 OK server / 142 client, ALL GREEN** —sin cambio, y tenía que no cambiar— y `check-ids OK: el
+registro está limpio` sobre 244 IDs. **Nada commiteado ni pusheado.**

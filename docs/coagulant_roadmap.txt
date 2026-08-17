@@ -93,15 +93,39 @@ sobre este archivo se reporta NO-AUDITABLE POR DISEÑO.
       se fusionan) ; COA-44 niebla diagnóstica en tres capas, detrás de convar y APAGADA
       por default; COA-45 los dispositivos siguen siendo casos especiales como z.tq.
 
-      ORDEN OBLIGADO, y es la trampa de este tramo: la niebla necesita el DOLOR como stat,
-      que §1 sigue listando como diferido. Bajar la niebla antes que el dolor deja la
-      silueta sin qué pintar — la niebla apagaría la pantalla en vez de complicarla.
+      ORDEN OBLIGADO, y es la trampa de este tramo: la niebla necesita el DOLOR como stat.
+      Bajar la niebla antes que el dolor deja la silueta sin qué pintar — la niebla apagaría
+      la pantalla en vez de complicarla.
+
+      EL DOLOR YA TIENE DISEÑO: COA-52, sesion de diseño del 2026-08-17, seis puntos votados
+      y CERO codigo. §1 dejo de listarlo como diferido. O sea que el orden obligado sigue
+      vigente para la BAJADA (dolor -> niebla) pero ya no bloquea el DISEÑO de la niebla.
+      Lo votado: estado POR ZONA derivado de las heridas mas un agregado global SATURADO en
+      0..100 —y ese clamp es lo que salva las cuatro formulas que ya consumian dolor—; la
+      produccion sale de una constante x la tabla de ACE3 literal x un eje de severidad que
+      es NUESTRO; el dolor NO se almacena y NO tiene reloj propio, porque su decaimiento ES
+      el reloj HEAL_S de COA-49; lo unico almacenado es la SUPRESION, asi que la morfina
+      enmascara sin curar y bajo niebla te ciega el diagnostico. La tabla de balance
+      propuesta esta lista para que el tramo de codigo la copie (Architecture §17).
+
+      Y DA VUELTA UNA DEPENDENCIA que estaba escrita al reves: el dolor no esta bloqueado
+      por COA-49 — CONSUME su reloj. Con la forma de lista de hoy su termino `i` lee 0 y es
+      exactamente neutro, asi que el dolor puede bajar antes o junto con COA-49, pero nunca
+      la espera.
 
       LOS DOS EJES QUE §17 dejo abiertos se votaron el 2026-08-09: COA-49 (la herida
       tratada tiene TIEMPO — se resuelve sola por reloj o se infecta; el Medkit no cambia
       una linea y esa resolucion automatica es lo que impide reintroducir el bug de COA-21)
       y COA-50/COA-51 (el area hospital: UNA entidad con modelo opcional, capacidad y
       suministro como gates independientes, y se compra UNA sola cosa — la camilla).
+
+      DEUDA QUE COA-52 DESTAPO Y NO ARREGLA, para que sea un item de la planilla de la
+      niebla y no un hallazgo: un NW2 se replica a TODOS los clientes y no tiene filtro por
+      observador, asi que un vital que la niebla puede ocultar no puede viajar por NW2. El
+      dolor cumple (va en el snapshot, owner-only), pero `coagulant_blood` YA viaja por NW2
+      y la cifra de sangre es capa de DIAGNOSTICO en la tabla de COA-44. Moverlo rompe la
+      barra del StatusPanel de Cargo y la mini-barra del modo degradado, asi que es trabajo
+      del tramo de la niebla, no de este.
 
       BLOQUEANTE del area hospital, y es de otro repo: necesita AreaHas/AreaCount/AreaTake
       de Cargo, que NO las ratifico. Pedido escrito el mismo dia en su roadmap #60. Hasta
@@ -127,6 +151,10 @@ sobre este archivo se reporta NO-AUDITABLE POR DISEÑO.
 
       Los dos diferidos de §1/§7 de la arquitectura que ya tendrían con qué:
       ANALGÉSICO (pain_pills, pill_bottles) y FÉRULA (nada apropiado todavía).
+      El ANALGÉSICO dejo de ser diferido el 2026-08-17: COA-52 le da semantica
+      (suma PAIN_SUPPRESS.oral = 35 puntos de supresion, no resta dolor) y ya
+      tiene modelo. Sigue faltando la bajada a codigo del dolor entero — y COA-28
+      manda igual: que exista `pain_pills.mdl` y que exista la norma no crea el item.
 
       HUECO CONOCIDO: el TORNIQUETE no tiene modelo en ninguno de los tres packs
       —el candidato resultó ser carretes de sutura al renderizarlo— y cae a la
