@@ -56,6 +56,42 @@ Corpus.OnReady(function()
     -- docs/CREDITOS.md; hay 19 modelos en `models/corpus_coagulant/` y estas
     -- defs usan tres. Inventario completo en docs/ASSETS.md.
 
+    -- PRECIO (`value`), 2026-08-18. SIN ÉL NO SE COMERCIAN: `Trade.IsTradeable`
+    -- exige `isnumber(def.value) and def.value > 0`, y en Cargo la AUSENCIA de
+    -- `value` significa "no está a la venta", NO "gratis" (contrato 13 de su
+    -- CLAUDE.md). Las cuatro defs nacieron sin él, así que hasta hoy un trader
+    -- las LISTABA y el server se negaba a moverlas — el mismo agujero que se
+    -- midió en las 15 defs de comida de Craving, que nadie había mirado de este
+    -- lado. Salió al escribir los dos traders de corpus-stalker (su roadmap [1]).
+    --
+    -- MÉTODO, el mismo que se usó para la comida: anclar en el precio real del
+    -- objeto que el ítem representa, en USD de EE.UU. Y la etiqueta importa —
+    -- **los cuatro son ESTIMACIONES (est.)**, no series publicadas: son precios
+    -- de retail/adquisición típicos, no un índice citable como el FRED que
+    -- respalda al pan y a la leche. Presentar un número estimado como medido es
+    -- exactamente lo que este proyecto persigue en todos lados.
+    --
+    --   venda      8   rollo de gasa compresiva de trauma, ~5-8 USD  (est.)
+    --   torniquete 35  CAT genuino, ~32-35 USD; REUSABLE (unique, no se
+    --                  consume), y eso es la mitad de por qué es el más caro
+    --                  de los tres baratos                            (est.)
+    --   medkit     50  botiquín grande equipado, ~45-60 USD          (est.)
+    --   bolsa de   220 una unidad de glóbulos rojos: costo de adquisición
+    --   sangre         hospitalario en EE.UU., ~215-250 USD          (est.)
+    --
+    -- LO QUE HAY QUE SABER ANTES DE LEERLOS COMO "BARATOS": quedan POR DEBAJO
+    -- de los suministros HL2 del propio Cargo (`cargo_hl2_healthkit` 150,
+    -- `cargo_hl2_healthvial` 60), que no salen de un precio real sino de la
+    -- banda de sus ítems dev. Es la MISMA asimetría que la comida tiene contra
+    -- la munición (2-12 contra 8-900), y tiene la misma salida ya escrita y
+    -- pendiente de ratificar: el multiplicador de precio por categoría de Cargo
+    -- (su roadmap 61, `cargo_value_mult_<id>` replicada). Estos números entran
+    -- igual y ese multiplicador los escala después; NO se compensa acá
+    -- inflándolos, porque entonces el multiplicador escalaría una mentira.
+    --
+    -- El spread se comporta en los cuatro: con el piso de 1 de `UnitPrice`, un
+    -- `value` de 2 ya vende a 2 y recompra a 1, y el más barato de acá es 8.
+
     cargo.Items.Register({
         id       = "corpus_coagulant_bandage",
         name     = "Bandage",
@@ -66,6 +102,7 @@ Corpus.OnReady(function()
         -- ocupaban los tres, así que en pantalla no se achicó nada.
         model    = "models/corpus_coagulant/bandage.mdl",
         weight   = 0.1,
+        value    = 8,     -- rollo de gasa de trauma (est.)
         class    = "stackable",
         category = "medical",
         trivia   = "Stops light and medium bleeding. Applies over 4 seconds.",
@@ -81,6 +118,7 @@ Corpus.OnReady(function()
         -- identificado"). Cae a la cajita hasta que aparezca uno.
         name     = "Tourniquet",
         weight   = 0.2,
+        value    = 35,    -- CAT genuino, y no se consume (est.)
         class    = "unique",
         category = "medical",
         trivia   = "Stops all bleeding on one limb while applied. Leaving it on too long damages the limb. Not consumed.",
@@ -103,6 +141,7 @@ Corpus.OnReady(function()
         -- queda como prop de escenario, que es para lo que se portó.
         model    = "models/corpus_coagulant/medkit_large_closed.mdl",
         weight   = 0.5,
+        value    = 50,    -- botiquín grande equipado (est.)
         class    = "stackable",
         category = "medical",
         trivia   = "Restores health over 10 seconds. Does not stop bleeding or restore blood.",
@@ -114,6 +153,7 @@ Corpus.OnReady(function()
         name     = "Blood Bag",
         model    = "models/corpus_coagulant/bloodbag.mdl",
         weight   = 0.3,
+        value    = 220,   -- una unidad de glóbulos rojos (est.)
         class    = "stackable",
         category = "medical",
         trivia   = "Restores blood volume over 8 seconds. Stop the bleeding first.",

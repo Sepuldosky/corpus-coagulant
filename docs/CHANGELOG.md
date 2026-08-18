@@ -1767,3 +1767,59 @@ ya impide el apilamiento trivial.
 **Verificación de esta sesión** (es de docs, así que no hay pasada en juego que correr): harness
 **192 OK server / 142 client, ALL GREEN** —sin cambio, y tenía que no cambiar— y `check-ids OK: el
 registro está limpio` sobre 244 IDs. **Nada commiteado ni pusheado.**
+
+---
+
+## PARCHES DE sesión Las cuatro médicas tienen precio — 2026-08-18
+
+**El agujero es tan viejo como las defs, y no lo podía encontrar nadie usando este módulo.**
+`Trade.IsTradeable` de Cargo exige `isnumber(def.value) and def.value > 0`, y en Cargo la
+**ausencia** de `value` significa *«no está a la venta»*, **no** *«gratis»* (contrato 13 de su
+CLAUDE.md). Las cuatro defs médicas nacieron sin `value`: un trader las **listaba** y el server se
+negaba a moverlas. Coagulant **nunca vende nada**, así que ninguna pasada de este repo podía
+notarlo — salió al escribir los dos traders de `corpus-stalker`, o sea **desde afuera**, y es el
+mismo agujero que el handoff de ese tramo ya había medido en las 15 defs de comida de Craving.
+Del lado médico no lo había mirado nadie.
+
+- PARCHE 1 — `shared/corpus_coagulant_items.lua`: `value` en las cuatro. **Es data (COA-28 no se
+  toca: no se implementa nada que la arquitectura no especifique, y un precio no es diseño
+  clínico).** **[PENDIENTE]**
+
+| ítem | `value` | de dónde sale |
+|---|---:|---|
+| Bandage | **8** | rollo de gasa compresiva de trauma, ~5-8 USD **(est.)** |
+| Tourniquet | **35** | CAT genuino, ~32-35 USD **(est.)** — y es `unique` y **no se consume** |
+| Medkit | **50** | botiquín grande equipado, ~45-60 USD **(est.)** |
+| Blood Bag | **220** | una unidad de glóbulos rojos, costo de adquisición hospitalario ~215-250 USD **(est.)** |
+
+**Los cuatro son estimaciones y así están etiquetados.** El método es el mismo que se usó para la
+comida —anclar en el precio real del objeto que el ítem representa, en USD de EE.UU.—, pero **sin
+serie publicada detrás**: la tabla de comida tenía anclas del FRED para el pan, la leche y la
+gaseosa, y acá no hay equivalente. *Un número estimado presentado como medido es exactamente lo que
+este proyecto persigue en todos lados,* así que la etiqueta va en el código, no sólo acá.
+
+**Quedan POR DEBAJO de los suministros HL2 del propio Cargo** (`cargo_hl2_healthkit` 150,
+`cargo_hl2_healthvial` 60), que no salen de un precio real sino de la banda de sus ítems dev. Es la
+**misma asimetría** que la comida tiene contra la munición (2-12 contra 8-900) y tiene la misma
+salida ya escrita: el multiplicador de precio por categoría de Cargo (su roadmap **61**,
+`cargo_value_mult_<id>` replicada, **PEDIDO sin ratificar**). Estos números entran igual y ese
+multiplicador los escala después. **No se compensa acá inflándolos**, porque entonces el
+multiplicador escalaría una mentira.
+
+- PARCHE 2 — `dev/harness_coagulant.py`: el control que habría cazado esto, en los **dos** realms.
+  **No es una lista de cuatro**: recorre **todo lo que este módulo registre contra Cargo**, así que
+  la def número cinco que alguien agregue mañana queda cubierta sin tocar la línea. *Una lista de N
+  sólo encuentra los N que alguien ya sabía* — que es exactamente cómo estas cuatro se pasaron.
+  Va con un **segundo** check que exige el valor **derivado** y no un positivo cualquiera: el
+  primero pasa igual con un `1` puesto para callarlo. **[PENDIENTE]**
+
+Se **restate** el criterio en vez de llamarlo, y hay que decirlo: el Cargo de este harness es un
+**fake** (`MakeFakeCargo`), así que `Trade.IsTradeable` no existe de este lado y la copia puede
+envejecer si Cargo cambia la regla. El que la corre de verdad, contra la función real, es
+`harness_cargo.py`.
+
+**Verificación:** harness **185 → 189 checks**, selftest **192 OK server / 142 client**, ALL GREEN,
+exit 0. **Verificado en negativo, dos mutantes:** sin el `value` del bloodbag → 2 fallas por realm y
+exit 1; con un `value = 1` de relleno en el medkit → el primer check **pasa** y el segundo lo caza,
+que es precisamente para lo que está. **Falta la pasada en juego:** que un trader con categoría
+`medical` liste las cuatro **con precio** y que el server deje comprarlas y venderlas.
