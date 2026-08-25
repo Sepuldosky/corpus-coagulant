@@ -37,7 +37,7 @@
 **No es.**
 - Incapacitación/revive (muerte directa en v1; bloque futuro).
 - Tratar a otros jugadores (bloque futuro; el diseño de tratamiento deja el hueco — `ApplyTreatment` recibe el paciente como primer argumento).
-- ~~Dolor como stat, analgésicos~~, **fracturas con férula** (sigue diferida) — las otras dos salidas que ACE3 le da al trauma cerrado. Mientras la fractura no exista, la **venda** cubre el trauma cerrado: aplica a toda herida abierta, sangre o no (**COA-37**, §7). **Enmendado el 2026-08-08 (COA-44, §17):** el dolor dejó de ser diferido y pasó a ser **requisito** de la niebla diagnóstica — es el único canal que la niebla no tapa, así que sin él la niebla apaga la pantalla en vez de complicarla. **ESPECIFICADO el 2026-08-17 (COA-52, §17):** el dolor y los analgésicos **salen de esta lista** — tienen diseño votado (agregación, escala, matriz de producción, decaimiento, supresión y fuentes), tabla de balance propuesta y las seis colisiones contestadas. **Sigue sin una línea de código**, que es otra cosa: lo que se levantó es el bloqueo de diseño que COA-44 y COA-49 tenían enfrente, no el trabajo de bajada.
+- ~~Dolor como stat, analgésicos~~, **fracturas con férula** (sigue diferida) — las otras dos salidas que ACE3 le da al trauma cerrado. Mientras la fractura no exista, la **venda** cubre el trauma cerrado: aplica a toda herida abierta, sangre o no (**COA-37**, §7). **Enmendado el 2026-08-08 (COA-44, §17):** el dolor dejó de ser diferido y pasó a ser **requisito** de la niebla diagnóstica — es el único canal que la niebla no tapa, así que sin él la niebla apaga la pantalla en vez de complicarla. **ESPECIFICADO el 2026-08-17 y BAJADO A CÓDIGO el 2026-08-25 (COA-52, §17):** el dolor y los analgésicos **salen de esta lista**, y ahora existen: el stat por zona, el agregado global saturado, la supresión con su decaimiento, el `p` en el snapshot y el **analgésico oral** como quinto ítem médico. La **morfina** no entra —arrastra la sobredosis y la naloxona, que son del tramo del catálogo (COA-50)—, y la **fractura con férula** sigue diferida, con su término de dolor escrito y leyendo 0.
 - Stamina/fatiga — **pese a que el contrato `OnEncumbrance` ya existe** (§12): v1 lo acepta y almacena, sin efecto. Su relación con el oxígeno la fija **COA-42** (§17): son vitales distintos, se encuentran en el techo y no se fusionan.
 - Medicina de NPCs (frontera: jugador; limbs NPC es de Caliber).
 - Persistencia a disco (spawn = cuerpo nuevo; estado en memoria del server).
@@ -145,6 +145,7 @@ Lista de heridas por zona: `wound = { type, severity, treated = false }`. Tope d
 - **Drenaje por herida** (unidades de sangre/s): `base(severity) × mult(type) × mult(zone)`, con `base = { [1]=0.15, [2]=0.40, [3]=1.00 }`. El mult de zona (`ZONE_BLEED_MULT`, enmienda 2026-07-21 en §3) nace **neutro** — todas las zonas ×1.0: es el eje donde un gut shot podrá sangrar distinto cuando el balance se tunee contra el referente ACE (cita COA-27). Heridas `treated` no drenan. Zona con torniquete puesto: sus heridas no drenan mientras esté puesto.
 - **Drenaje total** = Σ de todas las zonas × `coagulant_bleed_scale`.
 - **Regeneración natural**: si el drenaje total es 0 y `blood < 100`: `+0.10/s × coagulant_regen_scale` (~17 min de 0 a 100 — la bolsa de sangre es el atajo, §7).
+- **Decaimiento de la supresión de dolor** (**COA-52**, §17, desde el 2026-08-25): `painSuppress -= PAIN_SUPPRESS_DECAY_PER_S` en este **mismo** tick — el dolor no tiene reloj propio y la supresión no necesitaba uno nuevo. **Ensucia el snapshot SÓLO si el número se movió**: el percibido cambia al decaer aunque nadie toque una herida, pero ensuciar siempre convertiría el emisor on-change de **COA-16** en un emisor por segundo, y eso no da ningún error — da tráfico.
 
 Referencias de letalidad con los números propuestos: una herida de bala grave sin tratar = 1.0/s → de 100 a sangre crítica (40) en ~1 minuto; una leve de corte (0.12/s) tarda ~8 min — molestia, no sentencia.
 
@@ -164,6 +165,8 @@ Referencias de letalidad con los números propuestos: una herida de bala grave s
 ## 6. Debuffs zonales
 
 Score de zona = Σ severidades de sus heridas; las `treated` cuentan **la mitad**. Los tres debuffs entran en v1, cada uno con su convar de apagado (§11).
+
+> ⚠ **El DOLOR reparte las tratadas por `PAIN_TREATED_MULT = 0.35`, no por este `0.5`** (**COA-52**, §17). Son dos números distintos **a propósito** —uno es debuff mecánico, el otro nocicepción— y viven en funciones **vecinas** de `core.lua` (`GetZoneScore` y `ZonePain`). Copiar el de al lado no da ningún síntoma: el dolor seguiría bajando al vendar, sólo que por el número equivocado. El harness lo separa con dos filas y el sabotaje #4 lo ejercita.
 
 > **COA-21 — Enmienda 2026-07-14 (ronda 5 en juego).** La media severidad de una herida tratada pesaba **para siempre**: vendarse las piernas dejaba al jugador cojo (×0.76) hasta morir, porque nada borraba la herida. El autor resolvió que la cura de esa secuela es el **Medkit** (§7): cierra las heridas ya tratadas de una zona. Vendar corta el sangrado; el Medkit borra la marca. Una herida sin vendar no se toca (primero hay que cerrarla).
 
@@ -243,7 +246,7 @@ Ni chest ni stomach tienen debuff propio en v1 (enmienda 2026-07-21, §3 — ant
 > Dolor como stat, analgésicos y fracturas con férula **siguen diferidos** (§1): esta enmienda
 > no los adelanta — solo deja de haber una lesión incurable mientras no existan.
 >
-> > **Actualización 2026-08-17 (COA-52, §17).** Las dos primeras ya **no** están diferidas: tienen
+> > **Actualización 2026-08-17 (COA-52, §17), y BAJADA el 2026-08-25.** Las dos primeras ya **no** están diferidas: tienen
 > > diseño votado con tabla de balance propuesta. La **fractura con férula** sí sigue diferida, y
 > > COA-52 le deja el hueco hecho —`PAIN_FRAC` / `PAIN_SPLINT` escritos y leyendo 0 hasta que
 > > `z.frac` exista—. Lo que **no** cambia es esta enmienda: la venda sigue siendo la salida (1) y
@@ -260,6 +263,7 @@ Ni chest ni stomach tienen debuff propio en v1 (enmienda 2026-07-21, §3 — ant
 | `corpus_coagulant_tourniquet` | Tourniquet | unique | 0.2 | 2 s | Detiene todo el sangrado de **una extremidad** mientras esté puesto. A los 90 s puesto: isquemia — la zona pasa a score máximo de debuff hasta 60 s después de quitarlo. Quitar (2 s) reanuda el sangrado de lo no cerrado. **COA-20 — No se DESTRUYE pero se OCUPA: sale del inventario mientras está puesto (un torniquete ata una sola extremidad) y vuelve al quitarlo (`Inventory.TakeUnique`/`GiveItem` de Cargo); quitarlo no exige ítem** (el toggle opera sobre el ya puesto). |
 | `corpus_coagulant_medkit` | Medkit | stackable | 0.5 | 10 s | +50 HP (cap MaxHealth) **y cierra las heridas ya TRATADAS de una zona** — la única cura de la secuela (§6, enmienda 2026-07-14). No toca sangre ni heridas sin vendar. |
 | `corpus_coagulant_bloodbag` | Blood Bag | stackable | 0.3 | 8 s | +40 sangre (cap 100). |
+| `corpus_coagulant_painkillers` | Painkillers | stackable | 0.1 | 3 s | **Analgésico oral (COA-52, §17 — alta del 2026-08-25).** Suma `PAIN_SUPPRESS.oral = 35` de **supresión**: pone un TECHO al dolor percibido por unos minutos y **no cierra ninguna herida ni corta ningún sangrado**. Su `can()` es la puerta `pain > PAIN_ANALGESIC_AT` **leída sobre el PERCIBIDO**, y eso es lo que hace que la segunda dosis se **desgatille sola** — el apilamiento no necesita una regla propia. La **morfina** (`PAIN_SUPPRESS.morphine = 80`) tiene su constante votada pero **no tiene ítem**: arrastra la sobredosis y la naloxona, que son del tramo del catálogo (COA-50). |
 
 > **Modelos (decisión del autor 2026-07-23; mecanismo en Cargo, su entry 34).** Las cuatro defs
 > se registran **sin `model`** a propósito: dropean como la cajita de cartón de Cargo y su ícono
@@ -395,7 +399,7 @@ Todo net string vía `Corpus.Net.Register("coagulant", msg)` → `corpus_coagula
 |---|---|---|
 | `NW2Float "coagulant_blood"` | S→todos | sangre 0..100 (para StatusPanel/HUD, barato) |
 | `NW2Float "coagulant_speed_mult"` | S→todos | multiplicador de cojera (Move hook en ambos realms) — **COA-17: se escribe solo si cambió** (§6); un NW2 se replica a todos los clientes en cada escritura |
-| `corpus_coagulant_state` | S→C (owner) | snapshot de heridas/torniquetes/tratamiento en curso — **COA-16: on-change**, no por tick. **COA-52 (§17):** lleva además el **dolor por zona** (`p`) y el **percibido global**, calculados en el server; el cliente **nunca** los deriva |
+| `corpus_coagulant_state` | S→C (owner) | snapshot de heridas/torniquetes/tratamiento en curso — **COA-16: on-change**, no por tick. **COA-52 (§17), escrito el 2026-08-25:** lleva además el **dolor por zona** (`p`, redondeado) y el **percibido global** (`pain`), calculados en el server; el cliente **nunca** los deriva. La **supresión** NO viaja: es capa de diagnóstico y este tramo no abre canales que la niebla todavía no sabe filtrar — se lee por consola con `coagulant_status` |
 | `corpus_coagulant_treat` | C→S | intent `{ kind, zone }` — server valida (ítem presente vía Cargo o modo degradado, zona válida, sin tratamiento en curso) |
 | `corpus_coagulant_cancel` | C→S | cancela el tratamiento propio en curso |
 
@@ -451,7 +455,7 @@ El tab Q existente crece: convars de server (admin) + cliente, y el **binder** d
 ### Cargo (presente hoy — nombres verificados contra el código real)
 
 - **Consume:** `Items.Register(def)` (4 defs §7); `Inventory.HasItem(ply, id)` (**presencia al validar el arranque de un tratamiento — la única superficie que ve los `unique`**: `CountItem` cuenta solo stacks, así que el torniquete siempre daba 0 — pagado en juego el 2026-07-13, fallo G4; Cargo la agregó como su entry 18); `Inventory.CountItem(ply, id)` + `Inventory.TakeItem(ply, id, 1)` (**server, al completar**: re-validar y consumir la unidad stackable); `StatusPanel.RegisterBar` (client); y **`CARGO.ClientState.items` (client, superficie OFF-CONTRACT de Cargo)** — el menú médico cuenta con ella las DOS clases de ítem (los stacks por `count`, los `unique` por `uid`) porque `CountItem` no existe en el cliente. **Deuda asumida:** si Cargo cambia la forma de su snapshot, el conteo de los botones se rompe **en silencio**; el candidato natural es que Cargo exponga un contador de cliente en su contrato.
-- **PEDIDO ABIERTO a Cargo (2026-08-09, COA-51 en §17):** `Containers.AreaHas` / `AreaCount` / `AreaTake` para el área de suministro del hospital. **Cargo NO lo ratificó** — vive en su roadmap #60 y hasta entonces ese tramo no baja a código. Se anota acá para que quien lea esta sección no crea que la superficie existe.
+- **PEDIDO RATIFICADO Y ENTREGADO — enmienda 2026-08-25 (pedido del 2026-08-09, COA-51 en §17).** `Containers.AreaHas` / `AreaCount` / `AreaTake` para el área de suministro del hospital, **y una cuarta que este repo no había pedido: `AreaTakeUnique`**. Cargo las aceptó, las escribió y las commiteó el **2026-08-22** (su roadmap **#60**, CHANGELOG **80**, commit `63c784f`; `corpus_cargo_containers.lua:646-741`), **server-only**. La cuarta salió de que Cargo **midiera el `lua/` de este repo** y no de una preferencia: `treatment.lua:163` gatea con `HasItem` y `:170` consume con `TakeUnique` **porque el torniquete es `unique`** — con sólo las tres, el área **vería** un torniquete en un mueble y no tendría con qué consumirlo, que es el fallo **G4** movido del lado de la presencia al del **take**. Semántica y consecuencias, en §17. **Lo que esta línea decía hasta hoy —que Cargo no lo había ratificado y que hasta entonces el tramo no bajaba— quedó viejo el 2026-08-22 y se corrigió el 2026-08-25**: el bloqueante externo del área hospital está **CAÍDO**.
 - **Expone hacia Cargo:** `OnEncumbrance(ply, fraction)` — Cargo ya lo llama con pcall en cada cambio de peso (`corpus_cargo_movement.lua`). v1: almacenar en `st.encumbrance`, cero efecto. `Inventory.GetWeightFraction(ply)` queda disponible para cuando la stamina exista.
 
 ### Caliber (mock-first — su pipeline de jugador no existe)
@@ -537,7 +541,7 @@ Al cerrar cada slice: CHANGELOG (`[PENDIENTE]` → verificación del autor) y `c
 >
 > **El disparador no fue el daño ambiental sino una pregunta de alcance:** si el catálogo del menú alcanza para un jugador que hace roleplay de **médico de hospital** y no solo de médico de campo estilo ACE3. Las dos preguntas resultaron ser **una sola**, y esa es la única razón por la que esta enmienda es una y no dos.
 >
-> **La sección creció después, con las sesiones de diseño que fue destapando** — se listan acá porque el título de §17 ya no las nombra: **COA-49** (la herida tratada tiene tiempo, 2026-08-09), **COA-50/COA-51** (el área hospital y la superficie que hay que pedirle a Cargo, 2026-08-09) y **COA-52** (el dolor como stat, 2026-08-17). Ninguna tiene una línea de código: las cuatro están en `INTENCION`.
+> **La sección creció después, con las sesiones de diseño que fue destapando** — se listan acá porque el título de §17 ya no las nombra: **COA-49** (la herida tratada tiene tiempo, 2026-08-09), **COA-50/COA-51** (el área hospital y la superficie que hay que pedirle a Cargo, 2026-08-09) y **COA-52** (el dolor como stat, 2026-08-17). De las cuatro, **COA-52 bajó a código el 2026-08-25** y deja `INTENCION`; COA-49, COA-50 y COA-51 siguen ahí.
 
 ### El agujero, que ya estaba abierto y no se veía
 
@@ -787,7 +791,31 @@ CARGO.Containers.AreaTake(pos, radius, id, n)    -> ok     -- espejo de Inventor
 
 **Las tres, no dos, y por una lección ya pagada:** `CountItem` cuenta **solo stacks** — los `unique` le son invisibles, que es por qué el torniquete daba siempre 0 (fallo **G4**, 2026-07-13) hasta que Cargo agregó `HasItem`. Un `AreaCount` sin su `AreaHas` reproduce el mismo defecto en el área, con el mismo síntoma: la acción existe, el ítem está, y el botón dice que no hay.
 
-**Esto NO está ratificado por Cargo.** Se anota como **pedido** y se escribe el mismo día en el roadmap de Cargo (#60), en los dos lados. Es la conducta que **D-5** dejó como lección: `ApplyExternalCondition` estuvo un mes congelada por el consumidor y sin ratificar por el dueño, y lo que faltaba no era la firma sino saber si el dueño la aceptaba. Hasta que Cargo la ratifique, el área hospital **no baja a código**; y si Cargo la rechaza o la devuelve con otra forma, manda Cargo — la superficie es suya.
+**Se anotó como PEDIDO, no como pacto**, y se escribió el mismo día en el roadmap de Cargo (#60), en los dos lados. Es la conducta que **D-5** dejó como lección: `ApplyExternalCondition` estuvo un mes congelada por el consumidor y sin ratificar por el dueño, y lo que faltaba no era la firma sino saber si el dueño la aceptaba. Hasta acá, cómo se pidió — lo de arriba se conserva como registro del pedido y **ya no describe el estado**.
+
+> ### RATIFICADA Y ENTREGADA — enmienda 2026-08-25 (Cargo la escribió el 2026-08-22)
+>
+> **El bloqueante que COA-51 declaraba está CAÍDO.** Cargo aceptó el pedido, lo escribió en tanda con su #65 y lo dejó commiteado: su roadmap **#60**, CHANGELOG **80**, commit `63c784f`, `corpus_cargo_containers.lua:646-741`. Las cuatro son **server-only**, que es donde este diseño ya había puesto la resolución del área («el cliente no escanea el mundo»). Lo que cambia respecto de lo pedido:
+>
+> **1 · Son CUATRO, no tres — y la cuarta la encontró Cargo midiendo el `lua/` de ESTE repo.** `AreaTakeUnique(pos, radius, id)`, gemela de `Inventory.TakeUnique`. El camino de tratamiento usa cuatro superficies, no tres: `treatment.lua:163` gatea con `HasItem` y `:170` consume con `TakeUnique` **cuando el ítem es `unique` — el torniquete lo es**. Con las tres pedidas, el área habría **visto** un torniquete en un mueble y no habría tenido con qué consumirlo: **el fallo G4 exacto que este bloque invoca** —*«la acción existe, el ítem está, y el botón dice que no hay»*—, movido del lado de la **presencia** al del **take**. La lección se volvió a cobrar **en el bloque escrito para evitarla**, y no la cazó quien la escribió sino el dueño de la superficie, contando llamadores.
+>
+> **2 · La semántica entregada**, que es contra lo que hay que escribir el tramo (y no contra lo que se pidió):
+>
+> ```lua
+> CARGO.Containers.AreaHas(pos, radius, id)          -> bool   -- ve las DOS clases (stacks y unique)
+> CARGO.Containers.AreaCount(pos, radius, id)        -> n      -- SOLO stacks, igual que CountItem
+> CARGO.Containers.AreaTake(pos, radius, id, count)  -> bool   -- todo o nada; drena ENTRE contenedores
+> CARGO.Containers.AreaTakeUnique(pos, radius, id)   -> bool   -- una instancia; borra su blob
+> ```
+>
+> - **`AreaTake` es todo o nada**: valida el total antes de mover, así que un `can()` que pasó no puede quedar seguido de un `do()` que consumió a medias.
+> - **Drena entre contenedores** —dos vendas en un estante y tres en el siguiente son cinco, que era el pedido entero— y dentro de cada uno los stacks **de fábrica antes que los gastados** (CRG-7 de Cargo: un gastado no es intercambiable con uno fresco).
+> - Cada contenedor tocado se **guarda** (`Containers.Save`) y se **re-sincroniza con sus espectadores**: una caja abierta mientras el médico la vacía seguiría dibujando stock que ya no está.
+> - **`AreaCount` no ve los `unique`** — por eso `AreaHas` existe, y por eso un `can()` de este módulo nunca debe gatear un `unique` por conteo.
+>
+> **3 · Ya no hay que leer `_byId`.** La segunda deuda silenciosa que COA-51 se negaba a firmar **no se firma**: la superficie es pública. La primera —`CARGO.ClientState.items` para el conteo de los botones, §12— sigue igual y sigue siendo la única.
+>
+> **4 · La deuda se dio vuelta, y conviene tenerlo escrito antes de planificar el tramo.** Cargo dejó la **pasada en juego** de su #60 **diferida hasta que exista el área hospital**, por ser su **único consumidor**: una planilla sobre un llamador que no existe vuelve a medir el harness y no el juego. O sea que hoy **el que bloquea es este repo**, y cuando el área baje a código, esa planilla viaja con ella — las filas de Cargo se corren desde acá.
 
 ### Lo que el catálogo gana, por orden de costo
 
@@ -838,9 +866,12 @@ El torniquete ya tiene el gancho puesto: `z.isch` a los 90 s con score mínimo 6
 
 ### COA-52 — El dolor es estado POR ZONA derivado, más un agregado global saturado (enmienda 2026-08-17)
 
-> Votada por el autor en **seis puntos** el 2026-08-17, antes de escribir una línea (**COA-28**). Entra al registro con evidencia `INTENCION`: **no hay una sola línea de Lua**, y el `lua/` tiene 0 apariciones de `pain` (control positivo de la misma corrida: `blood` da 64). Es UNA norma con partes: el dolor no se parte en seis IDs porque ninguna de sus partes rige a otro módulo.
+> Votada por el autor en **seis puntos** el 2026-08-17, antes de escribir una línea (**COA-28**). Es UNA norma con partes: el dolor no se parte en seis IDs porque ninguna de sus partes rige a otro módulo.
+>
+> **BAJADA A CÓDIGO EL 2026-08-25**, y con eso deja `INTENCION`. Lo que la ejerce: la tabla de balance vive en `shared/corpus_coagulant_config.lua` (bloque *Dolor (§17, COA-52)*, con `Config.PainFromWound` y `Config.PainFrac` como las dos funciones puras); `ZonePain`/`GetRawPain`/`GetPain`/`AddPainSuppression` en `server/corpus_coagulant_core.lua`; el decaimiento de `painSuppress` y el `p` por zona + el percibido global del snapshot en `server/corpus_coagulant_bleeding.lua`; `HUD.ZonePain`/`HUD.Pain` en `client/corpus_coagulant_hud.lua`, **que sólo leen**. El harness da **275 checks ALL GREEN** con **86 filas nuevas** (85 de ellas citando COA-52), y la verificación en negativo es `dev/sabotaje_coagulant_dolor.py`. **La medición vieja queda como registro:** el día que se votó, el `lua/` tenía 0 apariciones de `pain` (control positivo de la misma corrida: `blood` daba 64).
 >
 > **El disparador es que el dolor ya se consume sin haberse escrito.** Cuatro fórmulas del spec v5 lo leen con número exacto —`bpm += pain × 0.22`, `StaminaCap -= pain × 0.35`, `pain > 80 → DAZED`, `pain > 85 → 0.10` de irregularidad del ECG— más la puerta de la morfina, `pain > 10`. Del lado de la **producción** no había un solo número. **COA-44** además lo promovió de diferido a requisito de la niebla. O sea: cinco consumidores y ningún productor.
+
 
 #### La pregunta que ordena todo: es por zona **Y** global
 
@@ -992,9 +1023,11 @@ De ahí sale la regla dura, que es lo que la vuelve norma y no detalle de implem
 
 > **Deuda declarada que esto destapa y que esta sesión NO arregla.** `NW2Float "coagulant_blood"` (§9) ya viaja a todos los clientes, y la **cifra** de sangre es capa de **diagnóstico** en la tabla de COA-44. O sea que la niebla, tal como está escrita, tiene un agujero **anterior** al dolor: un cliente cualquiera puede leer el volumen de sangre de cualquier jugador. No se toca acá porque la niebla no baja en este tramo y porque mover ese NW2 rompe la barra del StatusPanel de Cargo (§10) y la mini-barra del modo degradado. Se escribe para que el día que la niebla baje, esto sea un ítem de su planilla y no un hallazgo.
 
-#### La tabla de balance PROPUESTA — no escrita en `config.lua`
+#### La tabla de balance — ESCRITA en `config.lua` desde el 2026-08-25
 
-Lista para que el tramo de código la copie. Todo número de acá es balance (**COA-27**): vive en `corpus_coagulant_config.lua` como tabla y **un check lo DERIVA, jamás lo hardcodea** (**COA-35**).
+Se copió **tal cual, con sus comentarios**, al bloque *Dolor (§17, COA-52)* de `shared/corpus_coagulant_config.lua` — entre `WOUND_TYPES` y el bloque de tratamiento, para que `PAIN_SUPPRESS` exista antes que `TREATMENTS`. Todo número de acá es balance (**COA-27**): se tunea editando esa tabla y **un check lo DERIVA, jamás lo hardcodea** (**COA-35**). Se conserva escrita acá porque ésta es la sede del razonamiento: el archivo dice *qué* vale, esta sección dice *por qué*.
+
+> ⚠ **Y de la bajada salió una consecuencia de método sobre COA-35 que vale para todo este repo: un check que DERIVA su esperado de la constante no puede auditar esa constante.** `ZonePain(tratada) == base × PAIN_TREATED_MULT` sigue **verde** con el mult puesto en `1.0`, y el decaimiento medido como `inicial − N × DECAY` sigue **verde** con la tasa en `0` — el número se vuelve incomprobable justo por la disciplina que lo hace tuneable. Lo que los caza son las filas que miden la **propiedad**: *vendar ALIVIA* y *el efecto SE PASA*. Las dos están en el harness y las dos se vieron fallar (sabotajes #3 y #13 de `dev/sabotaje_coagulant_dolor.py`). La regla que queda: **por cada constante de balance, una fila derivada (qué vale) y una fila de propiedad (para qué está).**
 
 ```lua
 -- ============================================================

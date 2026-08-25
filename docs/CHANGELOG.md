@@ -1823,3 +1823,253 @@ exit 0. **Verificado en negativo, dos mutantes:** sin el `value` del bloodbag �
 exit 1; con un `value = 1` de relleno en el medkit → el primer check **pasa** y el segundo lo caza,
 que es precisamente para lo que está. **Falta la pasada en juego:** que un trader con categoría
 `medical` liste las cuatro **con precio** y que el server deje comprarlas y venderlas.
+
+---
+
+## PARCHES DE sesión El bloqueante de Cargo cayó: barrido de drift — 2026-08-25
+
+**Cero código y cero diseño nuevo.** Lo único que hace esta sesión es que las docs de este repo
+dejen de afirmar algo que es falso desde el **2026-08-22**: que el pedido de **COA-51** seguía sin
+ratificar y que por eso el área hospital no bajaba a código.
+
+**Qué pasó del otro lado.** Cargo **ratificó el pedido y lo escribió** en tanda con su #65 — roadmap
+**#60**, CHANGELOG **80**, commit `63c784f`, `corpus_cargo_containers.lua:646-741`, **server-only**.
+
+**⭐ Y entregó CUATRO donde el pedido pedía TRES, por MEDICIÓN y no por criterio.** `AreaTakeUnique`,
+gemela de `Inventory.TakeUnique`. La cuarta salió de que Cargo contara los llamadores reales en el
+`lua/` **de este repo**: `treatment.lua:163` gatea con `HasItem` y `:170` consume con `TakeUnique`
+**porque el torniquete es `unique`**. Con las tres pedidas, el área habría **visto** un torniquete en
+un mueble y no habría tenido con qué consumirlo — **el fallo G4 exacto**, movido del lado de la
+presencia al del **take**. Es decir: *la lección que el bloque de COA-51 invoca para exigir la tercera
+se volvió a cobrar dentro de ese mismo bloque, y la cazó el dueño de la superficie contando
+llamadores, no el pedidor releyendo su propia doc.* Vale como control de método: **un pedido escrito
+desde el consumidor no está auditado por haberlo escrito el consumidor.**
+
+**Segundo drift del mismo barrido, y es del tramo de precios:** el multiplicador por categoría que
+la sesión del 2026-08-18 citaba como *«PEDIDO sin ratificar»* está **CERRADO EN JUEGO** desde el
+2026-08-22 (Cargo #61, planilla AN 10/10). `medical` es una de las categorías que Cargo registra de
+fábrica (`corpus_cargo_items.lua:94`) ⇒ **`cargo_value_mult_medical` existe hoy**, con lo que la
+salida anotada para los cuatro precios médicos dejó de ser una promesa. **Los números no se tocan**:
+la entrada del 2026-08-18 ya decía por qué no se compensa inflándolos.
+
+- PARCHE 1 — docs(arquitectura): `Coagulant_Architecture.md` **§12** (la línea de Cargo pasa de
+  *PEDIDO ABIERTO / no ratificado* a **ratificado y entregado**, con las cuatro y el porqué de la
+  cuarta) y **§17** (el bloque *«la superficie que hay que pedirle a Cargo»* conserva el pedido como
+  registro y gana la enmienda con la **semántica entregada** — `AreaCount` cuenta solo stacks,
+  `AreaTake` es todo o nada y drena entre contenedores de fábrica antes que gastados (CRG-7), cada
+  contenedor tocado se guarda y re-sincroniza; ya no hay que leer `_byId`). **[APLICADO 2026-08-25]**
+
+- PARCHE 2 — docs(docs): `coagulant_roadmap.txt` [6] — el párrafo *BLOQUEANTE del area hospital*
+  pasa a **CAÍDO**, con la vuelta de la dependencia escrita. **[APLICADO 2026-08-25]**
+
+- PARCHE 3 — docs(docs): `coagulant_estado.md` — cabeza nueva del 2026-08-25 y **dos marcas ⚠ en
+  sitio** sobre las dos frases viejas (la del #61 *«sin ratificar»* y la del #60 *«Hasta entonces el
+  tramo no baja»*). Las frases **no se borran**: el estado acumula «Antes, …» y borrarlas dejaría el
+  historial mintiendo en silencio; la marca dice qué quedó viejo y adónde mirar. **[APLICADO
+  2026-08-25]**
+
+- PARCHE 4 — docs(ids): `corpus/docs/ids.yaml` — **COA-51 enmendada**. El título deja de afirmar el
+  bloqueo y enuncia el invariante que sí generaliza (*sólo superficie pública; se pide y se espera al
+  dueño; nunca `_byId`*), y la nota gana el párrafo **CUMPLIDA**. **La evidencia sigue en
+  `INTENCION`** y hay que decir por qué: sigue sin una línea de Lua **de este lado**, que es otra cosa
+  que estar bloqueada. **[APLICADO 2026-08-25]**
+
+**⚠ LA DEUDA SE DIO VUELTA, y es lo que hay que llevarse de esta sesión.** Cargo dejó la **pasada en
+juego** de su #60 **diferida hasta que exista el área hospital**, por ser su **único consumidor** —
+una planilla sobre un llamador que no existe vuelve a medir el harness y no el juego. Hasta el
+2026-08-22 el que bloqueaba era Cargo; **desde el 2026-08-22 el que bloquea es este repo**, y cuando
+el área baje a código esas filas viajan con ella.
+
+**Y de la misma sesión sale el prompt del tramo siguiente, que NO es un parche de este repo
+porque `dev/` está afuera de git:** `dev/PROMPT_coagulant_dolor_codigo.txt` — la bajada a código de
+**COA-52**, con el mapa de toques anclado al código de hoy, las trampas medidas (entre ellas que el
+score reparte las tratadas a `0.5` y el dolor a `0.35`, dos números distintos en funciones vecinas) y
+la verificación en negativo obligatoria. **Trae una pregunta sin votar y está escrita como pregunta,
+no como decisión** (COA-28, la lección de COA-37): bajado solo, el dolor **no tiene un solo consumidor
+en juego**, así que su pasada sería por consola — o baja pelado con su planilla diferida, o baja con
+el analgésico oral y el dolor en el menú médico, que es diseño y lo vota el autor.
+
+**Verificación.** No se tocó Lua, así que no había nada que pudiera moverse — **pero el harness se
+corrió igual**, porque un ALL GREEN heredado de la sesión anterior y citado sin medir es la mitad
+exacta del drift que esta sesión vino a arreglar: `dev/harness_coagulant.py` **189 checks, 0 fallos,
+ALL GREEN, exit 0**; selftest **192 OK server / 142 client**. El registro de IDs se validó con
+`corpus/.claude/check-ids/corpus_check_ids.ps1`.
+
+---
+
+## PARCHES DE sesión El dolor baja a código (COA-52) + el analgésico oral — 2026-08-25
+
+Ejecución de `dev/PROMPT_coagulant_dolor_codigo.txt`. **COA-52 se votó el 2026-08-17 con la
+tabla de balance escrita y cero Lua; esta sesión la COPIA a código.** El diseño no se
+re-discutió: los seis puntos, las seis colisiones y los números vienen de §17 y se bajaron
+tal cual, comentarios incluidos.
+
+> **⚠ LA PREGUNTA DEL §3.1 SE CONTESTÓ POR DELEGACIÓN, y se escribe así para que se pueda
+> vetar barato.** El prompt traía UN eje sin votar —bajado solo, el dolor **no tiene un solo
+> consumidor en juego**, así que su pasada sería por consola— y el autor delegó el voto
+> (*«Hace votos sobre la pregunta que ibas a formular»*). Los votos son **míos, no del
+> autor**, y están marcados como tales acá, en el estado y en la planilla. **COA-28 no se
+> saltea: se difiere.** Si el autor no está de acuerdo con alguno, el costo de revertirlo es
+> el PARCHE 6 entero y tres líneas de UI — nada más cuelga de ahí.
+>
+> - **§3.1 → (B) en su forma MÍNIMA.** Entra el **analgésico oral** como quinto ítem médico y
+>   el dolor **como número** en el menú médico. Motivo, con la cuenta hecha: es exactamente
+>   la situación que Cargo declaró en su #60 — *una planilla sobre un llamador que no existe
+>   vuelve a medir el harness y no el juego*—, y un tramo que sólo se puede ver en el harness
+>   es el que después se cita como verificado (nº 42 del catálogo de controles). **NO entra
+>   la morfina**: su constante está votada (`PAIN_SUPPRESS.morphine = 80`) pero su ítem
+>   arrastra la sobredosis y la naloxona, que son del tramo del catálogo (COA-50).
+> - **§3.2 → la silueta NO se toca.** Se sigue pintando con el SCORE. La rampa de dolor
+>   (`PainFrac`) existe y está verificada, pero **no la llama nadie que pinte**: es de la
+>   niebla (COA-44) y baja con ella. Cambiar hoy lo que el jugador ve sería diseño de UI sin
+>   votar.
+> - **Los CINCO campos del ítem que COA-52 no especificaba** —clase, peso, tiempo, `value` y
+>   `can()`— se votaron aparte y con su cuenta, y viven comentados arriba de la def: clase
+>   `stackable` (el único `unique` del set es el torniquete, y su razón —se OCUPA mientras
+>   está puesto— no aplica a un frasco), peso **0.1** (el escalón de la venda), tiempo **3 s**
+>   (entre el torniquete y la venda), `value` **10** (frasco de venta libre, ~8-12 USD,
+>   **estimación etiquetada como tal**, mismo método que los otros cuatro) y `can()` = la
+>   puerta `pain > PAIN_ANALGESIC_AT`, que **no es un número nuevo**: es el `pain > 10` que el
+>   spec v5 ya tenía escrito para la morfina y que COA-52 deja donde está.
+
+- PARCHE 1 — feat(config): bloque **Dolor (§17, COA-52)** en
+  `shared/corpus_coagulant_config.lua`, copiado literal de la tabla de §17 con sus
+  comentarios: `PAIN_MAX`, `PAIN_FULL_AT`, `PAIN_PER_WOUND`, `PAIN_TYPE` (los valores de ACE3
+  **literales**, con la fila inerte de `punzante`), `PAIN_SEVERITY`, `PAIN_TREATED_MULT`,
+  `PAIN_INFECTED_MULT`, los tres pisos de D6, `ZONE_PAIN_WEIGHT`, la supresión y su
+  decaimiento. Más las dos funciones puras: `Config.PainFromWound(tipo, sev)` y
+  `Config.PainFrac(pain)` —espejo literal de `ZoneDamageFrac`—. Va **entre `WOUND_TYPES` y el
+  bloque de tratamiento** por una razón mecánica: `TREATMENTS.painkillers` lee
+  `PAIN_SUPPRESS.oral`, así que la tabla tiene que existir antes. **NO se acuña
+  `coagulant_pain_scale`**: COA-52 lo niega por escrito, y hay un check que lo mide — una
+  decisión de NO hacer algo es invisible salvo que alguien la mida. **[PENDIENTE]**
+
+- PARCHE 2 — feat(core): el dolor en `server/corpus_coagulant_core.lua`. `NuevoEstado()` gana
+  `painSuppress = 0` (lo **único** que el dolor almacena); `COAGULANT.ZonePain(ply, zone)` al
+  lado de `GetZoneScore` y con su misma forma de recorrido; `GetRawPain` = Σ zonas ×
+  `ZONE_PAIN_WEIGHT` **con clamp**; `GetPain` = `clamp(raw − painSuppress)`;
+  `AddPainSuppression`, que **ensucia el snapshot** porque el percibido acaba de cambiar.
+  **⚠ El reparto de las tratadas es `0.35` y NO el `0.5` de la función de al lado**: son dos
+  números distintos a propósito (uno es debuff, el otro nocicepción) y copiar el vecino no da
+  ningún síntoma. Los términos de **infección** (COA-49) y **fractura** (§1) se escriben y
+  leen 0: sus ramas son **inalcanzables** con el árbol de hoy y está dicho en el comentario.
+  **[PENDIENTE]**
+
+- PARCHE 3 — feat(bleeding): el decaimiento de `painSuppress` en el tick de 1 s que **ya
+  existía** (el dolor no necesitaba reloj propio), y el dolor en el snapshot: cada zona gana
+  `p` (redondeado) y el blob gana `pain`, el **percibido** global. **⚠ El decaimiento ensucia
+  el snapshot SÓLO si el número se movió de verdad**: el percibido cambia al decaer aunque
+  nadie toque una herida, pero ensuciar siempre convierte el emisor on-change de COA-16 en un
+  emisor por segundo — y eso no da ningún error, da tráfico multiplicado por jugador. El
+  predicado del emisor pasa a *«aporta dolor ≠ 0, torniquete o isquemia»*. **La supresión NO
+  viaja**: es capa de diagnóstico y este tramo no abre canales que la niebla todavía no sabe
+  filtrar. **[PENDIENTE]**
+
+- PARCHE 4 — feat(hud): `HUD.ZonePain(zona)` y `HUD.Pain()` en el cliente, que **LEEN** el
+  snapshot. Prohibido derivarlos (COA-52, sexta colisión). El precedente de al lado —
+  `ScoreZona`, que sí duplica la fórmula del server — **queda como está y no es precedente**:
+  el score no es un vital que la niebla pueda ocultar. **[PENDIENTE]**
+
+- PARCHE 5 — docs(init): el bloque CONTRATO nombra las cuatro funciones de dolor y la línea
+  del snapshot dice que el dolor viaja ahí y **no** por NW2, con el motivo en una línea: un
+  NW2 se replica a todos los clientes y no tiene filtro por observador. **[PENDIENTE]**
+
+- PARCHE 6 — feat(items) + feat(treatment): el **analgésico oral**. `TREATMENTS.painkillers`
+  (3 s, `suppress = PAIN_SUPPRESS.oral`), la def `corpus_coagulant_painkillers` contra Cargo
+  con `pain_pills.mdl` —modelo ya portado desde el 2026-08-05 y que `ASSETS.md` listaba como
+  el candidato para el día que el analgésico se abriera—, la puerta en `ApplyTreatment`
+  leyendo el **percibido**, y el efecto en `Completar`. Nace también
+  `Config.TREATMENT_NO_ZONE` (hoy `bloodbag` + `painkillers`): la pregunta *«¿este
+  tratamiento usa zona?»* se hacía con un `kind == "bloodbag"` repetido en **tres** archivos,
+  y así es como el quinto tratamiento se olvida en dos de ellos. **[PENDIENTE]**
+
+- PARCHE 7 — feat(medmenu): el dolor por zona como número bajo el *Damage score*, el
+  percibido global en la cabecera, y el botón **Painkillers** — grisado cuando el percibido
+  no llega a la puerta, que es lo que vuelve **visible** la propiedad por la que COA-52 no
+  escribió una regla de apilamiento. Cinco botones ya no entran en una fila con el de
+  cancelar al lado, así que la cancelación baja a su propia fila: reflujo mecánico, no
+  rediseño. **[PENDIENTE]**
+
+- PARCHE 8 — feat(dev): `coagulant_status` imprime el dolor por zona y, en **renglón propio y
+  corto** (la consola de GMod trunca en 255), el global **en sus dos formas** más la
+  supresión vigente y su tasa. Que imprima las dos no es adorno: es lo único que distingue
+  *«no duele»* de *«está tapado»*, que es exactamente el estado que el analgésico fabrica.
+  `coagulant_dev_give` entrega 2 analgésicos. El **selftest** crece con la parte del dolor que
+  se puede mirar desde adentro del juego. **[PENDIENTE]**
+
+- PARCHE 9 — test(dev): `dev/harness_coagulant.py` pasa de **189 a 275 checks**, todos verdes.
+  Las 86 filas nuevas **citan COA-52** (85 de las 86) —lo exige la evidencia del registro— y arrancan con su
+  **familia** (`DOL-F/Z/A/S/N/I/C`), que es lo que le permite al control negativo medir su
+  alcance. Además, dos checks viejos dejaron de contar 4 defs a mano y ahora **derivan** el
+  número de `Config.TREATMENTS`: una lista de N sólo encuentra los N que alguien ya sabía.
+  **[APLICADO 2026-08-25]** (es harness, se verifica corriéndolo)
+
+- PARCHE 11 — test(dev): `dev/verificar_arbol_sabotaje.py` — control de HIGIENE del árbol tras una
+  corrida de sabotaje interrumpida, genérico (toma el script de sabotaje como argumento). Nace
+  porque esta sesión lo pagó: al matar la corrida colgada, el padre siguió y restauró unos sí y
+  otros no, y quedó **una sola línea de sabotaje viva** que el harness igual daba verde. Corre con
+  su control positivo hecho (se ensucia una línea a propósito y tiene que dar rojo). **[APLICADO
+  2026-08-25]**
+
+- PARCHE 10 — test(dev): `dev/sabotaje_coagulant_dolor.py` — verificación en negativo con
+  **30 sabotajes** y **3 no-detectables declarados**, en el molde de `sabotaje_cargo_61.py`
+  con la mejora del 2026-08-24: **cada sabotaje declara qué familias tiene que teñir** y el
+  arnés falla en las **dos** direcciones. **[APLICADO 2026-08-25]**
+
+**LA VERIFICACIÓN EN NEGATIVO AUDITÓ AL QUE LA ESCRIBIÓ, y es la mitad que justifica declarar
+el alcance.** La primera corrida de los 30 sabotajes dio **cuatro** problemas y **tres eran defectos
+de MIS CHECKS**, no del código:
+
+- **El arnés se COLGÓ en vez de dar rojo.** El sabotaje que pone el decaimiento en `0` hace que el
+  plazo derivado (`oral / DECAY`) sea **infinito**, y el `for` que lo recorría no terminaba nunca. La
+  fila de arriba *comprobaba* que el plazo fuera finito y **no lo usaba para nada**: una precondición
+  que se comprueba pero no **gatea** es prosa. Y el síntoma es peor que un rojo — un arnés colgado no
+  se distingue de uno lento, y costó ~30 minutos de mirar un proceso vivo. El arreglo es un tope en
+  el propio `for`.
+- **Un check MATABA la pasada en vez de medir.** Con el `p` fuera del snapshot, mi fila hacía
+  aritmética sobre un campo ausente y tumbaba el realm entero: rojo, sí, pero **sin poder repartirlo
+  por familia** — y un realm tumbado se lee como *«el módulo no carga»*, que es la conclusión
+  inversa. Ahora todo lo que lee el blob lee con default.
+- **Un check HARDCODEABA un número** (`PainFromWound("corte", 1) == 2.8`) justo en el repo donde
+  COA-35 lo prohíbe, y por eso se ponía rojo al tocar `PAIN_SEVERITY`, un eje que no tiene nada que
+  ver con lo que esa fila mide. **Lo cazó la segunda dirección del arnés** —`EL CONTROL SE PASA`—,
+  que es la que se olvida porque el rojo de más se lee como celo.
+- **Y dos líneas no tenían quién las mirara**, las dos descubiertas por sabotajes que salieron
+  VERDES: que `AddPainSuppression` ensucie el snapshot *por sí misma* (las dos filas que lo miraban
+  lo ensuciaban a mano o dejaban que lo hiciera el tick), y que un tratamiento sin zona viaje con
+  `chest` y no con `nil`. La segunda necesitó un caso que no existía en el banco: **el analgésico
+  pedido con el cuerpo sin una sola herida abierta** — posible porque una zona isquémica duele 60 sin
+  herida. El arreglo fue **agregar los checks que faltaban**, no aflojar la declaración.
+
+Sólo **uno** de los cuatro era una declaración incompleta y no un defecto: borrar el piso de isquemia
+también tiñe `DOL-I`, porque la isquemia es hoy el **único** mecanismo capaz de producir dolor sin
+una herida abierta, o sea el único fixture con el que ese caso se puede construir. Eso se declara,
+que es lo útil: dice que las dos familias comparten un mecanismo.
+
+**LO QUE ESTA SESIÓN APRENDIÓ Y NO ESTABA EN NINGÚN LADO — la trampa de COA-35.** *Un check
+que DERIVA su esperado de la constante no puede auditar esa constante.* `ZonePain(tratada) ==
+base × PAIN_TREATED_MULT` sigue **verde** con el mult puesto en `1.0` (o sea, con la venda sin
+aliviar nada), y `painSuppress == inicial − N × DECAY` sigue **verde** con la tasa en `0` (o
+sea, con el analgésico que no se pasa nunca). Las dos constantes se vuelven incomprobables
+**justo por la disciplina que las hace tuneables**. Lo que las caza son las filas que miden la
+**propiedad**: *vendar ALIVIA* y *el efecto SE PASA*. Los dos casos se **vieron fallar** con
+los sabotajes #3 y #13. Regla que queda escrita en §17: **por cada constante de balance, una
+fila derivada (qué vale) y una fila de propiedad (para qué está).**
+
+**Y UNA FILA QUE SE DECLARÓ EN VEZ DE ACREDITARSE**, porque el prompt lo mandaba y porque es
+honesto: el cambio de predicado del emisor —de *«tiene heridas»* a *«aporta dolor ≠ 0»*—
+**no puede fallar hoy**. Toda herida de los cinco tipos vivos produce dolor > 0, así que los
+dos predicados seleccionan el **mismo** conjunto; la diferencia aparece recién con una zona
+cuyo único contenido sea `frac`, y nada del árbol escribe ese campo. Está corrido como
+**no-detectable declarado** en el sabotaje, exigiendo verde: el día que se ponga rojo, el
+límite del instrumento cambió y esta nota envejeció. Lo que **sí** sostiene la equivalencia es
+otro check —`PAIN_TYPE` cubre todo `WOUND_TYPES`—, sin el cual un tipo de herida nuevo sacaría
+su zona del snapshot **en silencio**.
+
+**Verificación.** `dev/glua_check.py` 13/13 parsean. `dev/harness_coagulant.py`: **275 checks,
+0 fallos, ALL GREEN, exit 0**; selftest **221 OK server / 161 client**. Verificación en
+negativo: `dev/sabotaje_coagulant_dolor.py`. Registro de IDs validado con
+`corpus/.claude/check-ids/corpus_check_ids.ps1`. **Falta la pasada en juego** — planilla en
+`dev/checks/coagulant-dolor-r1.html`; para código de addon GMod, *verificado* = confirmado en
+juego, y por eso los parches 1-8 nacen `[PENDIENTE]`. La planilla está publicada como
+artefacto: https://claude.ai/code/artifact/f9e534e3-2843-453c-88bf-e786e6778cd1

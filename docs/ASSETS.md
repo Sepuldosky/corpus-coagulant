@@ -39,7 +39,7 @@ mayor del modelo terminado.
 | `sutures` | dos carretes de sutura con aguja | 2.832 | 5,0 cm | — | — |
 | `patches` | caja de curitas + dos sueltas | 2.368 | 11,4 cm | — | — |
 | `spray` | frasco de desinfectante | 1.232 | 17,6 cm | — | — |
-| `pain_pills` | frasco de analgésicos | 732 | 10,0 cm | — | — |
+| `pain_pills` | frasco de analgésicos | 732 | 10,0 cm | — | **`corpus_coagulant_painkillers`** |
 | `mask` | barbijo quirúrgico | 600 | 11,0 cm | — | — |
 | `tray` | bandeja de instrumental | 380 | 21,5 cm | — | — |
 | `thermometer` | termómetro digital | 232 | 12,9 cm | — | — |
@@ -118,16 +118,20 @@ descuido, está votado**. La razón completa vive en el encabezado de `dev/phast
 `fbx2smd.py` ganó `--object <malla>` para poder hacer este corte: `--branch` se queda con una rama
 entera y una rama puede ser un conjunto, no una pieza.
 
-## Los 16 sin def
+## Los 15 sin def
 
-Tres modelos tienen ítem; **dieciséis no**. Están ahí a propósito: son material para defs futuras, no
+Cuatro modelos tienen ítem; **quince no**. Están ahí a propósito: son material para defs futuras, no
 sobras. Lo que hay que saber antes de usarlos:
 
 - **No se inventan ítems para justificar un modelo.** COA-28 manda al revés: el diseño se discute
   con el autor y se anota en la arquitectura primero. Que exista `syringes.mdl` no crea un ítem
   «jeringa».
 - Los que la arquitectura **ya tiene diferidos** (§1, §7) y podrían encontrar modelo acá el día que
-  se abran: **analgésico** → `pain_pills` o `pill_bottles`; **férula** → nada apropiado todavía.
+  se abran: ~~**analgésico**~~ (**se abrió el 2026-08-25 con COA-52 y se llevó `pain_pills`** —
+  732 tris, 10 cm; el `pill_bottles` sigue libre y es el candidato natural para la **morfina**
+  cuando el tramo del catálogo la abra); **férula** → nada apropiado todavía. ⚠ **Y el orden se
+  respetó**: no se inventó un ítem porque el modelo estuviera — el ítem lo creó el voto sobre el
+  §3.1 del prompt de ejecución, y el modelo sólo evitó tener que salir a buscar uno.
 - `bust_stethoscope`, `tray`, `test_tubes` y `medkit_large` son **props de escenario**, no cosas que
   un jugador lleve encima.
 

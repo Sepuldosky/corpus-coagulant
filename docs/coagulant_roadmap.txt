@@ -97,9 +97,14 @@ sobre este archivo se reporta NO-AUDITABLE POR DISEÑO.
       Bajar la niebla antes que el dolor deja la silueta sin qué pintar — la niebla apagaría
       la pantalla en vez de complicarla.
 
-      EL DOLOR YA TIENE DISEÑO: COA-52, sesion de diseño del 2026-08-17, seis puntos votados
-      y CERO codigo. §1 dejo de listarlo como diferido. O sea que el orden obligado sigue
-      vigente para la BAJADA (dolor -> niebla) pero ya no bloquea el DISEÑO de la niebla.
+      EL DOLOR ESTA EN CODIGO DESDE EL 2026-08-25, y con eso ESTE ORDEN OBLIGADO YA NO
+      BLOQUEA NADA: la niebla se quedo sin su unico bloqueante. Diseño COA-52 del
+      2026-08-17 (seis puntos votados), bajada el 2026-08-25 — tabla de balance en
+      config.lua, ZonePain/GetRawPain/GetPain/AddPainSuppression en core.lua, el
+      decaimiento y el `p` del snapshot en bleeding.lua, y la lectura en hud.lua. Harness
+      275 checks ALL GREEN con verificacion en negativo propia
+      (dev/sabotaje_coagulant_dolor.py). FALTA LA PASADA EN JUEGO:
+      dev/checks/coagulant-dolor-r1.html.
       Lo votado: estado POR ZONA derivado de las heridas mas un agregado global SATURADO en
       0..100 —y ese clamp es lo que salva las cuatro formulas que ya consumian dolor—; la
       produccion sale de una constante x la tabla de ACE3 literal x un eje de severidad que
@@ -112,6 +117,26 @@ sobre este archivo se reporta NO-AUDITABLE POR DISEÑO.
       por COA-49 — CONSUME su reloj. Con la forma de lista de hoy su termino `i` lee 0 y es
       exactamente neutro, asi que el dolor puede bajar antes o junto con COA-49, pero nunca
       la espera.
+
+      LA PREGUNTA SIN VOTAR DEL PROMPT (dev/PROMPT_coagulant_dolor_codigo.txt §3) SE
+      RESOLVIO POR DELEGACION DEL AUTOR el 2026-08-25, y queda anotada como VOTO
+      DELEGADO — no como decision suya, asi que se puede vetar barato. Salio (B) en su
+      forma minima: entra el ANALGESICO ORAL como quinta def medica y el dolor como
+      NUMERO en el menu medico; NO entra la morfina (arrastra sobredosis y naloxona, que
+      son del catalogo, COA-50); y la SILUETA NO CAMBIA DE INSUMO — sigue pintando el
+      score, y la rampa de dolor baja con la niebla. El motivo del voto: sin nada que
+      mueva el dolor en juego la ronda vuelve a medir el harness y no el juego, que es lo
+      que Cargo acaba de declarar en su #60. Si el autor veta, se sacan la def y las
+      filas 05-07 de la planilla, y nada mas cuelga de ahi.
+
+      DOS COSAS QUE LA BAJADA MIDIO Y EL DISEÑO NO PODIA SABER, anotadas porque valen
+      para todo el repo. (1) LA TRAMPA DE COA-35: un check que DERIVA su esperado de la
+      constante NO PUEDE AUDITAR ESA CONSTANTE — el reparto de la tratada sigue verde con
+      el mult en 1.0, y el decaimiento sigue verde con la tasa en 0. Por cada constante
+      de balance va una fila derivada (que vale) y una de propiedad (para que esta):
+      «vendar ALIVIA» y «el efecto SE PASA». (2) EL CAMBIO DE PREDICADO DEL EMISOR NO
+      PUEDE FALLAR HOY y se DECLARA en vez de acreditarse: «aporta dolor != 0» y
+      «#wounds > 0» seleccionan el mismo conjunto hasta que exista `frac`.
 
       LOS DOS EJES QUE §17 dejo abiertos se votaron el 2026-08-09: COA-49 (la herida
       tratada tiene TIEMPO — se resuelve sola por reloj o se infecta; el Medkit no cambia
@@ -127,10 +152,19 @@ sobre este archivo se reporta NO-AUDITABLE POR DISEÑO.
       barra del StatusPanel de Cargo y la mini-barra del modo degradado, asi que es trabajo
       del tramo de la niebla, no de este.
 
-      BLOQUEANTE del area hospital, y es de otro repo: necesita AreaHas/AreaCount/AreaTake
-      de Cargo, que NO las ratifico. Pedido escrito el mismo dia en su roadmap #60. Hasta
-      que Cargo conteste, ese tramo no baja a codigo — leer _byId seria la SEGUNDA deuda
-      silenciosa del mismo tipo, y la primera ya esta declarada en §12.
+      BLOQUEANTE del area hospital: CAIDO. Cargo contesto — ratifico el pedido y lo
+      ESCRIBIO el 2026-08-22 (su roadmap #60, CHANGELOG 80, commit 63c784f,
+      corpus_cargo_containers.lua:646-741, server-only). Y entrego CUATRO, no las tres
+      pedidas: AreaHas / AreaCount / AreaTake / AreaTakeUnique. La cuarta salio de que
+      Cargo MIDIERA el lua/ de este repo — treatment.lua:163 gatea con HasItem y :170
+      consume con TakeUnique porque el torniquete es unique—, asi que con las tres el
+      area habria VISTO un torniquete en un mueble sin poder consumirlo: el fallo G4
+      otra vez, movido de la presencia al take, y en el bloque escrito para evitarlo.
+      Ya no hay que leer _byId: la superficie es publica, asi que la SEGUNDA deuda
+      silenciosa no se firma y la primera (ClientState.items, §12) sigue siendo la unica.
+      Y LA DEUDA SE DIO VUELTA: Cargo dejo la PASADA EN JUEGO de su #60 diferida hasta
+      que exista el area hospital, por ser su unico consumidor — hoy el que bloquea es
+      ESTE repo, y cuando el area baje, esa planilla viaja con ella.
 
       Tres correcciones de CÓDIGO VIVO que no esperan a nada de esto (COA-46): DMG_ACID no
       está en DMG_QUEMA y produce una contusión; DMG_SHOCK pierde la arritmia; DMG_BLAST no
@@ -151,10 +185,13 @@ sobre este archivo se reporta NO-AUDITABLE POR DISEÑO.
 
       Los dos diferidos de §1/§7 de la arquitectura que ya tendrían con qué:
       ANALGÉSICO (pain_pills, pill_bottles) y FÉRULA (nada apropiado todavía).
-      El ANALGÉSICO dejo de ser diferido el 2026-08-17: COA-52 le da semantica
-      (suma PAIN_SUPPRESS.oral = 35 puntos de supresion, no resta dolor) y ya
-      tiene modelo. Sigue faltando la bajada a codigo del dolor entero — y COA-28
-      manda igual: que exista `pain_pills.mdl` y que exista la norma no crea el item.
+      El ANALGÉSICO YA NO ES NINGUNA DE LAS DOS COSAS: dejo de ser diferido el
+      2026-08-17 (COA-52 le dio semantica — suma PAIN_SUPPRESS.oral = 35 puntos de
+      supresion, no resta dolor) y BAJO A CODIGO el 2026-08-25 como
+      `corpus_coagulant_painkillers`, llevandose `pain_pills.mdl`. Quedan CATORCE
+      modelos sin def. Y el orden de COA-28 se respeto: el item no lo creo el modelo,
+      lo creo el voto — el modelo solo evito tener que salir a buscar uno. La FERULA
+      sigue diferida y sin modelo apropiado.
 
       HUECO CONOCIDO: el TORNIQUETE no tiene modelo en ninguno de los tres packs
       —el candidato resultó ser carretes de sutura al renderizarlo— y cae a la
