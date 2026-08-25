@@ -103,8 +103,12 @@ sobre este archivo se reporta NO-AUDITABLE POR DISEÑO.
       config.lua, ZonePain/GetRawPain/GetPain/AddPainSuppression en core.lua, el
       decaimiento y el `p` del snapshot en bleeding.lua, y la lectura en hud.lua. Harness
       275 checks ALL GREEN con verificacion en negativo propia
-      (dev/sabotaje_coagulant_dolor.py). FALTA LA PASADA EN JUEGO:
-      dev/checks/coagulant-dolor-r1.html.
+      (dev/sabotaje_coagulant_dolor.py). Y CERRO EN JUEGO EL 2026-08-25, 12/12 y sin
+      un solo defecto (planilla dev/checks/coagulant-dolor-r1.html): las dos filas que
+      decidieron son la 03 —que midio EN JUEGO el 0.35 del dolor contra el 0.5 del score, los
+      dos repartos vecinos de core.lua, que es lo que la trampa de COA-35 no deja auditar con
+      un check— y la 07, que desgatillo la 2.a dosis con el percibido en 4-6 y el crudo en 24:
+      la unica prueba de que la puerta lee GetPain y no GetRawPain. Parches 1-8 APLICADOS.
       Lo votado: estado POR ZONA derivado de las heridas mas un agregado global SATURADO en
       0..100 —y ese clamp es lo que salva las cuatro formulas que ya consumian dolor—; la
       produccion sale de una constante x la tabla de ACE3 literal x un eje de severidad que
@@ -127,7 +131,9 @@ sobre este archivo se reporta NO-AUDITABLE POR DISEÑO.
       score, y la rampa de dolor baja con la niebla. El motivo del voto: sin nada que
       mueva el dolor en juego la ronda vuelve a medir el harness y no el juego, que es lo
       que Cargo acaba de declarar en su #60. Si el autor veta, se sacan la def y las
-      filas 05-07 de la planilla, y nada mas cuelga de ahi.
+      filas 05-07 de la planilla, y nada mas cuelga de ahi. NO VETO NINGUNO DE LOS
+      DOS: la pasada del 2026-08-25 los dejo EN PIE, y la fila 11 confirmo que la
+      silueta sigue pintandose con el score.
 
       DOS COSAS QUE LA BAJADA MIDIO Y EL DISEÑO NO PODIA SABER, anotadas porque valen
       para todo el repo. (1) LA TRAMPA DE COA-35: un check que DERIVA su esperado de la

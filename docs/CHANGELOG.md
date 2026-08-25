@@ -1942,7 +1942,7 @@ tal cual, comentarios incluidos.
   bloque de tratamiento** por una razón mecánica: `TREATMENTS.painkillers` lee
   `PAIN_SUPPRESS.oral`, así que la tabla tiene que existir antes. **NO se acuña
   `coagulant_pain_scale`**: COA-52 lo niega por escrito, y hay un check que lo mide — una
-  decisión de NO hacer algo es invisible salvo que alguien la mida. **[PENDIENTE]**
+  decisión de NO hacer algo es invisible salvo que alguien la mida. **[APLICADO 2026-08-25]**
 
 - PARCHE 2 — feat(core): el dolor en `server/corpus_coagulant_core.lua`. `NuevoEstado()` gana
   `painSuppress = 0` (lo **único** que el dolor almacena); `COAGULANT.ZonePain(ply, zone)` al
@@ -1953,7 +1953,7 @@ tal cual, comentarios incluidos.
   números distintos a propósito (uno es debuff, el otro nocicepción) y copiar el vecino no da
   ningún síntoma. Los términos de **infección** (COA-49) y **fractura** (§1) se escriben y
   leen 0: sus ramas son **inalcanzables** con el árbol de hoy y está dicho en el comentario.
-  **[PENDIENTE]**
+  **[APLICADO 2026-08-25]**
 
 - PARCHE 3 — feat(bleeding): el decaimiento de `painSuppress` en el tick de 1 s que **ya
   existía** (el dolor no necesitaba reloj propio), y el dolor en el snapshot: cada zona gana
@@ -1963,16 +1963,16 @@ tal cual, comentarios incluidos.
   emisor por segundo — y eso no da ningún error, da tráfico multiplicado por jugador. El
   predicado del emisor pasa a *«aporta dolor ≠ 0, torniquete o isquemia»*. **La supresión NO
   viaja**: es capa de diagnóstico y este tramo no abre canales que la niebla todavía no sabe
-  filtrar. **[PENDIENTE]**
+  filtrar. **[APLICADO 2026-08-25]**
 
 - PARCHE 4 — feat(hud): `HUD.ZonePain(zona)` y `HUD.Pain()` en el cliente, que **LEEN** el
   snapshot. Prohibido derivarlos (COA-52, sexta colisión). El precedente de al lado —
   `ScoreZona`, que sí duplica la fórmula del server — **queda como está y no es precedente**:
-  el score no es un vital que la niebla pueda ocultar. **[PENDIENTE]**
+  el score no es un vital que la niebla pueda ocultar. **[APLICADO 2026-08-25]**
 
 - PARCHE 5 — docs(init): el bloque CONTRATO nombra las cuatro funciones de dolor y la línea
   del snapshot dice que el dolor viaja ahí y **no** por NW2, con el motivo en una línea: un
-  NW2 se replica a todos los clientes y no tiene filtro por observador. **[PENDIENTE]**
+  NW2 se replica a todos los clientes y no tiene filtro por observador. **[APLICADO 2026-08-25]**
 
 - PARCHE 6 — feat(items) + feat(treatment): el **analgésico oral**. `TREATMENTS.painkillers`
   (3 s, `suppress = PAIN_SUPPRESS.oral`), la def `corpus_coagulant_painkillers` contra Cargo
@@ -1981,21 +1981,21 @@ tal cual, comentarios incluidos.
   leyendo el **percibido**, y el efecto en `Completar`. Nace también
   `Config.TREATMENT_NO_ZONE` (hoy `bloodbag` + `painkillers`): la pregunta *«¿este
   tratamiento usa zona?»* se hacía con un `kind == "bloodbag"` repetido en **tres** archivos,
-  y así es como el quinto tratamiento se olvida en dos de ellos. **[PENDIENTE]**
+  y así es como el quinto tratamiento se olvida en dos de ellos. **[APLICADO 2026-08-25]**
 
 - PARCHE 7 — feat(medmenu): el dolor por zona como número bajo el *Damage score*, el
   percibido global en la cabecera, y el botón **Painkillers** — grisado cuando el percibido
   no llega a la puerta, que es lo que vuelve **visible** la propiedad por la que COA-52 no
   escribió una regla de apilamiento. Cinco botones ya no entran en una fila con el de
   cancelar al lado, así que la cancelación baja a su propia fila: reflujo mecánico, no
-  rediseño. **[PENDIENTE]**
+  rediseño. **[APLICADO 2026-08-25]**
 
 - PARCHE 8 — feat(dev): `coagulant_status` imprime el dolor por zona y, en **renglón propio y
   corto** (la consola de GMod trunca en 255), el global **en sus dos formas** más la
   supresión vigente y su tasa. Que imprima las dos no es adorno: es lo único que distingue
   *«no duele»* de *«está tapado»*, que es exactamente el estado que el analgésico fabrica.
   `coagulant_dev_give` entrega 2 analgésicos. El **selftest** crece con la parte del dolor que
-  se puede mirar desde adentro del juego. **[PENDIENTE]**
+  se puede mirar desde adentro del juego. **[APLICADO 2026-08-25]**
 
 - PARCHE 9 — test(dev): `dev/harness_coagulant.py` pasa de **189 a 275 checks**, todos verdes.
   Las 86 filas nuevas **citan COA-52** (85 de las 86) —lo exige la evidencia del registro— y arrancan con su
