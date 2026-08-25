@@ -180,11 +180,12 @@ check N1 ✓— y siguen las **dos decisiones de diseño abiertas**)
    hit-location de jugador (roadmap [3]).
 3. **Enmienda §17 (2026-08-08b) — también SIN una línea de código**, y es lo que la hace fácil de confundir con avance: `sat`, `Perfusion`, la niebla y las condiciones ambientales **no existen** en el `lua/`. Lo que existe es el permiso de COA-28 para bajarlas. **No dar por sentado el orden**: la niebla depende del dolor como stat.
    **Actualizado el 2026-08-17:** ese orden **ya no bloquea el diseño** — el dolor tiene el suyo votado (COA-52, §17), con tabla de balance propuesta. Sigue bloqueando la **bajada**: el dolor va antes que la niebla, porque sin él la silueta no tiene qué pintar. Y el dolor a su vez conviene bajarlo **junto con COA-49** o con su término `i` leyendo 0, que es exactamente neutro con la forma de lista de hoy.
-4. **EL TRAMO DEL DOLOR ESTÁ ESCRITO Y VERDE OFFLINE (2026-08-25b).** Lo que queda es
-   su **pasada en juego** (arriba) y los **dos votos delegados** que el autor puede
-   vetar. Con el dolor en código, la **niebla diagnóstica (COA-44)** se queda sin su
-   único bloqueante: ya hay qué pintar en la silueta y qué tapar. El prompt que lo
-   ordenó queda como registro de la ronda:
+4. **EL TRAMO DEL DOLOR ESTÁ CERRADO (2026-08-25c): 12/12 en juego, cero defectos.**
+   Los **dos votos delegados** quedaron EN PIE — el autor no vetó ninguno, así que el
+   analgésico se queda y la silueta sigue con el score. Con el dolor confirmado, la
+   **niebla diagnóstica (COA-44)** se queda sin su único bloqueante: ya hay qué pintar
+   en la silueta y qué tapar, y es **lo que sigue**. El prompt que ordenó la ronda
+   queda como registro:
    ~~**El tramo del dolor tiene PROMPT DE EJECUCIÓN escrito**~~ (2026-08-25):
    `../../dev/PROMPT_coagulant_dolor_codigo.txt`. Baja COA-52 a código —tablas,
    `ZonePain`/`GetRawPain`/`GetPain`/`AddPainSuppression`, la supresión en el tick de
