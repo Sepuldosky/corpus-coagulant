@@ -17,19 +17,43 @@ local function EnviarSnapshot(ply, st)
         -- sway (§6) lee el score de brazos de acá, y sin este dato daría un número
         -- distinto al del server justo cuando el torniquete lleva rato puesto
         local isq = COAGULANT.IsIschemic(ply, zona)
-        if #zdata.wounds > 0 or zdata.tourniquet or isq then
+        -- El dolor de la zona lo calcula EL SERVER y viaja como número (§17,
+        -- COA-52, sexta colisión): el cliente NUNCA lo deriva. Bajo niebla (COA-44)
+        -- la lista de heridas no va a poder viajar y el número sí, así que si el
+        -- cliente lo dedujera habría DOS implementaciones de la misma magnitud, y
+        -- divergirían justo al cambiar la convar.
+        local p = COAGULANT.ZonePain(ply, zona)
+        -- El predicado de COA-52: «aporta dolor ≠ 0, torniquete o isquemia». Una
+        -- zona puede doler SIN herida activa —el caso de COA-49, y el de una zona
+        -- cuyo único contenido sea una fractura— y con la condición vieja
+        -- (`#wounds > 0`) no viajaría, dejando a la niebla sin qué pintar.
+        --
+        -- ⚠ HOY LAS DOS CONDICIONES SON EQUIVALENTES y hay que decirlo en vez de
+        -- acreditarlo: toda herida de los cinco tipos vivos produce dolor > 0, así
+        -- que ninguna zona con heridas deja de viajar por este cambio. Deja de ser
+        -- equivalente el día que exista `frac`. Lo que sostiene la equivalencia es
+        -- el check de FORMA del harness (PAIN_TYPE cubre todo WOUND_TYPES): sin él,
+        -- un tipo nuevo sin fila de dolor sacaría su zona del snapshot en silencio.
+        if p ~= 0 or zdata.tourniquet or isq then
             local ws = {}
             for i, w in ipairs(zdata.wounds) do
                 ws[i] = { t = w.type, s = w.severity, tr = w.treated or nil }
             end
-            zonas[zona] = { w = ws, tq = zdata.tourniquet or nil, isq = isq or nil }
+            zonas[zona] = { w = ws, tq = zdata.tourniquet or nil, isq = isq or nil,
+                            p = math.Round(p) }
         end
     end
     local blob = util.Compress(util.TableToJSON({
         blood = math.Round(st.blood, 1),
+        -- el PERCIBIDO, no el crudo (COA-52 D5): el síntoma es lo que el paciente
+        -- sufre. La supresión vigente NO viaja — es capa de diagnóstico y este
+        -- tramo no abre canales que la niebla todavía no sabe filtrar; se lee por
+        -- consola con coagulant_status, que corre en el server.
+        pain = math.Round(COAGULANT.GetPain(ply)),
         zones = zonas,
         treatment = st.treatment,
     }))
+
     net.Start(MSG_STATE)
     net.WriteUInt(#blob, 16)
     net.WriteData(blob, #blob)
@@ -64,6 +88,25 @@ local function TickJugador(ply)
         st.blood = math.min(Config.BLOOD_MAX,
             st.blood + Config.REGEN_PER_S * Config.cv_regen_scale:GetFloat())
         st.dirty = true
+    end
+
+
+    -- Supresión de dolor: decae sola en el MISMO tick de 1 s (§17, COA-52 D5). El
+    -- decaimiento es lo que explica «se pasó el efecto», que una resta no explica —
+    -- y es la única razón por la que la supresión se almacena: a un valor derivado
+    -- no se le resta de forma persistente sin guardar la resta.
+    --
+    -- ⚠ SE ENSUCIA SÓLO SI EL NÚMERO SE MOVIÓ DE VERDAD, y las dos direcciones
+    -- importan. El percibido cambia cuando la supresión decae aunque nadie toque una
+    -- herida, así que sin ensuciar el cliente mostraría el dolor de hace minutos;
+    -- pero ensuciar SIEMPRE convierte el emisor on-change de COA-16 en un emisor por
+    -- segundo, y eso no da ningún error — da tráfico, multiplicado por jugador.
+    if (st.painSuppress or 0) > 0 then
+        local resto = math.max(0, st.painSuppress - Config.PAIN_SUPPRESS_DECAY_PER_S)
+        if resto ~= st.painSuppress then
+            st.painSuppress = resto
+            st.dirty = true
+        end
     end
 
     -- Cruce del umbral crítico, en ambas direcciones (§5, §8)

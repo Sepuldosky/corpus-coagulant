@@ -27,6 +27,16 @@
 --   COAGULANT.GetBlood(ply) -> 0..100        -- sangre actual
 --   COAGULANT.IsBleeding(ply) -> bool        -- hay drenaje activo
 --   COAGULANT.GetZoneScore(ply, zone) -> n   -- score de debuff de la zona
+--   COAGULANT.ZonePain(ply, zone) -> 0..100  -- DOLOR de la zona (§17, COA-52),
+--                                               derivado de las heridas + los pisos
+--                                               de condición; no se almacena
+--   COAGULANT.GetRawPain(ply) -> 0..100      -- dolor global SIN supresión (capa de
+--                                               diagnóstico): Σ zonas, SATURADO
+--   COAGULANT.GetPain(ply) -> 0..100         -- dolor PERCIBIDO = crudo − supresión.
+--                                               Es el que leen los consumidores
+--   COAGULANT.AddPainSuppression(ply, pts)   -- suma techo de analgésico (clamp a
+--                                               PAIN_SUPPRESS_MAX); decae en el tick
+
 --   COAGULANT.OnEncumbrance(ply, fraction)   -- contrato congelado por Cargo
 --                                              (movement); v1 almacena, sin efecto
 --   COAGULANT.Zones.*                        -- mapa hitgroup nativo -> zona clínica
@@ -41,6 +51,16 @@
 --                                        (shared/corpus_coagulant_move.lua), NUNCA
 --                                        SetWalkSpeed: así compone con el
 --                                        multiplicador de peso de Cargo (§6)
+--     corpus_coagulant_state          -- snapshot owner-only: heridas, torniquetes,
+--                                        tratamiento, y desde COA-52 el DOLOR por
+--                                        zona (`p`) y el percibido global (`pain`).
+--                                        El dolor NO tiene NW2 y eso es norma: un
+--                                        NW2 se replica a TODOS los clientes y no
+--                                        tiene filtro por observador, así que un
+--                                        vital que la niebla (COA-44) pueda ocultar
+--                                        no puede viajar por ahí. El cliente LEE
+--                                        estos números; nunca los deriva
+
 -- ============================================================
 
 -- ============================================================

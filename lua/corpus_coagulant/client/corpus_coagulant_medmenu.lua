@@ -23,6 +23,8 @@ local COL_PANEL  = Color(38, 38, 42)
 local COL_TEXTO  = Color(220, 220, 220)
 local COL_TENUE  = Color(150, 150, 150)
 local COL_ALERTA = Color(215, 70, 60)
+local COL_DOLOR  = Color(225, 150, 60)  -- el dolor no es sangrado: color propio
+
 
 local SEV_LABEL = { [1] = "Minor", [2] = "Moderate", [3] = "Severe" }
 local TIPO_LABEL = {
@@ -115,7 +117,17 @@ local function ConstruirDetalle(padre)
         draw.SimpleText(string.format("Damage score: %.1f", score), "DermaDefault", 12, 42,
             score > 0 and COL_ALERTA or COL_TENUE)
 
-        local y = 66
+        -- DOLOR de la zona (§17, COA-52). Se LEE del snapshot: el server lo mandó
+        -- calculado y el cliente no lo deriva. Es un número al lado del score y no
+        -- un repintado de la silueta — la rampa de dolor es de la niebla (COA-44) y
+        -- baja con ella; cambiar hoy lo que el jugador ve sería diseño sin votar.
+        local dolor = HUD.ZonePain(zona)
+        draw.SimpleText(string.format("Pain: %d", dolor), "DermaDefault", 12, 58,
+            dolor > 0 and COL_DOLOR or COL_TENUE)
+
+
+        local y = 82
+
         local zd = HUD.ZoneData(zona)
         local heridas = zd.w or {}
 
@@ -183,7 +195,8 @@ local function ConstruirBoton(padre, kind, etiqueta)
     local b = vgui.Create("DButton", padre)
     b:Dock(LEFT)
     b:DockMargin(0, 0, 6, 0)
-    b:SetWide(126)
+    b:SetWide(110)
+
 
     b.Think = function(self)
         local n = ContarItem(Config.TREATMENTS[kind].item)
@@ -206,15 +219,26 @@ local function ConstruirBoton(padre, kind, etiqueta)
             elseif not Config.EXTREMITIES[zona] then
                 puede = false -- solo extremidades
             end
+        elseif kind == "painkillers" then
+            -- La misma puerta que el server (§17, COA-52 D5), y leyendo el mismo
+            -- PERCIBIDO: grisarlo es puro UX —el server re-valida igual (COA-13)—
+            -- pero es lo que hace VISIBLE la propiedad que resuelve el apilamiento:
+            -- después de una dosis el botón se apaga solo, sin ninguna regla nueva.
+            if HUD.Pain() <= Config.PAIN_ANALGESIC_AT then puede = false end
         end
+
 
         if HUD.Treatment() ~= nil then puede = false end -- uno a la vez (§7)
         self:SetEnabled(puede)
     end
 
     b.DoClick = function()
-        MandarIntent(kind, kind == "bloodbag" and "" or (zonaSel or "chest"))
+        -- Los tratamientos que no usan zona mandan "" y el server resuelve (§7). La
+        -- lista sale de Config, no de un `kind == "bloodbag"` repetido acá: así el
+        -- quinto tratamiento no se olvida en uno de los tres sitios que preguntan.
+        MandarIntent(kind, Config.TREATMENT_NO_ZONE[kind] and "" or (zonaSel or "chest"))
     end
+
 
     return b
 end
@@ -229,7 +253,8 @@ local function Abrir()
     zonaSel = ZonaInicial()
 
     frame = vgui.Create("DFrame")
-    frame:SetSize(600, 430)
+    frame:SetSize(600, 462)
+
     frame:Center()
     frame:SetTitle("Medical")
     frame:MakePopup()
@@ -239,11 +264,18 @@ local function Abrir()
         surface.SetDrawColor(70, 70, 75)
         surface.DrawOutlinedRect(0, 0, w, h, 1)
 
-        -- La sangre no es de ninguna zona: va en la cabecera del menú
+        -- La sangre y el dolor no son de ninguna zona: van en la cabecera. El dolor
+        -- es el PERCIBIDO (§17, COA-52 D5) — lo que el paciente sufre, no lo que
+        -- tiene: con analgésico encima este número baja y el crudo no, y esa
+        -- diferencia sólo se ve por consola (coagulant_status).
         local sangre = HUD.Blood()
         local crit = sangre < Config.BLOOD_CRITICAL
         draw.SimpleText(string.format("Blood: %d%%", math.floor(sangre)), "DermaDefaultBold",
             w - 14, 6, crit and COL_ALERTA or COL_TENUE, TEXT_ALIGN_RIGHT)
+        local dolor = HUD.Pain()
+        draw.SimpleText(string.format("Pain: %d", dolor), "DermaDefaultBold",
+            w - 100, 6, dolor > 0 and COL_DOLOR or COL_TENUE, TEXT_ALIGN_RIGHT)
+
     end
 
     local cuerpo = vgui.Create("DPanel", frame)
@@ -254,18 +286,28 @@ local function Abrir()
     ConstruirSilueta(cuerpo)
     ConstruirDetalle(cuerpo)
 
+    -- Cinco tratamientos ya no entran en una fila con el botón de cancelar al lado
+    -- (5×126 + márgenes > el ancho útil): la cancelación baja a su propia fila. Es
+    -- reflujo mecánico, no rediseño — el orden y el comportamiento no cambian.
+    local pieCancel = vgui.Create("DPanel", frame)
+    pieCancel:Dock(BOTTOM)
+    pieCancel:SetTall(26)
+    pieCancel:DockMargin(8, 0, 8, 8)
+    pieCancel.Paint = nil
+
     local pie = vgui.Create("DPanel", frame)
     pie:Dock(BOTTOM)
     pie:SetTall(30)
-    pie:DockMargin(8, 0, 8, 8)
+    pie:DockMargin(8, 0, 8, 4)
     pie.Paint = nil
 
     ConstruirBoton(pie, "bandage", "Bandage")
     ConstruirBoton(pie, "tourniquet", "Tourniquet")
     ConstruirBoton(pie, "medkit", "Medkit")
     ConstruirBoton(pie, "bloodbag", "Blood Bag")
+    ConstruirBoton(pie, "painkillers", "Painkillers")
 
-    local cancelar = vgui.Create("DButton", pie)
+    local cancelar = vgui.Create("DButton", pieCancel)
     cancelar:Dock(FILL)
     cancelar:SetText("Cancel treatment")
     cancelar.Think = function(self) self:SetEnabled(HUD.Treatment() ~= nil) end
@@ -273,6 +315,7 @@ local function Abrir()
         net.Start(MSG_CANCEL)
         net.SendToServer()
     end
+
 end
 
 concommand.Add("coagulant_menu", Abrir, nil,

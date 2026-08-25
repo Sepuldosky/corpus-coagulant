@@ -78,6 +78,9 @@ Corpus.OnReady(function()
     --   medkit     50  botiquín grande equipado, ~45-60 USD          (est.)
     --   bolsa de   220 una unidad de glóbulos rojos: costo de adquisición
     --   sangre         hospitalario en EE.UU., ~215-250 USD          (est.)
+    --   analgésico 10  frasco de venta libre, ~8-12 USD; alta del
+    --                  2026-08-25 con el tramo del dolor            (est.)
+
     --
     -- LO QUE HAY QUE SABER ANTES DE LEERLOS COMO "BARATOS": quedan POR DEBAJO
     -- de los suministros HL2 del propio Cargo (`cargo_hl2_healthkit` 150,
@@ -160,7 +163,48 @@ Corpus.OnReady(function()
         onUse    = UsarTratamiento("bloodbag"),
     })
 
-    Corpus.Log("coagulant", "ítems médicos registrados contra Cargo (4 defs, "
+    -- ANALGÉSICO ORAL (§17, COA-52 — bajada del 2026-08-25). Quinta def del set, y
+    -- la primera desde el v1. Es el primer CONSUMIDOR EN JUEGO del dolor: sin él el
+    -- stat existe y nadie lo puede mover, así que su pasada en juego sería por
+    -- consola y el tramo quedaría acreditado sólo offline.
+    --
+    -- Los cinco campos que un ítem necesita y que COA-52 NO especificaba están
+    -- votados aparte y anotados como tales — son diseño, no detalle (COA-28):
+    --   clase   `stackable`, no `unique`. El único `unique` del set es el torniquete
+    --           y su razón no aplica acá: el torniquete se OCUPA mientras está
+    --           puesto y vuelve al quitarlo; un frasco se consume.
+    --   peso    0.1, el mismo de la venda — el escalón más liviano del set.
+    --   tiempo  3 s, entre el torniquete (2) y la venda (4): tragarse unas pastillas
+    --           es el gesto más corto salvo apretar una banda.
+    --   value   10 — frasco de venta libre, ~8-12 USD (est.), MISMO método y MISMA
+    --           etiqueta que los otros cuatro: es una estimación, no una serie.
+    --   can()   la puerta `pain > PAIN_ANALGESIC_AT`, que NO es un número nuevo: es
+    --           el `pain > 10` que el spec v5 ya tenía escrito para la morfina. Vive
+    --           en el motor de tratamiento (ApplyTreatment), como los otros cuatro.
+    --
+    -- MODELO: `pain_pills` (frasco de analgésicos, 732 tris). Ya estaba portado y sin
+    -- def desde el 2026-08-05 — ASSETS.md lo listaba justamente como el candidato
+    -- para el día que el analgésico se abriera. Que el modelo exista no creó el ítem
+    -- (COA-28): lo creó el voto; el modelo sólo evitó tener que buscar uno.
+    --
+    -- NO ENTRA LA MORFINA, y no es un olvido: PAIN_SUPPRESS.morphine = 80 está en la
+    -- tabla porque COA-52 la votó, pero su ítem arrastra la sobredosis y la naloxona,
+    -- que son del tramo del catálogo (COA-50). Acá entra la forma mínima.
+    cargo.Items.Register({
+        id       = "corpus_coagulant_painkillers",
+        name     = "Painkillers",
+        model    = "models/corpus_coagulant/pain_pills.mdl",
+        weight   = 0.1,
+        value    = 10,    -- frasco de venta libre (est.)
+        class    = "stackable",
+        category = "medical",
+        trivia   = "Dulls pain for a few minutes. Does not close wounds or stop bleeding.",
+        onUse    = UsarTratamiento("painkillers"),
+    })
+
+
+    Corpus.Log("coagulant", "ítems médicos registrados contra Cargo (5 defs, "
+
         .. (SERVER and "server" or "client") .. ")")
 end)
 

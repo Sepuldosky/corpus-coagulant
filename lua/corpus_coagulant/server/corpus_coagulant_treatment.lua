@@ -14,7 +14,11 @@ local MSG_CANCEL = Corpus.Net.Register("coagulant", "cancel")
 
 -- Zona automática según el tipo (§7 enmendado: el default sin zona es chest).
 local function ZonaAuto(ply, kind)
-    if kind == "bloodbag" then return "chest" end -- no usa zona
+    -- Los que operan sobre el cuerpo entero (§7): la zona es de relleno y `chest`
+    -- es el fallback de todo el módulo (COA-7). La tabla vive en config para que
+    -- el menú médico se haga la misma pregunta con las mismas claves.
+    if Config.TREATMENT_NO_ZONE[kind] then return "chest" end
+
 
     -- El medkit borra la secuela tratada: va a la zona con más de ella. Si no hay
     -- ninguna, cae a chest (sigue sirviendo como cura de HP pura).
@@ -91,6 +95,15 @@ function COAGULANT.ApplyTreatment(ply, kind, zone)
         end
     elseif kind == "bloodbag" then
         if st.blood >= Config.BLOOD_MAX then return false, "Blood is already full" end
+    elseif kind == "painkillers" then
+        -- La puerta lee el PERCIBIDO, no el crudo (§17, COA-52 D5), y ESO es lo que
+        -- resuelve el apilamiento sin una regla nueva: cada dosis acerca el percibido
+        -- a 0 y la siguiente se desgatilla sola en cuanto baja del umbral. Con el
+        -- crudo, un frasco entero se podría tomar de un saque sin que nada lo notara.
+        if COAGULANT.GetPain(ply) <= Config.PAIN_ANALGESIC_AT then
+            return false, "Not in enough pain"
+        end
+
     end
 
     -- Ítems: con Cargo presente el tratamiento requiere la unidad (el torniquete
@@ -202,6 +215,13 @@ local function Completar(ply, st)
         end
     elseif tr.kind == "bloodbag" then
         st.blood = math.min(Config.BLOOD_MAX, st.blood + t.blood)
+    elseif tr.kind == "painkillers" then
+        -- Pone TECHO, no resta (§17, COA-52 D5): no cierra ninguna herida, no corta
+        -- ningún sangrado y no toca el score. Enmascara el síntoma sin curar la
+        -- causa — por eso el analgésico no compite con la venda en BandagePriority:
+        -- son dos circuitos, no uno con dos entradas.
+        COAGULANT.AddPainSuppression(ply, t.suppress)
+
     end
 
     hook.Run("Coagulant_TreatmentComplete", ply, tr.kind, tr.zone)

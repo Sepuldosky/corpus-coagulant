@@ -48,6 +48,24 @@ local function ScoreBrazos()
     return ScoreZona("left_arm") + ScoreZona("right_arm")
 end
 
+
+-- Dolor de una zona: SE LEE del snapshot, no se deriva (§17, COA-52 — la sexta
+-- colisión). Es la diferencia con ScoreZona de acá arriba, que SÍ duplica la fórmula
+-- del server: eso queda como está y NO es precedente para el dolor. El score no es un
+-- vital que la niebla (COA-44) pueda ocultar; el dolor sí, y bajo niebla la lista de
+-- heridas no va a poder viajar. Si el cliente lo derivara habría dos implementaciones
+-- de la misma magnitud, y las dos ramas divergirían justo al cambiar la convar.
+function HUD.ZonePain(zona)
+    local z = COAGULANT.ClientState.zones and COAGULANT.ClientState.zones[zona]
+    return (z and z.p) or 0
+end
+
+-- Dolor global PERCIBIDO (crudo menos la supresión vigente). El CRUDO no viaja: es
+-- capa de diagnóstico y quién puede leerlo lo decide COA-44 cuando baje.
+function HUD.Pain()
+    return COAGULANT.ClientState.pain or 0
+end
+
 -- Datos crudos de una zona en el snapshot ({w = heridas, tq, isq}), o una tabla vacía.
 function HUD.ZoneData(zona)
     local z = COAGULANT.ClientState.zones and COAGULANT.ClientState.zones[zona]

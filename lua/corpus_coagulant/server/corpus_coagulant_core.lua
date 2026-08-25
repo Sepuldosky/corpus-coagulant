@@ -18,6 +18,10 @@ local function NuevoEstado()
         treatment      = nil, -- { kind, zone, endsAt, duration, removing } (§7)
         freeCooldownAt = 0,   -- modo degradado sin Cargo: próximo tratamiento gratis
         encumbrance    = 0,   -- último fraction reportado por Cargo (§12), sin efecto v1
+        painSuppress   = 0,   -- techo de analgésico vigente (§17, COA-52 D5). Es lo ÚNICO
+                              -- que el dolor almacena: el dolor mismo se DERIVA de las
+                              -- heridas y no tiene reloj propio
+
         critical       = false, -- para detectar el cruce del umbral (§5)
         dirty          = true,  -- snapshot pendiente de enviar (§9)
         lastHit        = nil,   -- debug
@@ -96,6 +100,111 @@ function COAGULANT.GetZoneScore(ply, zone)
         score = math.max(score, Config.ISCHEMIA_SCORE)
     end
     return score
+end
+
+
+-- ============================================================
+-- DOLOR (§17, COA-52) — derivado por zona + agregado global saturado
+-- ============================================================
+-- El dolor NO se almacena y NO tiene reloj propio: se deriva del estado de las
+-- heridas con la misma forma que GetZoneScore de acá arriba. De eso salen tres
+-- cosas gratis y son la razón por la que se eligió esta forma: vendar baja el dolor
+-- en el acto, una tratada limpia lo pierde con el reloj de curación de COA-49, y
+-- una infectada lo recupera entero. Cero timers, cero acumuladores nuevos.
+
+-- Dolor 0..100 de UNA zona, con los pisos de condición aplicados (D4 + D6).
+function COAGULANT.ZonePain(ply, zone)
+    local st = COAGULANT.GetState(ply)
+    if st == nil or st.zones[zone] == nil then return 0 end
+    local zdata = st.zones[zone]
+
+    local pain = 0
+    for _, w in ipairs(zdata.wounds) do
+        -- Reparto por ESTADO de la herida: activa 1.00 · tratada 0.35 · infectada
+        -- 1.00 entera. ⚠ El 0.35 NO es el 0.5 con el que GetZoneScore (arriba, en
+        -- este mismo archivo) reparte las tratadas: son dos números distintos A
+        -- PROPÓSITO —uno es debuff, el otro nocicepción— y copiar el de al lado no
+        -- da ningún síntoma.
+        --
+        -- El tercer estado es de COA-49 y COA-49 NO BAJÓ: con la forma de LISTA de
+        -- hoy ninguna herida lleva ese campo, así que esta rama es INALCANZABLE y el
+        -- término lee 0 — exactamente neutro, que es lo que COA-52 predijo. El día
+        -- que aterrice `w[tipo] = {a,t,i,s}`, lo que cambia es el RECORRIDO (pasa a
+        -- ser por contadores de tipo), no estos tres multiplicadores.
+        local mult
+        if w.infected then
+            mult = Config.PAIN_INFECTED_MULT
+        elseif w.treated then
+            mult = Config.PAIN_TREATED_MULT
+        else
+            mult = 1.0
+        end
+        pain = pain + Config.PainFromWound(w.type, w.severity) * mult
+    end
+
+    -- Pisos por condición (D6), con la MISMA forma max() que usa el score con la
+    -- isquemia: un piso nunca BAJA el dolor de una zona que ya duele más.
+    --
+    -- El TORNIQUETE no está acá y no es un olvido: a los 90 s ya se convirtió en
+    -- isquemia (TOURNIQUET_ISCHEMIA_S), que es el mismo reloj con otro nombre. Un
+    -- reloj, no dos — y lo que duele nunca fue la banda apretada sino el miembro
+    -- muriéndose.
+    if COAGULANT.IsIschemic(ply, zone) then
+        pain = math.max(pain, Config.PAIN_ISCHEMIA)
+    end
+    -- La fractura sigue diferida por §1: NADA en este árbol escribe `zdata.frac`
+    -- (medido: 0 hits de `frac`/`splint` en el lua/). El término se escribe igual
+    -- para que el día que exista no haya que volver acá, y hasta entonces lee 0.
+    if zdata.frac == "fx" then
+        pain = math.max(pain, Config.PAIN_FRAC)
+    elseif zdata.frac == "splint" then
+        pain = math.max(pain, Config.PAIN_SPLINT)
+    end
+
+    return math.Clamp(pain, 0, Config.PAIN_MAX)
+end
+
+-- Dolor global CRUDO (sin supresión): Σ de las siete zonas por su peso, SATURADO
+-- (D1). El clamp no es cosmético — es lo que salva a las cuatro fórmulas del spec
+-- v5 que ya consumen dolor con coeficientes calibrados contra un 0..100: con suma
+-- cruda el rango sería 0..700 y el bpm sumaría +154 en vez de +22.
+--
+-- Es la capa de DIAGNÓSTICO (lo que el cuerpo tiene). Quién puede leerla bajo
+-- niebla lo decide COA-44 cuando baje; que exista no dice que sea pública.
+function COAGULANT.GetRawPain(ply)
+    local st = COAGULANT.GetState(ply)
+    if st == nil then return 0 end
+    local total = 0
+    for _, zona in ipairs(COAGULANT.Zones.LIST) do
+        total = total + COAGULANT.ZonePain(ply, zona) * (Config.ZONE_PAIN_WEIGHT[zona] or 1.0)
+    end
+    return math.Clamp(total, 0, Config.PAIN_MAX)
+end
+
+-- Dolor PERCIBIDO = crudo − supresión (D5). Es lo que leen los consumidores y lo
+-- que viaja al cliente: el síntoma es lo que el paciente SUFRE, no lo que tiene.
+-- De ahí sale el efecto que le da sentido al analgésico bajo niebla — suprimir el
+-- dolor apaga el único canal que la niebla deja gratis, así que la morfina será un
+-- costo de información y no un buff.
+function COAGULANT.GetPain(ply)
+    local st = COAGULANT.GetState(ply)
+    if st == nil then return 0 end
+    return math.Clamp(COAGULANT.GetRawPain(ply) - (st.painSuppress or 0), 0, Config.PAIN_MAX)
+end
+
+-- Suma puntos de supresión y devuelve el total vigente. Reemplaza al inexistente
+-- `CoaAddDrug("morphine", 10)` del prototipo — cuyo 10 eran MILIGRAMOS y no puntos
+-- de dolor; los miligramos se quedan donde eran ciertos, en el nombre del ítem.
+--
+-- Ensucia el snapshot: el percibido acaba de cambiar y el emisor es on-change
+-- (COA-16), así que sin esto el cliente seguiría mostrando el dolor de antes hasta
+-- que otra cosa moviera el estado.
+function COAGULANT.AddPainSuppression(ply, puntos)
+    local st = COAGULANT.GetState(ply)
+    if st == nil or not isnumber(puntos) then return 0 end
+    st.painSuppress = math.Clamp((st.painSuppress or 0) + puntos, 0, Config.PAIN_SUPPRESS_MAX)
+    st.dirty = true
+    return st.painSuppress
 end
 
 -- Contrato YA congelado por Cargo (corpus_cargo_movement.lua nos llama con pcall

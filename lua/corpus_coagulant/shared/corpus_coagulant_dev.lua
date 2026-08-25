@@ -126,12 +126,42 @@ function COAGULANT._SelfTest()
     check(nSev == Config.SEVERITY_MAX, "BLEED_BASE no cubre exactamente SEVERITY_MAX niveles")
     check(Config.BLEED_BASE[Config.SEVERITY_MAX] ~= nil, "BLEED_BASE sin el nivel máximo")
 
-    -- Tratamiento (slice 2, §7): tabla completa y consistente
-    for _, kind in ipairs({ "bandage", "tourniquet", "medkit", "bloodbag" }) do
-        local t = Config.TREATMENTS[kind]
+
+    -- Dolor (§17, COA-52) — la parte PURA, que corre en los dos realms. Lo que se
+    -- puede mirar desde adentro del juego con `coagulant_selftest`; el resto (la
+    -- agregación, la supresión, el snapshot) vive en el harness offline.
+    check(isfunction(Config.PainFromWound) and isfunction(Config.PainFrac),
+        "faltan las funciones puras del dolor (COA-52)")
+    check(math.abs(Config.PainFromWound("bala", 1)
+            - Config.PAIN_PER_WOUND * Config.PAIN_TYPE.bala * Config.PAIN_SEVERITY[1]) < 0.001,
+        "PainFromWound no es PAIN_PER_WOUND × PAIN_TYPE × PAIN_SEVERITY (COA-52 D3)")
+    check(Config.PainFromWound("tipo_inexistente", 1) == 0,
+        "PainFromWound no es nil-safe con un tipo sin fila (COA-52)")
+    -- Todo tipo de herida VIVO tiene que producir dolor: el emisor del snapshot
+    -- pregunta «¿aporta dolor?» en vez de «¿tiene heridas?» (COA-52), y sin esta
+    -- cobertura un tipo nuevo sacaría su zona de la red en silencio.
+    for tipo in pairs(Config.WOUND_TYPES) do
+        check(isnumber(Config.PAIN_TYPE[tipo]) and Config.PAIN_TYPE[tipo] > 0,
+            "el tipo de herida " .. tipo .. " no tiene fila en PAIN_TYPE (COA-52)")
+    end
+    for _, zona in ipairs(COAGULANT.Zones.LIST) do
+        check(isnumber(Config.ZONE_PAIN_WEIGHT[zona]),
+            "ZONE_PAIN_WEIGHT sin la zona " .. tostring(zona) .. " (COA-52 D1)")
+    end
+    -- La rampa satura en PAIN_FULL_AT y NO en PAIN_MAX (COA-52 D2): con 100 la mitad
+    -- de arriba estaría muerta y una zona con dolor 7 pintaría casi roja.
+    check(Config.PainFrac(Config.PAIN_FULL_AT) == 1 and Config.PainFrac(0) == 0,
+        "PainFrac no satura en PAIN_FULL_AT (COA-52 D2)")
+    check(Config.PainFrac(7) < 0.2, "una zona con dolor 7 se pinta casi roja (COA-52 D2)")
+
+    -- Tratamiento (slice 2, §7): tabla completa y consistente. La lista sale de la
+    -- PROPIA tabla, no de un enum escrito a mano: el quinto tratamiento (el
+    -- analgésico, 2026-08-25) entró sin tocar esta línea, y el sexto también.
+    for kind, t in pairs(Config.TREATMENTS) do
         check(istable(t) and isnumber(t.time) and t.time > 0 and isstring(t.item),
             "TREATMENTS." .. kind .. " incompleto")
     end
+
     local nExt = 0
     for _ in pairs(Config.EXTREMITIES) do nExt = nExt + 1 end
     check(nExt == 4, "EXTREMITIES no tiene 4 zonas")
@@ -408,6 +438,50 @@ function COAGULANT._SelfTest()
             check(isfunction(COAGULANT.IsIschemic), "IsIschemic no es función")
             COAGULANT.CancelTreatment(ply, "selftest")
 
+            -- DOLOR (§17, COA-52), round-trip con un cuerpo de verdad. No se usa
+            -- ApplyTreatment del analgésico acá a propósito: eso exige la unidad en
+            -- el inventario y el selftest tiene que correr igual sin Cargo (§14).
+            COAGULANT.ResetState(ply)
+            check(COAGULANT.ZonePain(ply, "chest") == 0, "una zona sana duele")
+            -- Severidad 2 y no 3 a propósito: sobre una GRAVE la venda baja la
+            -- severidad sin cerrar (§7), así que el reparto de tratada no llegaría a
+            -- ejercitarse y la fila mediría otra cosa.
+            COAGULANT.AddWound(ply, "chest", "metralla", 2)
+            local dolorAct = COAGULANT.ZonePain(ply, "chest")
+            check(math.abs(dolorAct - Config.PainFromWound("metralla", 2)) < 0.001,
+                "una herida activa no pesa entera en el dolor de la zona (COA-52 D4)")
+            COAGULANT.BandageEffect(ply, "chest")
+            -- vendar tiene que ALIVIAR. La comparación es contra el dolor de ANTES y
+            -- no contra PAIN_TREATED_MULT: un check derivado de la constante sigue
+            -- verde con la constante puesta en 1.0, o sea que no la puede auditar.
+            check(COAGULANT.ZonePain(ply, "chest") < dolorAct,
+                "vendar no alivia el dolor de la zona (COA-52 D4)")
+            check(COAGULANT.GetZoneScore(ply, "chest") == 1,
+                "el dolor movió el score de debuff: son dos ejes distintos (COA-52)")
+
+
+            -- La supresión: lo ÚNICO que el dolor almacena. Con supresión PUESTA —sin
+            -- ella, GetPain y GetRawPain devuelven lo mismo y el check pasaría con las
+            -- dos funciones intercambiadas.
+            COAGULANT.ResetState(ply)
+            COAGULANT.AddWound(ply, "chest", "metralla", 3)
+            local crudoSt = COAGULANT.GetRawPain(ply)
+            check(crudoSt > Config.PAIN_ANALGESIC_AT,
+                "el dolor de prueba no llega a la puerta del analgésico (COA-52)")
+            COAGULANT.AddPainSuppression(ply, Config.PAIN_SUPPRESS.oral)
+            check(math.abs(COAGULANT.GetPain(ply) - (crudoSt - Config.PAIN_SUPPRESS.oral)) < 0.001,
+                "el percibido no es crudo − supresión (COA-52 D5)")
+            check(math.abs(COAGULANT.GetRawPain(ply) - crudoSt) < 0.001,
+                "la supresión tocó el dolor CRUDO: enmascara, no cura (COA-52 D5)")
+            check(COAGULANT.GetPain(ply) <= Config.PAIN_ANALGESIC_AT,
+                "tras la dosis el percibido no cayó bajo la puerta: la 2.ª dosis no se desgatilla sola (COA-52 D5)")
+            COAGULANT.AddPainSuppression(ply, Config.PAIN_SUPPRESS_MAX * 2)
+            check(math.abs(COAGULANT.GetState(ply).painSuppress - Config.PAIN_SUPPRESS_MAX) < 0.001,
+                "AddPainSuppression no clampea en PAIN_SUPPRESS_MAX (COA-52 D5)")
+            check(COAGULANT.GetPain(ply) == 0,
+                "el percibido bajó de 0 con la supresión por encima del crudo (COA-52 D5)")
+
+
             COAGULANT.ResetState(ply) -- dejar limpio
             -- ...y limpio DE VERDAD: el reset tiene que despublicar la cojera de las
             -- heridas de prueba, no dejarla hasta el próximo tick (ronda 7, ×0.64)
@@ -465,7 +539,12 @@ if SERVER then
         for _, zona in ipairs(COAGULANT.Zones.LIST) do
             local zdata = st.zones[zona]
             local isq = COAGULANT.IsIschemic(objetivo, zona)
-            if #zdata.wounds > 0 or zdata.tourniquet or isq then
+            local dolor = COAGULANT.ZonePain(objetivo, zona)
+            -- Mismo predicado que el emisor del snapshot (§9, COA-52): «aporta
+            -- dolor, torniquete o isquemia». Si la consola y la red no se hicieran
+            -- la misma pregunta, una zona podría viajar y no imprimirse.
+            if dolor ~= 0 or zdata.tourniquet or isq then
+
                 local partes = {}
                 for _, w in ipairs(zdata.wounds) do
                     partes[#partes + 1] = string.format("%s sev%d%s",
@@ -487,11 +566,23 @@ if SERVER then
                         or " [ISQUEMIA activa]")
                 end
 
-                Corpus.Log("coagulant", string.format("  %s (score %.1f): %s%s",
-                    zona, COAGULANT.GetZoneScore(objetivo, zona),
+                Corpus.Log("coagulant", string.format("  %s (score %.1f · dolor %.0f): %s%s",
+                    zona, COAGULANT.GetZoneScore(objetivo, zona), dolor,
                     #partes > 0 and table.concat(partes, ", ") or "sin heridas", marcas))
             end
         end
+
+        -- DOLOR, en sus DOS formas, y eso no es adorno (§17, COA-52): el crudo es lo
+        -- que el cuerpo tiene y el percibido es lo que el paciente sufre. Imprimir
+        -- sólo uno deja «no duele» y «está tapado» indistinguibles, que es
+        -- exactamente el estado que el analgésico fabrica. Renglón propio y corto: la
+        -- consola de GMod trunca en 255 caracteres.
+        Corpus.Log("coagulant", string.format(
+            "  dolor — crudo %.0f | percibido %.0f | supresión %.1f/%d (−%.2f/s)",
+            COAGULANT.GetRawPain(objetivo), COAGULANT.GetPain(objetivo),
+            st.painSuppress or 0, COAGULANT.Config.PAIN_SUPPRESS_MAX,
+            COAGULANT.Config.PAIN_SUPPRESS_DECAY_PER_S))
+
         if not COAGULANT.IsBleeding(objetivo) then
             Corpus.Log("coagulant", "  sin sangrado activo")
         end
@@ -537,8 +628,10 @@ if SERVER then
         cargo.Inventory.GiveItem(objetivo, "corpus_coagulant_tourniquet")
         cargo.Inventory.GiveItem(objetivo, "corpus_coagulant_medkit", 2)
         cargo.Inventory.GiveItem(objetivo, "corpus_coagulant_bloodbag", 2)
+        cargo.Inventory.GiveItem(objetivo, "corpus_coagulant_painkillers", 2)
         Corpus.Log("coagulant", "kit médico de prueba entregado a " .. objetivo:Nick()
-            .. " (3 vendas, 1 torniquete, 2 medkits, 2 bolsas)")
+            .. " (3 vendas, 1 torniquete, 2 medkits, 2 bolsas, 2 analgésicos)")
+
     end)
 
     -- Fuerza el nivel de sangre (para probar el crítico sin desangrarse de verdad)

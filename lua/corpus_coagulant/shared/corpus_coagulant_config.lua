@@ -80,6 +80,82 @@ Config.WOUND_TYPES = {
 }
 
 -- ============================================================
+-- Dolor (§17, COA-52) — bajado del diseño votado el 2026-08-17
+-- ============================================================
+-- Vive ACÁ y no en el core por la misma razón que el sangrado: todo número es
+-- balance (COA-27) y un check lo DERIVA, jamás lo hardcodea (COA-35). La tabla
+-- es copia literal de la que §17 dejó escrita como PROPUESTA, comentarios
+-- incluidos — los comentarios son la mitad que explica por qué PAIN_SEVERITY es
+-- menos convexo que BLEED_BASE.
+--
+-- LO QUE NO ESTÁ ACÁ, y no es olvido: `coagulant_pain_scale`. COA-52 lo niega
+-- explícitamente — nadie lo pidió y el tuning ya lo permite esta tabla.
+Config.PAIN_MAX      = 100    -- misma escala que blood: la zona Y el global
+Config.PAIN_FULL_AT  = 60     -- satura la RAMPA de la silueta, no el estado (espejo
+                              -- de ZONE_FULL_AT = 6, que satura en dos heridas graves)
+
+-- Producción (D3). PAIN_TYPE son los valores de ACE3 LITERALES —referente citado,
+-- no fuente adoptada—: Avulsion 1.0, VelocityWound 0.9, ThermalBurn 0.7,
+-- PunctureWound 0.4, Contusion 0.3, Laceration 0.2. El eje de SEVERIDAD es
+-- NUESTRO: la tabla de ACE no tiene ninguno, así que no se podía copiar.
+Config.PAIN_PER_WOUND = 40    -- la ÚNICA constante absoluta: la peor herida grave
+Config.PAIN_TYPE = {
+    metralla  = 1.00,  -- Avulsion — la esquirla arranca tejido (por eso COA-49 la llama sucia)
+    bala      = 0.90,  -- VelocityWound
+    quemadura = 0.70,  -- ThermalBurn — sangra 0.2 y duele 0.70: el dolor NO es proxy del sangrado
+    punzante  = 0.40,  -- PunctureWound — el TIPO NO EXISTE todavía; la fila es inerte hasta que exista
+    contusion = 0.30,  -- Contusion
+    corte     = 0.20,  -- Laceration
+}
+-- Menos convexo que BLEED_BASE (1:1.9:2.9 contra 1:2.7:6.7) a propósito: la
+-- nocicepción satura y la hemorragia no. Una herida leve duele; casi no sangra.
+Config.PAIN_SEVERITY = { [1] = 0.35, [2] = 0.65, [3] = 1.00 }
+
+-- Estado de la herida (D4): mismo reparto que el score de §6, con el tercer estado
+-- de COA-49 pesando ENTERO. No hay tasa de decaimiento: el decaimiento del dolor ES
+-- el reloj HEAL_S de COA-49.
+--
+-- ⚠ PAIN_TREATED_MULT es 0.35 y NO el 0.5 con el que GetZoneScore reparte las
+-- tratadas. Son dos números distintos A PROPÓSITO —uno es debuff, el otro
+-- nocicepción— y copiar el de al lado no da ningún síntoma.
+Config.PAIN_TREATED_MULT  = 0.35
+Config.PAIN_INFECTED_MULT = 1.00
+
+-- Pisos por condición de zona (D6): espejo de las cláusulas max() de ZoneScore.
+-- El TORNIQUETE no está acá a propósito: su reloj de 90 s ya es la isquemia — un
+-- reloj, no dos. Lo interesante nunca fue la banda apretada, fue el miembro
+-- muriéndose.
+Config.PAIN_ISCHEMIA = 60     -- espejo de max(score, ISCHEMIA_SCORE = 6)
+Config.PAIN_FRAC     = 30     -- espejo de max(score, 3) — lee 0 hasta que z.frac exista
+Config.PAIN_SPLINT   = 12     -- ídem: la fractura con férula sigue diferida por §1
+
+-- Agregación (D1): neutro en las siete, igual que ZONE_BLEED_MULT. Es un eje de
+-- tuning, no una decisión clínica de v1.
+Config.ZONE_PAIN_WEIGHT = {
+    head = 1.0, chest = 1.0, stomach = 1.0,
+    left_arm = 1.0, right_arm = 1.0, left_leg = 1.0, right_leg = 1.0,
+}
+
+-- Supresión (D5). Los DOS primeros son los painReduce de ACE3 ×100 (Morphine 0.8,
+-- PainKillers 0.35). El decaimiento NO es de ACE —su fade es 1800 s— y la desviación
+-- es deliberada: largo de sesión de sandbox, el mismo criterio con que este módulo
+-- puso la isquemia en 90 s contra los 120 s de ACE.
+Config.PAIN_SUPPRESS_MAX         = 100
+Config.PAIN_SUPPRESS_DECAY_PER_S = 0.20   -- 80 puntos en ~6,7 min
+Config.PAIN_SUPPRESS = { morphine = 80, oral = 35 }
+
+-- La puerta del analgésico. NO es un número nuevo: es el `pain > 10` que el spec v5
+-- ya tenía escrito para la morfina, y COA-52 lo deja donde está porque discrimina
+-- bien con los números que salen de ACE — un balazo LEVE (12.6) la abre, un rasguño
+-- (2.8) o un moretón medio (7.8) no. Vive como constante para que un check la
+-- DERIVE (COA-35) en vez de escribir un 10.
+--
+-- Y lee el PERCIBIDO (D5), que es lo que hace que el apilamiento no necesite una
+-- regla nueva: cada dosis acerca el percibido a 0 y la siguiente se desgatilla sola.
+Config.PAIN_ANALGESIC_AT = 10
+
+
+-- ============================================================
 -- Tratamiento (§7) — tiempos en segundos, efectos por tipo
 -- ============================================================
 -- El Medkit es la ÚNICA cura de la secuela (§7, decisión del autor 2026-07-14): una
@@ -91,7 +167,21 @@ Config.TREATMENTS = {
     tourniquet = { time = 2,  item = "corpus_coagulant_tourniquet" }, -- aplicar Y quitar
     medkit     = { time = 10, item = "corpus_coagulant_medkit", heal = 50, healsWounds = true },
     bloodbag   = { time = 8,  item = "corpus_coagulant_bloodbag", blood = 40 },
+    -- El analgésico ORAL (§17, COA-52 D5). NO cierra ninguna herida ni corta un
+    -- sangrado: pone un TECHO al dolor por un rato. Es el otro circuito, no una
+    -- segunda entrada del de la venda — por eso no aparece en BandagePriority.
+    -- Los 35 puntos salen de PAIN_SUPPRESS.oral (el painReduce 0.35 de ACE ×100).
+    painkillers = { time = 3,  item = "corpus_coagulant_painkillers",
+                    suppress = Config.PAIN_SUPPRESS.oral },
 }
+
+-- Tratamientos que NO usan zona (§7): el ítem opera sobre el cuerpo entero. Vive
+-- como tabla y no como una cadena de `or` para que el menú médico, la zona
+-- automática y el selftest se hagan la MISMA pregunta — un `kind == "bloodbag"`
+-- repetido en tres archivos es la forma en que el quinto tratamiento se olvida en
+-- dos de ellos.
+Config.TREATMENT_NO_ZONE = { bloodbag = true, painkillers = true }
+
 Config.ARM_TIME_MULT       = 1.25 -- brazo herido: tratamientos más lentos (§6)
 Config.TOURNIQUET_ISCHEMIA_S = 90 -- puesto más de esto: isquemia (§7)
 Config.ISCHEMIA_LINGER_S   = 60   -- la isquemia persiste tras quitarlo
@@ -195,6 +285,25 @@ function Config.BandagePriority(wound, zone)
     return urgencia + wound.severity
 end
 
+-- Dolor que abre UNA herida, por sus tres ejes (§17, COA-52 D3):
+--   PAIN_PER_WOUND × PAIN_TYPE[tipo] × PAIN_SEVERITY[sev]
+-- Una sola constante absoluta en vez de 15 celdas sueltas. Pura y compartida: la
+-- usan ZonePain (server), el selftest y el harness — el CLIENTE no la llama, y eso
+-- es norma y no casualidad (COA-52, sexta colisión: el dolor viaja en el snapshot y
+-- el cliente nunca lo deriva).
+--
+-- Nil-safe en los dos ejes. Un tipo sin fila en PAIN_TYPE devuelve 0, y eso NO es
+-- inocuo: el emisor del snapshot pregunta «¿aporta dolor?», así que una zona con una
+-- herida de un tipo sin fila dejaría de viajar. Lo que sostiene esa equivalencia es
+-- el check de FORMA del harness —PAIN_TYPE cubre todo WOUND_TYPES—, no esta línea.
+function Config.PainFromWound(tipo, sev)
+    local pt = Config.PAIN_TYPE[tipo]
+    local ps = Config.PAIN_SEVERITY[sev]
+    if pt == nil or ps == nil then return 0 end
+    return Config.PAIN_PER_WOUND * pt * ps
+end
+
+
 -- Drenaje de HP por segundo dada la sangre actual (0 si no es crítica, §5)
 function Config.HPDrainRate(blood)
     if blood >= Config.BLOOD_CRITICAL then return 0 end
@@ -274,6 +383,19 @@ Config.ZONE_FULL_AT = 6
 function Config.ZoneDamageFrac(score)
     return math.Clamp(score / Config.ZONE_FULL_AT, 0, 1)
 end
+
+-- Dolor de zona → 0..1 para colorear, espejo LITERAL de ZoneDamageFrac (§17, D2).
+-- Satura en PAIN_FULL_AT = 60 y NO en PAIN_MAX: con 100 la mitad de arriba de la
+-- rampa estaría muerta en juego normal, y una zona con dolor 7 pintaría casi roja.
+-- Con 60 pinta 0.12 — apenas teñida, que es lo que la enmienda quería.
+--
+-- HOY NO LA LLAMA NADIE QUE PINTE: la silueta se sigue pintando con el SCORE. La
+-- rampa de dolor es de la niebla diagnóstica (COA-44) y baja con ella; cambiar lo
+-- que el jugador ve antes de que la niebla exista sería diseño de UI sin votar.
+function Config.PainFrac(pain)
+    return math.Clamp(pain / Config.PAIN_FULL_AT, 0, 1)
+end
+
 
 -- Progreso 0..1 del tratamiento en curso, desde el {endsAt, duration} del snapshot
 -- (§9: la barra se calcula client-side, sin tick de red). `now` se pasa para que sea
