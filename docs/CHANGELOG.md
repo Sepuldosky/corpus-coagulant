@@ -2202,4 +2202,5 @@ fallos, ALL GREEN, exit 0**; selftest **238 OK server / 161 client**. Verificaci
 `dev/sabotaje_coagulant_metabolismo.py` — **21/21 en rojo, cada uno sólo en las familias que
 declaró**, y 2/2 no-detectables en verde. Árbol verificado LIMPIO con
 `dev/verificar_arbol_sabotaje.py` sobre los **dos** scripts de sabotaje. **Falta la pasada en
-juego**, y por eso los parches 1-6 nacen `[PENDIENTE]`.
+juego**, y por eso los parches 1-6 nacen `[PENDIENTE]`. Planilla de **12 filas** en
+`dev/checks/coagulant-metabolismo-r1.html`, publicada como artefacto: https://claude.ai/code/artifact/fa3fd433-cc7d-428e-b72a-a34bff488132

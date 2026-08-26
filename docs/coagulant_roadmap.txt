@@ -65,6 +65,7 @@ sobre este archivo se reporta NO-AUDITABLE POR DISEÑO.
       detras de un gate de capacidad desde hace un mes, asi que enciende solo.
       Harness 331 checks ALL GREEN (familia MET-*), selftest 238/161, y verificacion en
       negativo propia en dev/sabotaje_coagulant_metabolismo.py (21 sabotajes).
+      Planilla de la pasada: dev/checks/coagulant-metabolismo-r1.html
 
       LO QUE LA BAJADA MIDIO Y EL DISEÑO NO PODIA SABER: COA-40 afirma que «los cinco
       entran por palancas que YA EXISTEN» y es FALSO para dos de las cinco. `hunger` y
