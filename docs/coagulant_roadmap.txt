@@ -56,9 +56,30 @@ sobre este archivo se reporta NO-AUDITABLE POR DISEÑO.
       práctica, así que este tramo no puede darse por servido hasta que su Block 3
       cierre de verdad.
 
-  [4] Superficie para Craving. EL DISEÑO ESTÁ HECHO (2026-08-08, voto del autor en
-      cinco puntos; Architecture §8 y §12). FALTA LA BAJADA A CÓDIGO — que es todo
-      lo que queda de este tramo.
+  [4] Superficie para Craving. BAJO A CODIGO EL 2026-08-25 — FALTA LA PASADA EN JUEGO.
+      El diseno se voto el 2026-08-08 (cinco puntos; Architecture §8 y §12) y esta
+      sesion lo copio al arbol: ApplyExternalCondition con los dos ids clinicos y la
+      tabla de config como PUERTA, las tres palancas sobre el tick de 1 s que ya
+      existia, la lectura de Craving por capacidad (COA-38) y la fila METABOLIC en el
+      menu. El consumidor ya estaba esperando: el puente de Craving la llama con pcall
+      detras de un gate de capacidad desde hace un mes, asi que enciende solo.
+      Harness 331 checks ALL GREEN (familia MET-*), selftest 238/161, y verificacion en
+      negativo propia en dev/sabotaje_coagulant_metabolismo.py (21 sabotajes).
+
+      LO QUE LA BAJADA MIDIO Y EL DISEÑO NO PODIA SABER: COA-40 afirma que «los cinco
+      entran por palancas que YA EXISTEN» y es FALSO para dos de las cinco. `hunger` y
+      `energy` apuntan al techo de STAMINA, que §1 del mismo documento difiere por
+      escrito, y los bpm de `dehydration` tampoco existen. Bajaron TRES palancas vivas
+      y DOS escritas y NEUTRAS, con un campo `live` que lo declara y una fila de harness
+      (MET-F5) que se pone ROJA el dia que la stamina exista — para que el termino
+      inerte no envejezca en silencio. Es el precedente que COA-52 estreno con PAIN_FRAC.
+
+      TRES DECISIONES DE IMPLEMENTACION que el diseno no fijaba: las dos vias que llegan
+      a una palanca (la condicion empujada y el crudo leido) se combinan con max() y no
+      sumando, porque describen el mismo cuerpo y sumarlas cobra dos veces la misma sed;
+      el techo TECHA Y FRENA, NUNCA MATA (acota hasta donde regenera y jamas empuja la
+      sangre hacia abajo); y el factor de sangrado se aplica en DrenajeTotal y NO dentro
+      de BleedRate, que es pura y no tiene jugador.
 
       Lo ratificado: ApplyExternalCondition(ply, id, severity) —COA-39, cierra la
       deuda D-5— con la misma firma que CRV-4 había congelado desde el consumidor.

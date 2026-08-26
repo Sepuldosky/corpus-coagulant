@@ -154,6 +154,92 @@ Config.PAIN_SUPPRESS = { morphine = 80, oral = 35 }
 -- regla nueva: cada dosis acerca el percibido a 0 y la siguiente se desgatilla sola.
 Config.PAIN_ANALGESIC_AT = 10
 
+-- ============================================================
+-- Condiciones externas y metabolismo (§8, COA-38/39/40)
+-- ============================================================
+
+-- Las condiciones que ApplyExternalCondition acepta (COA-39). El namespace del
+-- emisor va IMPLÍCITO en el id: Coagulant NO pregunta quién llama.
+--
+-- ⚠ ESTA TABLA ES LA PUERTA: un id que no está acá se rechaza y el llamador se
+-- entera por el `false`. No es burocracia — el canal existe para contestar QUIÉN ES
+-- DUEÑO DE LA MUERTE, así que una condición que nadie implementa tiene que fallar
+-- ruidosa en vez de darse por aplicada. Un emisor que empuja "radiation" hoy recibe
+-- `false` y sabe que ese daño sigue siendo suyo.
+--
+-- Los tres de COA-43 (radiation, nerve_agent, toxin) NO están: son del tramo
+-- sistémico de §17 y llegan con Stalker (COA-48). Ese día se agregan acá con su
+-- fila y no hay que tocar ApplyExternalCondition.
+--
+-- La semántica de cada una es la tabla ratificada de §8:
+--   starvation  — suprime la regeneración natural de sangre ∝ severity; en 1 la anula.
+--   dehydration — ADEMÁS de lo anterior, baja el techo de sangre (plasma) y sube bpm.
+-- «Además de lo anterior» es literal: por eso las dos escriben `regen`.
+Config.EXTERNAL_CONDITIONS = {
+    starvation  = { regen = 1.00 },
+    dehydration = { regen = 1.00, bloodCap = 0.25, bpm = 12 },
+}
+
+-- El umbral de déficit es de COAGULANT y no de Craving (contraparte de CRV-24:
+-- Craving publica crudos y no sabe qué es un déficit). Uno solo para los cinco.
+Config.METABOLIC_DEFICIT_AT = 40
+
+-- Las CINCO palancas de COA-40. `mag` es el efecto con déficit MÁXIMO y de ahí salen
+-- los números de la tabla del diseño sin escribir ninguno dos veces:
+--   hydration bloodCap 0.25 → techo ×0.75  (−25 %)
+--   protein   regen    0.70 → REGEN_PER_S ×0.30
+--   micro     bleed    0.60 → BleedRate ×1.60
+--
+-- ⚠ `live = false` NO ES UN FLAG DE GUSTO Y NO SE PRENDE SIN TRABAJO. Dice que la
+-- palanca que esa fila nombra NO EXISTE EN EL ÁRBOL: `hunger` y `energy` apuntan al
+-- techo de STAMINA, que §1 difiere por escrito («v1 lo acepta y almacena, sin
+-- efecto»). El diseño de COA-40 afirma que «los cinco entran por palancas que ya
+-- existen» y eso es falso para estas dos — medido, no supuesto. Su término se
+-- escribe y lee NEUTRO, exactamente como PAIN_FRAC y PAIN_SPLINT en COA-52.
+--
+-- El menú médico LEE este campo para pintarlas en gris (voto del autor, 2026-08-25):
+-- se dibujan las cinco causas posibles, pero una que no puede producir efecto no se
+-- enciende. Un chip en rojo que no hace nada es el falso positivo nº 42 del catálogo.
+-- El día que la stamina baje, se pone `live = true` y no cambia nada más.
+Config.METABOLIC = {
+    { id = "hunger",    lever = "staminaCap", mag = 20,   live = false },
+    { id = "hydration", lever = "bloodCap",   mag = 0.25, live = true  },
+    { id = "energy",    lever = "staminaCap", mag = 25,   live = false },
+    { id = "protein",   lever = "regen",      mag = 0.70, live = true  },
+    { id = "micro",     lever = "bleed",      mag = 0.60, live = true  },
+}
+
+-- Los bpm no tienen blanco: el vital no existe (0 hits de `bpm` en el lua/). Se
+-- escribe con su número del diseño para que el día que exista no haya que volver acá.
+Config.METABOLIC_BPM_MAX = 12
+
+-- Déficit 0..1 de un crudo de Craving: 0 en METABOLIC_DEFICIT_AT o más, 1 en 0.
+-- Nil-safe hacia el lado seguro: sin dato no hay déficit.
+function Config.MetabolicDeficit(v)
+    local at = Config.METABOLIC_DEFICIT_AT
+    return math.Clamp((at - (tonumber(v) or at)) / at, 0, 1)
+end
+
+-- COA-38 — Coagulant LEE a Craving, read-only y POR CAPACIDAD (nunca por presencia,
+-- nunca en file-scope). Devuelve los cinco déficits, o `nil` si Craving no está o es
+-- viejo — y ese nil es lo que apaga la fila METABOLIC entera: degradación honesta
+-- (COA-7 aplicado a un peer nuevo).
+--
+-- Es SHARED a propósito: el server la usa para las palancas y el menú médico la usa
+-- para dibujar, y `GetMetabolic` es shared del lado de Craving. Dos implementaciones
+-- de la misma cuenta divergirían, que es la sexta colisión de COA-52 otra vez.
+function Config.MetabolicDeficits(ply)
+    local crav = Corpus.GetModule("craving")
+    if crav == nil or not isfunction(crav.GetMetabolic) then return nil end
+    local m = crav.GetMetabolic(ply)
+    if not istable(m) then return nil end
+    local out = {}
+    for _, fila in ipairs(Config.METABOLIC) do
+        out[fila.id] = Config.MetabolicDeficit(m[fila.id])
+    end
+    return out
+end
+
 
 -- ============================================================
 -- Tratamiento (§7) — tiempos en segundos, efectos por tipo

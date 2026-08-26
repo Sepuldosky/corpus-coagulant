@@ -22,6 +22,11 @@ local function NuevoEstado()
                               -- que el dolor almacena: el dolor mismo se DERIVA de las
                               -- heridas y no tiene reloj propio
 
+        -- Condiciones externas vigentes, { [id] = severity 0..1 } (§8, COA-39). Un id
+        -- AUSENTE es la condición limpia: severity 0 la BORRA en vez de guardar un
+        -- cero, así que recorrer esta tabla es recorrer lo que está vigente y nada más.
+        conditions     = {},
+
         critical       = false, -- para detectar el cruce del umbral (§5)
         dirty          = true,  -- snapshot pendiente de enviar (§9)
         lastHit        = nil,   -- debug
@@ -205,6 +210,101 @@ function COAGULANT.AddPainSuppression(ply, puntos)
     st.painSuppress = math.Clamp((st.painSuppress or 0) + puntos, 0, Config.PAIN_SUPPRESS_MAX)
     st.dirty = true
     return st.painSuppress
+end
+
+-- ============================================================
+-- Condiciones externas y metabolismo (§8, COA-38/39/40)
+-- ============================================================
+
+-- COA-39 — El canal de UNA dirección por el que un peer empuja una condición que
+-- PUEDE MATAR. Existe para contestar *quién es dueño de la muerte*: Craving necesita
+-- esa respuesta para apagar su propio chip de HP, y sólo empujando se sabe si hay
+-- quién reciba. Lo que sólo modula no es una condición, es un gauge, y se LEE (COA-38).
+--
+-- ⚠ EL 2.º ARGUMENTO ES EL ID DE CONDICIÓN CLÍNICA, NO EL STAT DEL EMISOR:
+-- {"starvation","dehydration"}, nunca {"hunger","hydration"}. Está dicho acá porque
+-- switchear sobre el stat pasa el gate de capacidad del llamador SIN APLICAR NADA —
+-- la inanición quedaría inofensiva sin un error ni un log. La tabla de config es la
+-- que lo impide: un id que no está en ella devuelve `false` y el emisor se entera.
+--
+-- severity 0..1, y 0 LIMPIA la condición (contrato congelado por Craving desde el
+-- consumidor, D-5). Devuelve true si la condición existe y quedó aplicada.
+function COAGULANT.ApplyExternalCondition(ply, id, severity)
+    local st = COAGULANT.GetState(ply)
+    if st == nil then return false end
+    if Config.EXTERNAL_CONDITIONS[id] == nil then return false end
+
+    local sev = math.Clamp(tonumber(severity) or 0, 0, 1)
+    local antes = st.conditions[id]
+    st.conditions[id] = sev > 0 and sev or nil
+
+    -- On-change (COA-16): el techo de sangre viaja en el snapshot, así que una
+    -- condición que cambia el techo tiene que ensuciar. Ensuciar SIEMPRE convertiría
+    -- este canal en un emisor por push, y Craving empuja en cada tick suyo.
+    if st.conditions[id] ~= antes then st.dirty = true end
+    return true
+end
+
+-- Severity vigente de una condición externa, 0 si está limpia. Contrato de lectura.
+function COAGULANT.GetExternalCondition(ply, id)
+    local st = COAGULANT.GetState(ply)
+    if st == nil then return 0 end
+    return st.conditions[id] or 0
+end
+
+-- Efecto vigente sobre una palanca, 0..1, combinando las DOS vías que llegan a ella:
+-- la condición empujada (COA-39) y el déficit metabólico leído (COA-38/40).
+--
+-- ⚠ SE COMBINAN CON max() Y NO SUMANDO NI MULTIPLICANDO, y es una decisión: las dos
+-- vías describen EL MISMO cuerpo visto desde dos lados —Craving empuja `dehydration`
+-- cuando puede matar y publica `hydration` como crudo—, así que sumarlas cobra dos
+-- veces la misma sed. Es la misma forma max() con la que ZonePain aplica los pisos de
+-- condición: un piso nunca BAJA lo que ya está peor.
+local function FactorPalanca(ply, palanca)
+    local st = COAGULANT.GetState(ply)
+    if st == nil then return 0 end
+
+    local peor = 0
+    for id, sev in pairs(st.conditions) do
+        local def = Config.EXTERNAL_CONDITIONS[id]
+        local mag = def and def[palanca]
+        if mag ~= nil then peor = math.max(peor, mag * sev) end
+    end
+
+    local def = Config.MetabolicDeficits(ply)
+    if def ~= nil then
+        for _, fila in ipairs(Config.METABOLIC) do
+            -- `live` es la puerta: una fila cuya palanca no existe en el árbol NO
+            -- aporta. Sin esto, `hunger` movería un techo de stamina inexistente y
+            -- el término entraría por la ventana en la próxima palanca que sí exista.
+            if fila.live and fila.lever == palanca then
+                peor = math.max(peor, fila.mag * (def[fila.id] or 0))
+            end
+        end
+    end
+    return math.Clamp(peor, 0, 1)
+end
+COAGULANT.MetabolicFactor = FactorPalanca
+
+-- Techo de sangre vigente (§8): BLOOD_MAX bajado por sed. COA-40 — TECHA Y FRENA,
+-- NUNCA MATA: esto acota hasta dónde REGENERA, y jamás empuja la sangre hacia abajo.
+-- La muerte por sed sigue llegando por la vía de siempre —un desangrado que no
+-- recupera—, que es lo que §8 ratificó, y no por un drenaje nuevo.
+function COAGULANT.BloodCap(ply)
+    return Config.BLOOD_MAX * (1 - FactorPalanca(ply, "bloodCap"))
+end
+
+-- Factor 0..1 sobre REGEN_PER_S. Con `starvation` en 1 la regeneración se ANULA, que
+-- es literal de la tabla de §8.
+function COAGULANT.RegenFactor(ply)
+    return 1 - FactorPalanca(ply, "regen")
+end
+
+-- Multiplicador del sangrado por déficit de micronutrientes: coagulas peor. Es el
+-- único de los cinco que EMPEORA algo activo en vez de techar, y por eso va como
+-- (1 + f) y no como (1 - f).
+function COAGULANT.BleedFactor(ply)
+    return 1 + FactorPalanca(ply, "bleed")
 end
 
 -- Contrato YA congelado por Cargo (corpus_cargo_movement.lua nos llama con pcall

@@ -37,6 +37,31 @@
 --   COAGULANT.AddPainSuppression(ply, pts)   -- suma techo de analgésico (clamp a
 --                                               PAIN_SUPPRESS_MAX); decae en el tick
 
+--   COAGULANT.ApplyExternalCondition(ply, id, severity) -> bool
+--                                            -- EMPUJE de una condición que PUEDE
+--                                               MATAR (§8, COA-39). El id es CLÍNICO
+--                                               ("starvation"/"dehydration"), NUNCA el
+--                                               stat del emisor: switchear sobre el
+--                                               stat pasa el gate del llamador sin
+--                                               aplicar nada. severity 0..1, y 0
+--                                               LIMPIA. Un id que Coagulant no
+--                                               implementa devuelve false — así el
+--                                               emisor sabe que ese daño sigue siendo
+--                                               suyo. Los ids ambientales de COA-43
+--                                               (Stalker) todavía no están
+--   COAGULANT.GetExternalCondition(ply, id) -> 0..1   -- severity vigente
+--   COAGULANT.BloodCap(ply) -> 0..100        -- techo de sangre por sed. TECHA Y
+--                                               FRENA, NUNCA MATA (COA-40): acota
+--                                               hasta dónde regenera, no empuja la
+--                                               sangre hacia abajo
+--   COAGULANT.RegenFactor(ply) -> 0..1       -- factor sobre REGEN_PER_S
+--   COAGULANT.BleedFactor(ply) -> >= 1       -- micronutrientes: coagulas peor
+--
+--   Y en el otro sentido, COA-38: Coagulant LEE a Craving por CAPACIDAD y read-only
+--   (Config.MetabolicDeficits, shared). No escribe estado de Craving, no le registra
+--   ítems, no le publica nada. Sin Craving los cinco déficits son nil y las palancas
+--   quedan neutras.
+--
 --   COAGULANT.OnEncumbrance(ply, fraction)   -- contrato congelado por Cargo
 --                                              (movement); v1 almacena, sin efecto
 --   COAGULANT.Zones.*                        -- mapa hitgroup nativo -> zona clínica
@@ -53,7 +78,10 @@
 --                                        multiplicador de peso de Cargo (§6)
 --     corpus_coagulant_state          -- snapshot owner-only: heridas, torniquetes,
 --                                        tratamiento, y desde COA-52 el DOLOR por
---                                        zona (`p`) y el percibido global (`pain`).
+--                                        zona (`p`), el percibido global (`pain`) y
+--                                        el TECHO de sangre (`bcap`, §8 COA-39/40),
+--                                        que viaja porque depende de condiciones
+--                                        empujadas y el cliente no puede derivarlo.
 --                                        El dolor NO tiene NW2 y eso es norma: un
 --                                        NW2 se replica a TODOS los clientes y no
 --                                        tiene filtro por observador, así que un

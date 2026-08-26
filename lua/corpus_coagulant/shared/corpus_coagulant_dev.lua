@@ -482,6 +482,86 @@ function COAGULANT._SelfTest()
                 "el percibido bajó de 0 con la supresión por encima del crudo (COA-52 D5)")
 
 
+            -- ============================================================
+            -- Condiciones externas y palancas (§8, COA-38/39/40)
+            -- ============================================================
+            COAGULANT.ResetState(ply)
+
+            -- La PUERTA: un id que Coagulant no implementa se rechaza. Es lo que le
+            -- avisa al emisor que ese daño sigue siendo suyo, en vez de tragárselo.
+            check(COAGULANT.ApplyExternalCondition(ply, "starvation", 0.5) == true,
+                "ApplyExternalCondition rechazó un id que SÍ implementa (COA-39)")
+            check(COAGULANT.ApplyExternalCondition(ply, "radiation", 1) == false,
+                "ApplyExternalCondition ACEPTÓ un id que no implementa: el emisor creería que ese daño ya es de Coagulant (COA-39/43)")
+            -- ⚠ Y el que más importa: el STAT del emisor no es un id clínico. Si esto
+            -- pasara, switchear sobre el stat compilaría y la inanición quedaría
+            -- inofensiva en silencio — el modo de falla que §8 nombra por escrito.
+            check(COAGULANT.ApplyExternalCondition(ply, "hunger", 1) == false,
+                "ApplyExternalCondition aceptó el STAT del emisor como id clínico (§8): hunger no es starvation")
+
+            check(math.abs(COAGULANT.GetExternalCondition(ply, "starvation") - 0.5) < 0.001,
+                "GetExternalCondition no devuelve la severity vigente")
+            -- severity 0 LIMPIA, no guarda un cero (contrato congelado por Craving)
+            COAGULANT.ApplyExternalCondition(ply, "starvation", 0)
+            check(COAGULANT.GetState(ply).conditions.starvation == nil,
+                "severity 0 no LIMPIÓ la condición: quedó un cero guardado (COA-39)")
+
+            -- La regeneración se anula con starvation en 1 — literal de la tabla de §8
+            check(math.abs(COAGULANT.RegenFactor(ply) - 1) < 0.001,
+                "sin condiciones el factor de regeneración no es 1 (COA-40)")
+            COAGULANT.ApplyExternalCondition(ply, "starvation", 1)
+            check(COAGULANT.RegenFactor(ply) == 0,
+                "starvation en 1 no ANULA la regeneración (§8)")
+            -- ...y es PROPORCIONAL, no un interruptor: con la mitad, la mitad.
+            COAGULANT.ApplyExternalCondition(ply, "starvation", 0.5)
+            check(math.abs(COAGULANT.RegenFactor(ply) - 0.5) < 0.001,
+                "la supresión de regeneración no es proporcional a severity (§8)")
+
+            -- El techo: dehydration lo baja, starvation NO. Son dos ids distintos y
+            -- la tabla dice que sólo uno toca el plasma.
+            COAGULANT.ResetState(ply)
+            check(math.abs(COAGULANT.BloodCap(ply) - Config.BLOOD_MAX) < 0.001,
+                "sin condiciones el techo de sangre no es BLOOD_MAX")
+            COAGULANT.ApplyExternalCondition(ply, "starvation", 1)
+            check(math.abs(COAGULANT.BloodCap(ply) - Config.BLOOD_MAX) < 0.001,
+                "starvation bajó el techo de sangre: eso es de dehydration (§8)")
+            -- ⚠ Se LIMPIA starvation antes de seguir. Sin esto, el check de abajo
+            -- daba verde por la condición equivocada: la regeneración estaba en 0 por
+            -- el hambre, no por la sed, y borrarle el `regen` a dehydration no movía
+            -- nada. Lo cazó la verificación en negativo (#7), no la lectura.
+            COAGULANT.ApplyExternalCondition(ply, "starvation", 0)
+            COAGULANT.ApplyExternalCondition(ply, "dehydration", 1)
+            check(COAGULANT.BloodCap(ply) < Config.BLOOD_MAX,
+                "dehydration en 1 no bajó el techo de sangre (§8)")
+            -- El «ADEMÁS de lo anterior» de la tabla ratificada es literal: deshidratarse
+            -- hace todo lo que hace pasar hambre, MÁS el plasma. Sin esta fila, una
+            -- dehydration que sólo baja el techo pasa el auto-test entera.
+            check(COAGULANT.RegenFactor(ply) == 0,
+                "dehydration no heredó el freno de regeneración de starvation: el «además de lo anterior» de §8 es literal")
+
+            -- La rampa del déficit, que es lo que traduce un crudo de Craving a un
+            -- número de Coagulant. El umbral es NUESTRO (contraparte de CRV-24).
+            check(Config.MetabolicDeficit(Config.METABOLIC_DEFICIT_AT) == 0,
+                "en el umbral de déficit ya hay déficit: la rampa arranca donde no debe")
+            check(math.abs(Config.MetabolicDeficit(0) - 1) < 0.001,
+                "con el crudo en 0 el déficit no es total")
+            check(math.abs(Config.MetabolicDeficit(Config.METABOLIC_DEFICIT_AT / 2) - 0.5) < 0.001,
+                "la rampa de déficit no es lineal a mitad de umbral")
+
+            -- Lo que SÍ se puede afirmar desde acá: la lectura del techo es PURA —
+            -- consultarlo no mueve la sangre. Es poco, y por eso está dicho: la
+            -- propiedad que de verdad importa («techa y FRENA, nunca mata») vive en el
+            -- TICK, y un selftest que no corre el tick no puede tocarla. Esa la mide
+            -- el harness (familia MET-*), que sí lo hace correr. Escribir acá un
+            -- `blood == blood` con dos líneas de por medio habría dado VERDE siempre y
+            -- habría acreditado la propiedad sin ejercerla nunca.
+            local sangreAntes = COAGULANT.GetState(ply).blood
+            check(sangreAntes > COAGULANT.BloodCap(ply),
+                "precondición: la sangre de prueba no quedó por ENCIMA del techo")
+            COAGULANT.BloodCap(ply); COAGULANT.RegenFactor(ply); COAGULANT.BleedFactor(ply)
+            check(COAGULANT.GetState(ply).blood == sangreAntes,
+                "leer las palancas movió la sangre: son consultas, no efectos")
+
             COAGULANT.ResetState(ply) -- dejar limpio
             -- ...y limpio DE VERDAD: el reset tiene que despublicar la cojera de las
             -- heridas de prueba, no dejarla hasta el próximo tick (ronda 7, ×0.64)
@@ -586,6 +666,37 @@ if SERVER then
         if not COAGULANT.IsBleeding(objetivo) then
             Corpus.Log("coagulant", "  sin sangrado activo")
         end
+
+        -- METABOLISMO Y CONDICIONES EXTERNAS (§8, COA-38/39/40). Se imprimen las tres
+        -- capas por separado porque contestan preguntas distintas y confundirlas es
+        -- justo el modo de falla del tramo: qué te EMPUJARON (condición), qué LEÍSTE
+        -- de Craving (déficit) y qué EFECTO quedó vigente (las palancas). Con sólo el
+        -- efecto, «Craving no está montado» y «Craving dice que estás bien» se leen
+        -- igual — y son el bug y el sano.
+        local condiciones = {}
+        for id, sev in pairs(st.conditions or {}) do
+            condiciones[#condiciones + 1] = string.format("%s %.2f", id, sev)
+        end
+        Corpus.Log("coagulant", "  condiciones externas — " .. (#condiciones > 0
+            and table.concat(condiciones, ", ") or "ninguna"))
+
+        local deficits = COAGULANT.Config.MetabolicDeficits(objetivo)
+        if deficits == nil then
+            -- NO es lo mismo que «sin déficit», y por eso tiene renglón propio.
+            Corpus.Log("coagulant", "  metabolismo — Craving AUSENTE (palancas neutras)")
+        else
+            local partesMeta = {}
+            for _, fila in ipairs(COAGULANT.Config.METABOLIC) do
+                partesMeta[#partesMeta + 1] = string.format("%s %.0f%%%s", fila.id,
+                    (deficits[fila.id] or 0) * 100, fila.live and "" or " (sin palanca)")
+            end
+            Corpus.Log("coagulant", "  metabolismo — déficit: " .. table.concat(partesMeta, ", "))
+        end
+
+        Corpus.Log("coagulant", string.format(
+            "  palancas — techo sangre %.1f/%d | regen ×%.2f | sangrado ×%.2f",
+            COAGULANT.BloodCap(objetivo), COAGULANT.Config.BLOOD_MAX,
+            COAGULANT.RegenFactor(objetivo), COAGULANT.BleedFactor(objetivo)))
 
         -- Debuffs (§6). La velocidad se lee del NW2 REAL — es el número que el hook
         -- Move aplica de verdad; la curva teórica no dice si la convar está apagada.

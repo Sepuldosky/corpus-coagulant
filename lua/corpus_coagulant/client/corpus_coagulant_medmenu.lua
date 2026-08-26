@@ -25,6 +25,21 @@ local COL_TENUE  = Color(150, 150, 150)
 local COL_ALERTA = Color(215, 70, 60)
 local COL_DOLOR  = Color(225, 150, 60)  -- el dolor no es sangrado: color propio
 
+-- Rampa de la fila METABOLIC (§8, COA-40). Sin excepción nueva al sistema de color:
+-- un valor SIN déficit es cromo —se lee tenue, no compite—, y sólo el déficit
+-- enciende señal fija. Un cuerpo alimentado no es un aviso, igual que una silueta
+-- sana no lo es.
+local COL_META_WARN = Color(200, 190, 90)
+local COL_META_URG  = Color(220, 140, 60)
+local COL_META_CRIT = Color(215, 70, 60)
+-- Gris de «esta causa existe pero hoy no puede producir efecto» — más apagado que
+-- el cromo, para que no se confunda con «sin déficit».
+local COL_META_OFF  = Color(95, 95, 100)
+
+local META_LABEL = {
+    hunger = "HUN", hydration = "HYD", energy = "ENE", protein = "PRO", micro = "MIC",
+}
+
 
 local SEV_LABEL = { [1] = "Minor", [2] = "Moderate", [3] = "Severe" }
 local TIPO_LABEL = {
@@ -253,7 +268,9 @@ local function Abrir()
     zonaSel = ZonaInicial()
 
     frame = vgui.Create("DFrame")
-    frame:SetSize(600, 462)
+    -- +30 por la fila METABOLIC (§8): reflujo mecánico para que la silueta no se
+    -- achique, igual que cuando el quinto tratamiento empujó la cancelación a su fila.
+    frame:SetSize(600, 492)
 
     frame:Center()
     frame:SetTitle("Medical")
@@ -270,7 +287,16 @@ local function Abrir()
         -- diferencia sólo se ve por consola (coagulant_status).
         local sangre = HUD.Blood()
         local crit = sangre < Config.BLOOD_CRITICAL
-        draw.SimpleText(string.format("Blood: %d%%", math.floor(sangre)), "DermaDefaultBold",
+        -- La MARCA DE TECHO (§8, COA-40): sólo aparece cuando el techo bajó. Acá la
+        -- sangre es un número y no una barra, así que la marca es el «/ N» al lado —
+        -- no se inventa una barra para colgarle una marca. Un techo caído sin causa
+        -- visible es la señal muda que el sistema de color prohíbe, y la causa la
+        -- contesta la fila METABOLIC de abajo.
+        local techo = HUD.BloodCap()
+        local etiqueta = techo < Config.BLOOD_MAX
+            and string.format("Blood: %d%% / %d", math.floor(sangre), math.floor(techo))
+            or  string.format("Blood: %d%%", math.floor(sangre))
+        draw.SimpleText(etiqueta, "DermaDefaultBold",
             w - 14, 6, crit and COL_ALERTA or COL_TENUE, TEXT_ALIGN_RIGHT)
         local dolor = HUD.Pain()
         draw.SimpleText(string.format("Pain: %d", dolor), "DermaDefaultBold",
@@ -306,6 +332,53 @@ local function Abrir()
     ConstruirBoton(pie, "medkit", "Medkit")
     ConstruirBoton(pie, "bloodbag", "Blood Bag")
     ConstruirBoton(pie, "painkillers", "Painkillers")
+
+    -- ============================================================
+    -- La fila METABOLIC (§8, COA-38/40)
+    -- ============================================================
+    -- Existe para contestar POR QUÉ el techo está bajo, no para mostrar stats: la
+    -- barra de comida de Cargo contesta «¿me queda comida?» y ésta contesta «¿por qué
+    -- este cuerpo no se recupera?». Por eso son CINCO y no tres — un médico que ve el
+    -- techo de sangre al 78 % y sólo tres chips no tiene cómo saber que el paciente
+    -- está deshidratado.
+    --
+    -- Sin Craving montado la fila NO EXISTE (no es una fila vacía): COA-7 aplicado a
+    -- un peer nuevo, la misma degradación honesta que el resto del módulo.
+    local filaMeta = vgui.Create("DPanel", frame)
+    filaMeta:Dock(BOTTOM)
+    filaMeta:SetTall(22)
+    filaMeta:DockMargin(8, 0, 8, 4)
+    filaMeta.Paint = function(_, w, h)
+        local def = HUD.MetabolicDeficits()
+        if def == nil then return end
+
+        surface.SetDrawColor(COL_PANEL)
+        surface.DrawRect(0, 0, w, h)
+        draw.SimpleText("METABOLIC", "DermaDefault", 6, h * 0.5, COL_TENUE,
+            TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+
+        local n = #Config.METABOLIC
+        local x0, ancho = 84, (w - 90) / n
+        for i, fila in ipairs(Config.METABOLIC) do
+            local d = def[fila.id] or 0
+            local col
+            if not fila.live then
+                -- ⚠ El gris gana SIEMPRE, tenga déficit o no. `hunger` y `energy`
+                -- apuntan al techo de stamina, que §1 difiere: encenderlos en rojo
+                -- prometería un efecto que hoy no ocurre, que es el falso positivo
+                -- que este proyecto tiene catalogado. El día que la stamina baje,
+                -- `live = true` en config y esta rama deja de tomarlos.
+                col = COL_META_OFF
+            elseif d <= 0 then      col = COL_TENUE
+            elseif d < 0.34 then    col = COL_META_WARN
+            elseif d < 0.67 then    col = COL_META_URG
+            else                    col = COL_META_CRIT
+            end
+            draw.SimpleText(string.format("%s %d%%", META_LABEL[fila.id] or fila.id,
+                math.floor(d * 100)), "DermaDefault", x0 + (i - 1) * ancho, h * 0.5,
+                col, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+        end
+    end
 
     local cancelar = vgui.Create("DButton", pieCancel)
     cancelar:Dock(FILL)

@@ -2073,3 +2073,133 @@ negativo: `dev/sabotaje_coagulant_dolor.py`. Registro de IDs validado con
 `dev/checks/coagulant-dolor-r1.html`; para código de addon GMod, *verificado* = confirmado en
 juego, y por eso los parches 1-8 nacen `[PENDIENTE]`. La planilla está publicada como
 artefacto: https://claude.ai/code/artifact/f9e534e3-2843-453c-88bf-e786e6778cd1
+
+---
+
+## PARCHES DE sesión Superficie para Craving — el metabolismo baja a código (COA-38/39/40) — 2026-08-25
+
+Ejecución del punto **[4]** del roadmap. **El diseño se votó el 2026-08-08 en cinco puntos y con
+cero Lua (COA-28); esta sesión lo COPIA a código.** No se re-discutió nada: la semántica de cada
+id, las cinco palancas y el umbral vienen de §8 y bajaron tal cual.
+
+> **⚠ UNA PREMISA DEL DISEÑO NO SE SOSTIENE CONTRA EL ÁRBOL, y se dice antes que cualquier otra
+> cosa porque cambia lo que este tramo entrega.** COA-40 afirma, textual, que *«los cinco entran
+> por palancas que YA EXISTEN — no se crea un sistema nuevo»*. **Medido: es falso para dos de las
+> cinco**, y la razón está en el **mismo documento**:
+>
+> | Valor | Palanca que declara COA-40 | Estado real, medido |
+> |---|---|---|
+> | `micro` | `BleedRate` | ✅ existe (`config.lua`) |
+> | `protein` | `REGEN_PER_S` + curación de tratadas | ✅ el primero; la 2.ª mitad es **COA-49**, que no bajó |
+> | `hydration` | techo de sangre **+ bpm** | ⚠ el techo sí; **`bpm` tiene 0 hits en el `lua/`** |
+> | `hunger` | techo de **stamina** | ❌ **no existe** |
+> | `energy` | techo de **stamina** + vel. de recuperación | ❌ **no existe** |
+>
+> §1 lo dice en su lista de *No es*: *«Stamina/fatiga — pese a que el contrato `OnEncumbrance` ya
+> existe: v1 lo acepta y almacena, sin efecto»*. O sea que **el diseño apoyó dos de sus cinco
+> palancas en un bloque que el propio doc difiere**, y nadie lo cruzó al votarlo. Lo mismo muerde
+> media pata del canal de empuje: `dehydration` es *«baja el techo de sangre Y sube los bpm»*, y
+> los bpm no existen. `starvation` aterriza entera.
+>
+> **No es un bloqueante y el tramo no se recortó por eso.** El núcleo —el canal que contesta
+> *quién es dueño de la muerte*— aterriza completo, y el repo ya tiene precedente exacto para el
+> resto: COA-52 escribió `PAIN_FRAC`, `PAIN_SPLINT` y el término de infección **leyendo 0**, con
+> el comentario diciendo por qué. `hunger`, `energy` y los bpm quedan **escritos y neutros**, y su
+> neutralidad **está medida** (`live = false`, con dos filas de harness que la sostienen).
+>
+> **VOTO DEL AUTOR (2026-08-25), y no es delegado:** la fila `METABOLIC` dibuja **las cinco**
+> causas, con `hunger` y `energy` **en gris** tengan o no déficit. Se eligió contra las otras dos
+> opciones —mostrar sólo las tres vivas, o encender las cinco— porque un chip en rojo que no
+> produce ningún efecto es el falso positivo que este proyecto tiene catalogado: **acredita algo
+> que no está pasando**. El día que la stamina baje, es `live = true` en config y nada más.
+
+- PARCHE 1 — feat(config): bloque **Condiciones externas y metabolismo (§8)** en
+  `shared/corpus_coagulant_config.lua`. `EXTERNAL_CONDITIONS` (los dos ids clínicos con su
+  semántica de §8), `METABOLIC_DEFICIT_AT = 40`, la tabla `METABOLIC` de las cinco palancas con
+  su `mag` y su `live`, `METABOLIC_BPM_MAX`, y las dos funciones: `Config.MetabolicDeficit(v)` y
+  `Config.MetabolicDeficits(ply)` —**shared**, porque el server la usa para las palancas y el menú
+  para dibujar, y dos implementaciones de la misma cuenta divergirían (la sexta colisión de
+  COA-52 otra vez)—. Los números del diseño **salen de `mag` y no se escriben dos veces**:
+  `hydration 0.25 → techo ×0.75`, `protein 0.70 → regen ×0.30`, `micro 0.60 → sangrado ×1.60`.
+  **[PENDIENTE]**
+
+- PARCHE 2 — feat(core): el canal y las palancas en `server/corpus_coagulant_core.lua`.
+  `NuevoEstado()` gana `conditions = {}`; `ApplyExternalCondition(ply, id, severity)` con **la
+  tabla de config como PUERTA** —un id que no está devuelve `false`, que es lo que le avisa al
+  emisor que ese daño sigue siendo suyo—; `GetExternalCondition`; y `BloodCap` / `RegenFactor` /
+  `BleedFactor` sobre un `FactorPalanca` común. **⚠ Las dos vías que llegan a una palanca —la
+  condición empujada y el déficit leído— se combinan con `max()` y NO sumando**: describen el
+  mismo cuerpo visto desde dos lados, así que sumarlas cobraría **dos veces la misma sed**. Es la
+  misma forma con la que `ZonePain` aplica los pisos de condición. **[PENDIENTE]**
+
+- PARCHE 3 — feat(bleeding): las palancas mordiendo en el tick de 1 s que **ya existía**. El
+  drenaje se multiplica por `BleedFactor` **en `DrenajeTotal` y no dentro de `BleedRate`**, que es
+  pura y compartida y no tiene jugador. La regeneración se frena por `RegenFactor` y se acota por
+  `BloodCap`. **⚠ Y EL TECHO NO EMPUJA LA SANGRE HACIA ABAJO**: con la sangre por encima del
+  techo no pasa nada. Un `math.min(st.blood, techo)` —la línea que uno escribe sin pensar— haría
+  que la sed drenara sola y la muerte tendría un **segundo dueño**, que es lo que §8 prohíbe. El
+  techo viaja en el snapshot como `bcap`. **[PENDIENTE]**
+
+- PARCHE 4 — feat(hud) + feat(medmenu): `HUD.BloodCap()` **lee** el `bcap` del snapshot (no lo
+  puede derivar: depende de condiciones empujadas, que son estado del server) y
+  `HUD.MetabolicDeficits()` lee a Craving por capacidad. En el menú, la **marca de techo** al lado
+  de la sangre —acá la sangre es un número y no una barra, así que la marca es el `/ N`: no se
+  inventa una barra para colgarle una marca— y la **fila `METABOLIC`** de cinco chips con la
+  rampa de color del sistema (sin déficit = cromo). **Sin Craving la fila no existe**, no es una
+  fila vacía: COA-7 aplicado a un peer nuevo. **[PENDIENTE]**
+
+- PARCHE 5 — docs(init): el bloque CONTRATO nombra las seis funciones nuevas y la línea del
+  snapshot suma `bcap`. La advertencia del id clínico va **en el contrato** y no en un comentario
+  suelto, porque el que se equivoca es el llamador. **[PENDIENTE]**
+
+- PARCHE 6 — feat(dev): `coagulant_status` imprime las **tres capas por separado** —qué te
+  EMPUJARON, qué LEÍSTE de Craving, qué EFECTO quedó—, y eso no es verbosidad: con sólo el
+  efecto, *«Craving no está montado»* y *«Craving dice que estás bien»* se leen igual, y son el
+  bug y el sano. El **selftest** crece con la parte que se puede mirar desde adentro del juego.
+  **[PENDIENTE]**
+
+- PARCHE 7 — test(dev): `dev/harness_coagulant.py` pasa de **275 a 331 checks**, todos verdes.
+  Las 56 filas nuevas arrancan con su **familia** (`MET-F/P/A/C/T/CL`), que es lo que le permite
+  al control negativo medir su alcance. La familia **`MET-T` existe porque el selftest no puede
+  tenerla**: no corre el tick, y la propiedad que de verdad importa —*techa y frena, NUNCA
+  mata*— sólo se ejerce ahí. **[APLICADO 2026-08-25]** (es harness, se verifica corriéndolo)
+
+- PARCHE 8 — test(dev): `dev/sabotaje_coagulant_metabolismo.py` — **21 sabotajes** con alcance
+  declarado y falla en las dos direcciones, más **2 no-detectables declarados**.
+  **[APLICADO 2026-08-25]**
+
+**LA VERIFICACIÓN EN NEGATIVO VOLVIÓ A AUDITAR AL QUE LA ESCRIBIÓ, y esta vez el resultado fue más
+limpio de lo que parece: los CUATRO problemas de la primera corrida fueron defectos de MIS
+INSTRUMENTOS, y NINGUNO del código.**
+
+- **`#13` daba VERDE porque mi check no discriminaba.** El guard `live` se prueba con una fila
+  muerta que comparte palanca con una viva — y le había dado **el mismo `mag`** que a la viva, así
+  que `max()` devolvía lo mismo con el guard puesto y sin él. Con un `mag` distinto, ignorar
+  `live` da 1.9 en vez de 1.6. **Regla: un control que compara dos ramas por `max()` necesita que
+  las ramas tengan valores DISTINTOS, o no compara nada.**
+- **`#14` no llegaba porque mi propio parche se había comido el fixture.** La línea que montaba el
+  Craving viejo (`Corpus._modules.craving = { }`) se perdió al reescribir el bloque, así que
+  `MET-C2` corría **sin** Craving y no medía nada distinto de `MET-C1`. Dos checks vecinos que
+  miden lo mismo se leen como cobertura doble.
+- **`#7` no llegaba porque el selftest medía con la condición equivocada puesta.** El check de
+  *«dehydration hereda el freno de regeneración»* corría con `starvation` **todavía aplicada**, así
+  que la regeneración estaba en 0 por el hambre y borrarle el `regen` a `dehydration` no movía
+  nada. **Un check que no limpia el estado anterior mide el estado anterior.**
+- **`#16` SE PASABA, y la que estaba mal era mi declaración.** Invertir la rampa también tiñe
+  `MET-T`, y es correcto: las filas del tick bajan el techo por la vía del **déficit leído** —la
+  única que no frena la regeneración—, o sea que **el tick también consume COA-38**. Se corrigió
+  el alcance, que es lo que la segunda dirección del arnés existe para descubrir.
+
+**Y un quinto, que es del control de higiene y no del sabotaje.**
+`dev/verificar_arbol_sabotaje.py` daba **«EL ÁRBOL QUEDÓ SUCIO»** con el árbol impecable: el texto
+de reemplazo del `#19` era `st.dirty = true`, que **aparece cinco veces más en `core.lua` por
+razones legítimas**, y el verificador no puede distinguir un resto de sabotaje de una línea que ya
+vivía ahí. **Regla que queda: el `nuevo` de un sabotaje tiene que ser un texto ÚNICO, o el control
+de higiene pierde su poder justo sobre ese sabotaje.** Se le puso un marcador `--[[SAB19]]`.
+
+**Verificación.** `dev/glua_check.py` 13/13 parsean. `dev/harness_coagulant.py`: **331 checks, 0
+fallos, ALL GREEN, exit 0**; selftest **238 OK server / 161 client**. Verificación en negativo:
+`dev/sabotaje_coagulant_metabolismo.py` — **21/21 en rojo, cada uno sólo en las familias que
+declaró**, y 2/2 no-detectables en verde. Árbol verificado LIMPIO con
+`dev/verificar_arbol_sabotaje.py` sobre los **dos** scripts de sabotaje. **Falta la pasada en
+juego**, y por eso los parches 1-6 nacen `[PENDIENTE]`.

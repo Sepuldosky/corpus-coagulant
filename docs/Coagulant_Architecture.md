@@ -330,7 +330,11 @@ COAGULANT.Zones.*            -- mapa de degradación; 7 zonas (COA-8, enmienda 2
 
 ### Condiciones externas y estado metabólico (enmienda 2026-08-08)
 
-> Votada por el autor en cinco puntos antes de escribir una línea (**COA-28**). La contraparte vive en `../../corpus-craving/docs/Craving_Architecture.md` §4 y §5.2. **Nada de esto está en código**: las normas entran al registro con evidencia `INTENCION`, y hasta que existan, el puente de Craving cae a su fallback de HP — que es el comportamiento correcto, no un bug.
+> Votada por el autor en cinco puntos antes de escribir una línea (**COA-28**). La contraparte vive en `../../corpus-craving/docs/Craving_Architecture.md` §4 y §5.2.
+>
+> **BAJADA A CÓDIGO EL 2026-08-25**, y con eso COA-38/39/40 dejan `INTENCION`. Lo que la ejerce: `Config.EXTERNAL_CONDITIONS`, `Config.METABOLIC` y las dos funciones de déficit en `shared/corpus_coagulant_config.lua`; `ApplyExternalCondition`/`GetExternalCondition` y las tres palancas (`BloodCap`/`RegenFactor`/`BleedFactor`) en `server/corpus_coagulant_core.lua`; su aplicación en el tick de 1 s de `server/corpus_coagulant_bleeding.lua`; y la marca de techo + la fila `METABOLIC` en el cliente. Harness: **331 checks ALL GREEN** con la familia `MET-*`; verificación en negativo en `dev/sabotaje_coagulant_metabolismo.py` (21 sabotajes). **Falta la pasada en juego.**
+>
+> **⚠ Y LA BAJADA MIDIÓ QUE DOS DE LAS CINCO PALANCAS DE COA-40 NO EXISTEN.** La norma afirma que *«los cinco entran por palancas que ya existen — no se crea un sistema nuevo»*, y contra el árbol eso es **falso para `hunger` y `energy`**: las dos apuntan al **techo de stamina**, que **§1 de este mismo documento difiere** por escrito (*«v1 lo acepta y almacena, sin efecto»*). Lo mismo con media pata de `dehydration`: los **bpm** tienen 0 hits en el `lua/`. Nadie cruzó las dos secciones al votar. **Las tres con blanco real bajaron vivas; las otras dos quedan escritas y NEUTRAS**, declaradas con un campo `live = false` y sostenidas por dos filas de harness (`MET-C12` mide que no muevan nada; `MET-C14` fabrica la colisión de palancas que hoy no existe, porque sin ella el guard no sería auditable). Es el mismo precedente que COA-52 estrenó con `PAIN_FRAC`. **El día que la stamina exista, `live = true` y `MET-F5` se pone rojo para obligar a mirar.**
 
 **COA-39 — `ApplyExternalCondition(ply, id, severity)` queda RATIFICADA, con la firma que Craving congeló desde el consumidor.** Cierra la deuda **D-5**: la firma llevaba un mes viva en un solo lado del pacto.
 

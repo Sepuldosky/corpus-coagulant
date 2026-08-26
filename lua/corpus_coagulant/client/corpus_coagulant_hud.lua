@@ -91,6 +91,21 @@ function HUD.Treatment()
     return COAGULANT.ClientState.treatment
 end
 
+-- Techo de sangre vigente (§8, COA-39/40). LEE el snapshot, no lo deriva — depende de
+-- las condiciones externas empujadas, que son estado del server. Sin dato cae a
+-- BLOOD_MAX, o sea «no hay techo bajo», que es el default honesto: un cliente viejo
+-- o un snapshot sin el campo dibuja la barra entera en vez de una marca inventada.
+function HUD.BloodCap()
+    return COAGULANT.ClientState.bcap or Config.BLOOD_MAX
+end
+
+-- COA-38 — los cinco déficits metabólicos leídos de Craving POR CAPACIDAD, o nil si
+-- no está montado. El nil apaga la fila METABOLIC entera (degradación honesta): sin
+-- Craving no hay cinco chips grises, no hay fila.
+function HUD.MetabolicDeficits()
+    return Config.MetabolicDeficits(LocalPlayer())
+end
+
 -- Fade a negro al recibir una herida de cabeza media/grave (§6). Se detecta
 -- comparando el snapshot con el anterior — sin mensaje de red nuevo (§9 congela los
 -- canales): una herida NUEVA en el índice i, o una vieja que se AGRAVÓ.

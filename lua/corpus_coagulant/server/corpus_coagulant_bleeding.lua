@@ -50,6 +50,12 @@ local function EnviarSnapshot(ply, st)
         -- tramo no abre canales que la niebla todavía no sabe filtrar; se lee por
         -- consola con coagulant_status, que corre en el server.
         pain = math.Round(COAGULANT.GetPain(ply)),
+        -- El TECHO de sangre vigente (§8, COA-39/40). Viaja porque el cliente NO
+        -- puede derivarlo: depende de las condiciones externas empujadas, que son
+        -- estado del server y no salen de ninguna herida. El menú dibuja la marca de
+        -- techo con esto — un techo caído sin causa visible es la señal muda que el
+        -- sistema de color prohíbe, y la fila METABOLIC es la que contesta por qué.
+        bcap = math.Round(COAGULANT.BloodCap(ply), 1),
         zones = zonas,
         treatment = st.treatment,
     }))
@@ -63,7 +69,11 @@ end
 -- Drenaje total de sangre del jugador en unidades/s (§4): suma de heridas no
 -- tratadas de zonas sin torniquete, escalada por convar. La zona se pasa a
 -- BleedRate: es donde el mult de zona (ZONE_BLEED_MULT) muerde de verdad.
-local function DrenajeTotal(st)
+-- El factor de micronutrientes (COA-40) se aplica ACÁ y no dentro de BleedRate a
+-- propósito: BleedRate es PURA y compartida —la usan el selftest, el harness y la
+-- prioridad de la venda, ninguno de los cuales tiene un jugador— y meterle una
+-- lectura de peer adentro la volvería impura y no reproducible.
+local function DrenajeTotal(ply, st)
     local total = 0
     for zona, zdata in pairs(st.zones) do
         if not zdata.tourniquet then
@@ -72,22 +82,32 @@ local function DrenajeTotal(st)
             end
         end
     end
-    return total * Config.cv_bleed_scale:GetFloat()
+    return total * Config.cv_bleed_scale:GetFloat() * COAGULANT.BleedFactor(ply)
 end
 
 local function TickJugador(ply)
     local st = COAGULANT.GetState(ply)
     if st == nil then return end
 
-    -- Sangre: drenaje o regeneración natural (§4)
-    local drenaje = DrenajeTotal(st)
+    -- Sangre: drenaje o regeneración natural (§4), ahora con el metabolismo encima
+    -- (§8, COA-39/40). El drenaje se agrava con el déficit de micronutrientes; la
+    -- regeneración se frena por inanición y se acota por el techo de plasma.
+    local drenaje = DrenajeTotal(ply, st)
     if drenaje > 0 then
         st.blood = math.max(0, st.blood - drenaje)
         st.dirty = true
-    elseif st.blood < Config.BLOOD_MAX then
-        st.blood = math.min(Config.BLOOD_MAX,
-            st.blood + Config.REGEN_PER_S * Config.cv_regen_scale:GetFloat())
-        st.dirty = true
+    else
+        -- ⚠ EL TECHO NO EMPUJA LA SANGRE HACIA ABAJO, y es la línea que hace que
+        -- COA-40 («techa y frena, NUNCA mata») no sea una promesa suelta: con la
+        -- sangre por encima del techo no pasa nada — no regenera y punto. Si acá
+        -- hubiera un `math.min` sobre st.blood, la sed drenaría por su cuenta y la
+        -- muerte tendría un segundo dueño, que es exactamente lo que §8 prohíbe.
+        local techo = COAGULANT.BloodCap(ply)
+        if st.blood < techo then
+            st.blood = math.min(techo, st.blood + Config.REGEN_PER_S
+                * COAGULANT.RegenFactor(ply) * Config.cv_regen_scale:GetFloat())
+            st.dirty = true
+        end
     end
 
 
