@@ -7,35 +7,38 @@
 
 # Coagulant
 
-Módulo **médico de jugador** del ecosistema [Corpus](https://github.com/Sepuldosky/corpus)
-para **Garry's Mod**, estilo ACE3: heridas por zona, sangrado, vitales y tratamiento. Addon
-independiente que **hard-depende** de Corpus (la única dependencia dura del ecosistema) y
-detecta a los demás módulos en runtime, nunca los asume.
+Player **medical** module of the [Corpus](https://github.com/Sepuldosky/corpus) ecosystem
+for **Garry's Mod**, ACE3-style: zone-based wounds, bleeding, vitals, and treatment. Independent
+addon that **hard-depends** on Corpus (the ecosystem's only hard dependency) and detects the
+other modules at runtime, never assumes them.
 
-> **Estado: Block 3 CERRADO — los 4 slices verificados en juego.** El diseño del dominio médico está
-> ratificado (2026-07-13) en [`docs/Coagulant_Architecture.md`](docs/Coagulant_Architecture.md)
-> y bajado a código: volumen de sangre (0-100) en paralelo al HP nativo, heridas por zona
-> con tipo según el damage type y severidad según el daño final, sangrado que drena sangre
-> y —bajo el umbral crítico— HP, tres debuffs zonales (cojera, sway de puntería, visión),
-> tratamiento con tiempo de aplicación e interrupción, cuatro ítems médicos contra el
-> framework de ítems de [Cargo](https://github.com/Sepuldosky/corpus-cargo) (venda,
-> torniquete, medkit, bolsa de sangre) y la UI (silueta zonal, menú médico, tab Q). Los
-> **4 slices están verificados en juego** (rondas 1-7, 2026-07-20) y el bloque cerró; el
-> tramo de zonas `torso` → `chest`/`stomach` bajó a código y se verificó el 2026-07-21
-> (ronda O — 7 zonas clínicas). La integración con Caliber va mock-first hasta que exista su
-> pipeline de jugador. Foto de HOY → [`docs/coagulant_estado.md`](docs/coagulant_estado.md);
-> el rumbo del ecosistema vive en el
-> [roadmap de Corpus](https://github.com/Sepuldosky/corpus/blob/main/docs/corpus_roadmap.txt).
+> **Status: Block 3 CLOSED — all 4 slices verified in-game.** The medical domain design is
+> ratified (2026-07-13) in [`docs/Coagulant_Architecture.md`](docs/Coagulant_Architecture.md)
+> and implemented in code: blood volume (0-100) running parallel to native HP, zone-based
+> wounds typed by damage type with severity from the final damage, bleeding that drains blood
+> and — below the critical threshold — HP, three zonal debuffs (limping, aim sway, vision),
+> treatment with application time and interruption, five medical items against the
+> [Cargo](https://github.com/Sepuldosky/corpus-cargo) item framework (bandage, tourniquet,
+> medkit, blood bag, painkillers) and the UI (zonal silhouette, medical menu, Q tab). The
+> **4 slices are verified in-game** (rounds 1-7, 2026-07-20) and the block closed; the
+> `torso` → `chest`/`stomach` zone split landed in code and was verified in-game on
+> 2026-07-21 (round O — 7 clinical zones). Pain (COA-52) — a per-zone derived stat plus a
+> saturated global perceived value, with painkillers as the 5th medical item — landed in
+> code and **closed in-game on 2026-08-25** (12/12 checks, no defects); it travels only in
+> the state snapshot, never over NW2. Caliber integration stays mock-first until its player
+> pipeline exists. Today's snapshot → [`docs/coagulant_estado.md`](docs/coagulant_estado.md);
+> the ecosystem roadmap lives in the
+> [Corpus roadmap](https://github.com/Sepuldosky/corpus/blob/main/docs/corpus_roadmap.txt).
 
-## Dependencias
+## Dependencies
 
-- **Corpus** (dura — framework del ecosistema).
-- **Caliber** (soft — hit-location enriquecido con datos de armadura/zona). Sin él,
-  Coagulant degrada a hit-location por hitgroup crudo del engine.
-- **Cargo** (soft — vendas, torniquetes y demás ítems médicos como ítems de inventario).
-  Sin él, el menú médico ofrece los mismos tratamientos sin consumir ítems, con un
-  cooldown de 30 s y rotulados «field» — modo degradado explícito.
+- **Corpus** (hard — ecosystem framework).
+- **Caliber** (soft — enriched hit-location with armor/zone data). Without it, Coagulant
+  degrades to raw hitgroup-based hit-location from the engine.
+- **Cargo** (soft — bandages, tourniquets, and other medical items as inventory items).
+  Without it, the medical menu offers the same treatments without consuming items, with a
+  30 s cooldown and labeled "field" — an explicit degraded mode.
 
-Diseño de referencia del ecosistema y grafo de dependencias →
+Ecosystem reference design and dependency graph →
 [`CORPUS_Architecture.md`](https://github.com/Sepuldosky/corpus/blob/main/docs/CORPUS_Architecture.md)
 (§1-§2, §9).
